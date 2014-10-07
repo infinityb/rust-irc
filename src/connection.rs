@@ -37,7 +37,7 @@ struct IrcConnectionInternalState {
     // The output stream towards the user
     event_queue_tx: SyncSender<IrcEvent>,
 
-    // Automatic responders e.g. the PING handler
+    // Automatic responders e.g. the PING and CTCP handlers
     responders: RingBuf<Box<MessageResponder+Send>>,
 
     // Unfinished watchers currently attached to the stream
@@ -131,7 +131,6 @@ fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
 
 impl IrcConnectionInternalState {
     pub fn new(event_queue_tx: SyncSender<IrcEvent>) -> IrcConnectionInternalState {
-
         IrcConnectionInternalState {
             event_queue_tx: event_queue_tx,
             responders: Default::default(),
@@ -181,6 +180,12 @@ impl IrcConnectionInternalState {
         for event in outgoing_events.iter() {
             for watcher in watcher_accept_impl(&mut self.event_watchers, event).into_iter() {
                 drop(watcher);
+            }
+        }
+
+        for responder in self.responders.iter_mut() {
+            for message in responder.on_message(&message).into_iter() {
+                raw_sender.send(message.to_irc());
             }
         }
 
@@ -275,6 +280,7 @@ impl IrcConnection {
                         }, &raw_writer_tx);
                     }
                 }
+
             }
         });
 

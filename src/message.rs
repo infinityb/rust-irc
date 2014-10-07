@@ -66,22 +66,6 @@ pub struct IrcMessage {
     args: Vec<String>
 }
 
-impl IrcMessage {
-    pub fn notice(destination: &str, message: &str) -> IrcMessage {
-        IrcMessage {
-            prefix: None,
-            prefix_raw: None,
-            message: IrcProtocolMessage::Notice(
-                destination.to_string(), message.to_string()),
-            command: "NOTICE".to_string(),
-            args: vec![
-                destination.to_string(),
-                message.to_string()
-            ]
-        }
-    }
-}
-
 
 fn parse_prefix(text: &str) -> IrcPrefix {
     let parts: Vec<&str> = text.splitn(1, '!').collect();
@@ -138,6 +122,20 @@ fn parse_message_rest(text: &str) -> Result<(String, Vec<String>), Option<String
 
 
 impl IrcMessage {
+    pub fn notice(destination: &str, message: &str) -> IrcMessage {
+        IrcMessage {
+            prefix: None,
+            prefix_raw: None,
+            message: IrcProtocolMessage::Notice(
+                destination.to_string(), message.to_string()),
+            command: "NOTICE".to_string(),
+            args: vec![
+                destination.to_string(),
+                message.to_string()
+            ]
+        }
+    }
+
     pub fn from_str(text: &str) -> Result<IrcMessage, Option<String>> {
         if text.len() == 0 {
             return Err(from_str("Invalid IRC message"));
@@ -194,6 +192,15 @@ impl IrcMessage {
             command: message_command,
             args: message_args
         })
+    }
+
+    pub fn to_irc(&self) -> String {
+        match self.message {
+            IrcProtocolMessage::Notice(ref dest, ref data) => {
+                format!("NOTICE {} :{}", dest[], data[])
+            }
+            _ => unimplemented!()
+        }
     }
 
     #[inline]
