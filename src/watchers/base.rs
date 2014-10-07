@@ -2,6 +2,12 @@ use message::IrcMessage;
 use watchers::event::IrcEvent;
 
 
+pub trait MessageResponder {
+    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMessage>;
+
+    fn finished(&self) -> bool { false }
+}
+
 pub trait MessageWatcher {
     fn on_message(&mut self, message: &IrcMessage);
 

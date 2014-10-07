@@ -2,18 +2,13 @@ use std::collections::{RingBuf, Deque};
 use std::task::TaskBuilder;
 use std::io::{TcpStream, IoResult, LineBufferedWriter, BufferedReader};
 use std::default::Default;
-use plugins::{
-    DeerPlugin,
-    GreedPlugin,
-    SeenPlugin,
-    RadioPlugin,
-    PingPlugin,
+
+use core_plugins::{
+    MessageResponder,
+    CtcpVersionResponder,
 };
 
-use core_plugins::CtcpVersionResponderPlugin;
-
 use message::IrcMessage;
-use command_mapper::PluginContainer;
 
 use watchers::{
     Bundler,
@@ -42,8 +37,8 @@ struct IrcConnectionInternalState {
     // The output stream towards the user
     event_queue_tx: SyncSender<IrcEvent>,
 
-    // Handles plugins and their command registrations
-    command_mapper: PluginContainer,
+    // Automatic responders e.g. the PING handler
+    responders: RingBuf<Box<MessageResponder+Send>>,
 
     // Unfinished watchers currently attached to the stream
     event_watchers: RingBuf<Box<EventWatcher+Send>>,
@@ -139,8 +134,7 @@ impl IrcConnectionInternalState {
 
         IrcConnectionInternalState {
             event_queue_tx: event_queue_tx,
-            command_mapper: PluginContainer::new(String::from_str("!")),
-
+            responders: Default::default(),
             event_watchers: Default::default(),
             event_bundlers: Default::default(),
             current_nick: Default::default(),
@@ -190,13 +184,14 @@ impl IrcConnectionInternalState {
             }
         }
 
-        match self.current_nick {
-            Some(ref current_nick) => {
-                self.command_mapper.dispatch(
-                    current_nick.as_slice(), raw_sender, &message);
-            },
-            None => ()
-        }
+        // match self.current_nick {
+        //     Some(ref current_nick) => {
+        //         self.command_mapper.dispatch(
+        //             current_nick.as_slice(), raw_sender, &message);
+        //     },
+        //     None => ()
+        // }
+
 
         for event in outgoing_events.into_iter() {
             self.event_queue_tx.send(event);
@@ -253,12 +248,7 @@ impl IrcConnection {
             let mut state = IrcConnectionInternalState::new(event_queue_tx);
 
             state.bundler_triggers.push(box JoinBundlerTrigger::new());
-            state.command_mapper.register(box CtcpVersionResponderPlugin::new());
-            state.command_mapper.register(box PingPlugin::new());
-            state.command_mapper.register(box GreedPlugin::new());
-            state.command_mapper.register(box SeenPlugin::new());
-            state.command_mapper.register(box DeerPlugin::new());
-            state.command_mapper.register(box RadioPlugin::new());
+            state.responders.push(box CtcpVersionResponder::new());
 
             loop {
                 select! {

@@ -9,7 +9,7 @@ pub mod IrcProtocolMessage {
     pub enum IrcProtocolMessage {
         Ping(String, Option<String>),
         Pong(String),
-        Notice(String),
+        Notice(String, String),
         Join(String),
         Numeric(u16, Vec<String>),
         // parsed but not processed into a safe message type. command, rest
@@ -24,7 +24,9 @@ impl fmt::Show for IrcProtocolMessage {
             IrcProtocolMessage::Ping(ref s1, None) => write!(f, "PING {}", s1),
             IrcProtocolMessage::Ping(ref s1, Some(ref s2)) => write!(f, "PING {} {}", s1, s2),
             IrcProtocolMessage::Pong(ref s1) => write!(f, "PONG {}", s1),
-            IrcProtocolMessage::Notice(ref s1) => write!(f, "NOTICE {}", s1),
+            IrcProtocolMessage::Notice(ref s1, ref s2) => {
+                write!(f, "NOTICE {} :{}", s1, s2)
+            },
             _ => write!(f, "WHAT")
         }
     }
@@ -62,6 +64,22 @@ pub struct IrcMessage {
     message: IrcProtocolMessage,
     command: String,
     args: Vec<String>
+}
+
+impl IrcMessage {
+    pub fn notice(destination: &str, message: &str) -> IrcMessage {
+        IrcMessage {
+            prefix: None,
+            prefix_raw: None,
+            message: IrcProtocolMessage::Notice(
+                destination.to_string(), message.to_string()),
+            command: "NOTICE".to_string(),
+            args: vec![
+                destination.to_string(),
+                message.to_string()
+            ]
+        }
+    }
 }
 
 

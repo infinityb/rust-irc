@@ -5,4 +5,5 @@ rust-irc
 
 Parsing IRC messages and maybe a bit more!
 
-Currently implements an IRC bot with a fairly minimal plugin interface.
+This code-base is in the process of being split into two projects, the
+IRC protocol and the IRC bot.  The IRC bot repository has moved [Here](https://github.com/infinityb/rust-irc-bot).
