@@ -5,6 +5,7 @@ use message::{
     IrcMessage,
     IrcProtocolMessage
 };
+use util::{StringSlicer, OptionalStringSlicer};
 
 
 pub type WhoResult = Result<WhoSuccess, WhoError>;
@@ -200,27 +201,80 @@ impl EventWatcher for WhoEventWatcher {
 }
 
 
+pub struct IrcUser {
+    hostmask: String,
+    nick_idx_pair: StringSlicer,
+    username_idx_pair: OptionalStringSlicer,
+    hostname_idx_pair: OptionalStringSlicer,
+}
 
-// pub struct IrcUser {
-//     nick: String,
-//     username: String,
-//     hostname: String,
-// }
+impl IrcUser {
+    #[inline]
+    pub fn new(hostmask: &str) -> Option<IrcUser> {
+        let idx_pair = match hostmask.find('!') {
+            Some(exc_idx) => match hostmask[exc_idx+1..].find('@') {
+                Some(at_idx) => Some((exc_idx, exc_idx + at_idx + 1)),
+                None => None
+            },
+            None => None
+        };
+
+        let hostmask_str = hostmask.to_string();
+        Some(match idx_pair {
+            Some((exc_idx, at_idx)) => IrcUser {
+                hostmask: hostmask_str,
+                nick_idx_pair: StringSlicer::new(0, exc_idx),
+                username_idx_pair: OptionalStringSlicer::new_some(exc_idx + 1, at_idx),
+                hostname_idx_pair: OptionalStringSlicer::new_some(at_idx + 1, hostmask.len())
+            },
+            None => IrcUser {
+                hostmask: hostmask_str,
+                nick_idx_pair: StringSlicer::new(0, hostmask.len()),
+                username_idx_pair: OptionalStringSlicer::new_none(),
+                hostname_idx_pair: OptionalStringSlicer::new_none()
+            }
+        })
+    }
+
+    #[inline]
+    pub fn nick<'a>(&'a self) -> &'a str {
+        self.nick_idx_pair.slice_on(self.hostmask[])
+    }
+
+    #[inline]
+    pub fn username<'a>(&'a self) -> Option<&'a str> {
+        self.username_idx_pair.slice_on(self.hostmask[])
+    }
+
+    #[inline]
+    pub fn hostname<'a>(&'a self) -> Option<&'a str> {
+        self.hostname_idx_pair.slice_on(self.hostmask[])
+    }
+}
+
+#[test]
+fn test_irc_user() {
+    let user = IrcUser::new("sell!q@127.0.0.1").unwrap();
+    assert_eq!(user.nick(), "sell");
+    assert_eq!(user.username(), Some("q"));
+    assert_eq!(user.hostname(), Some("127.0.0.1"));
+
+    let user = IrcUser::new("sell").unwrap();
+    assert_eq!(user.nick(), "sell");
+    assert_eq!(user.username(), None);
+    assert_eq!(user.hostname(), None);
+}
 
 
 // pub struct IrcChannel {
 //     name: String,
 //     users: Vec<IrcUser>
 // }
-
-
 // pub struct IrcStatePlugin {
 //     channels: TreeMap<String, IrcChannel>,
 //     users: TreeMap<String, IrcUser>,
 //     who_bundlers: RingBuf<WhoBundler>
 // }
-
-
 // impl IrcStatePlugin {
 //     pub fn new() -> IrcStatePlugin {
 //         IrcStatePlugin {
@@ -229,7 +283,6 @@ impl EventWatcher for WhoEventWatcher {
 //             who_bundlers: RingBuf::new()
 //         }
 //     }
-
 //     fn update(&mut self, message: &IrcMessage) {s
 //         match message.get_prefix() {
 //             Some(&IrcHostmaskPrefix(ref mask)) => {
@@ -241,13 +294,10 @@ impl EventWatcher for WhoEventWatcher {
 //             None => ()
 //         }
 //     }
-
 //     fn add_channel(&mut self, channel: IrcChannel) {
 //         self.channels.insert(channel.name.clone(), channel);
 //     }
 // }
-
-
 // impl RustBotPlugin for IrcStatePlugin {
 //     fn accept(&mut self, m: &CommandMapperDispatch, message: &IrcMessage) {
 //         // If we find a JOIN message:

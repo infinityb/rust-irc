@@ -189,15 +189,6 @@ impl IrcConnectionInternalState {
             }
         }
 
-        // match self.current_nick {
-        //     Some(ref current_nick) => {
-        //         self.command_mapper.dispatch(
-        //             current_nick.as_slice(), raw_sender, &message);
-        //     },
-        //     None => ()
-        // }
-
-
         for event in outgoing_events.into_iter() {
             self.event_queue_tx.send(event);
         }
