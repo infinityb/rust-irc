@@ -29,7 +29,7 @@ pub struct JoinSuccess {
 }
 
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct JoinError {
     pub channel: String,
     pub errcode: i16,

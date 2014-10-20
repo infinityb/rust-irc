@@ -9,7 +9,7 @@ use watchers::event::{
 };
 
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct RegisterError {
     pub errtype: RegisterErrorType,
     pub message: IrcMessage
@@ -33,7 +33,7 @@ pub type RegisterErrorType = self::RegisterErrorType::RegisterErrorType;
 pub mod RegisterErrorType {
     use numerics;
 
-    #[deriving(Clone, Send)]
+    #[deriving(Clone, Send, Show)]
     pub enum RegisterErrorType {
         NoNicknameGiven,
         NicknameInUse,

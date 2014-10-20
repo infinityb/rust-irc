@@ -40,7 +40,7 @@ impl WhoSuccess {
 
 
 // Does /WHO even error? 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct WhoError {
     pub channel: String
 }
