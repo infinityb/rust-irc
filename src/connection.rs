@@ -318,4 +318,8 @@ impl IrcConnection {
     pub fn write_str(&mut self, content: &str) {
         self.command_queue.send(RawWrite(String::from_str(content)))
     }
+
+    pub fn get_command_queue(&mut self) -> SyncSender<IrcConnectionCommand> {
+        self.command_queue.clone()
+    }
 }
