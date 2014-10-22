@@ -16,9 +16,9 @@ trait ChannelTargeted {
 
 impl ChannelTargeted for WhoResult {
     fn get_channel(&self) -> &str {
-        match self {
-            &Ok(ref join_succ) => join_succ.channel.as_slice(),
-            &Err(ref join_err) => join_err.channel.as_slice()
+        match *self {
+            Ok(ref join_succ) => join_succ.channel.as_slice(),
+            Err(ref join_err) => join_err.channel.as_slice()
         }
     }
 }
