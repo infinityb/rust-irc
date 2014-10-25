@@ -79,10 +79,10 @@ impl JoinBundler {
     }
 
     fn accept_state0(&mut self, message: &IrcMessage) -> Option<i16> {
-        let success = message.get_command().as_slice() == "JOIN" &&
+        let success = message.command() == "JOIN" &&
             *message.get_args()[0] == self.channel.as_slice();
 
-        let failure = message.get_command().as_slice() == "475" &&
+        let failure = message.command() == "475" &&
             *message.get_args()[1] == self.channel.as_slice();
 
         if failure {
@@ -102,7 +102,7 @@ impl JoinBundler {
     }
 
     fn accept_state1(&mut self, message: &IrcMessage) -> Option<i16> {
-        let is_nicklist = message.get_command().as_slice() == "353" &&
+        let is_nicklist = message.command() == "353" &&
             message.get_args()[2] == self.channel.as_slice();
 
         if is_nicklist {
@@ -111,7 +111,7 @@ impl JoinBundler {
             }
         }
 
-        let is_eon = message.get_command().as_slice() == "366" && 
+        let is_eon = message.command() == "366" && 
             message.get_args()[1] == self.channel.as_slice();
 
         if is_eon {

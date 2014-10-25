@@ -259,12 +259,7 @@ impl IrcMessage {
 
     #[inline]
     pub fn command<'a>(&'a self) -> &'a str {
-        self.command.as_slice()
-    }
-
-    #[inline]
-    pub fn get_command<'a>(&'a self) -> &'a String {
-        &self.command
+        self.msg.as_ref().unwrap().get_command()
     }
 
     #[inline]
