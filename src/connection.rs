@@ -12,11 +12,13 @@ use message::IrcMessage;
 
 use watchers::{
     Bundler,
+    BundlerManager,
     RegisterError,
     RegisterEventWatcher,
     JoinBundlerTrigger,
     JoinResult,
     JoinEventWatcher,
+    WhoBundlerTrigger,
     WhoBundler,
     WhoResult,
     WhoEventWatcher,
@@ -40,93 +42,13 @@ struct IrcConnectionInternalState {
     // Automatic responders e.g. the PING and CTCP handlers
     responders: RingBuf<Box<MessageResponder+Send>>,
 
-    // Unfinished watchers currently attached to the stream
-    event_watchers: RingBuf<Box<EventWatcher+Send>>,
-
-    // Active event bundlers.
-    event_bundlers: RingBuf<Box<Bundler+Send>>,
-
-    // Bundler triggers.  They create Bundlers.
-    bundler_triggers: Vec<Box<BundlerTrigger+Send>>,
+    // manages active bundlers and emits events when they finish
+    bundler_man: BundlerManager,
 
     // Current nickname held by the client
     current_nick: Option<String>
 }
 
-
-fn bundler_trigger_impl(triggers: &mut Vec<Box<BundlerTrigger+Send>>,
-                       message: &IrcMessage
-                      ) -> Vec<Box<Bundler+Send>> {
-
-    let mut activating: Vec<Box<Bundler+Send>> = Vec::new();
-    for trigger in triggers.iter_mut() {
-        let new_bundlers = trigger.on_message(message);
-        activating.reserve_additional(new_bundlers.len());
-        for bundler in new_bundlers.into_iter() {
-            activating.push(bundler);
-        }
-    }
-    activating
-}
-
-
-fn watcher_accept_impl(buf: &mut RingBuf<Box<EventWatcher+Send>>,
-                       event: &IrcEvent
-                      ) -> Vec<Box<EventWatcher+Send>> {
-    let mut keep_watchers: RingBuf<Box<EventWatcher+Send>> = RingBuf::new();
-    let mut finished_watchers: Vec<Box<EventWatcher+Send>> = Vec::new();
-
-    loop {
-        match buf.pop_front() {
-            Some(mut watcher) => {
-                watcher.on_event(event);
-                if watcher.is_finished() {
-                    finished_watchers.push(watcher);
-                } else {
-                    keep_watchers.push(watcher);
-                }
-            },
-            None => break
-        }
-    }
-    loop {
-        match keep_watchers.pop_front() {
-            Some(watcher) => buf.push(watcher),
-            None => break
-        }
-    }
-    finished_watchers
-}
-
-
-fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
-                       message: &IrcMessage
-                      ) -> Vec<IrcEvent> {
-
-    let mut keep_bundlers: RingBuf<Box<Bundler+Send>> = RingBuf::new();
-    let mut emit_events: Vec<IrcEvent> = Vec::new();
-
-    loop {
-        match buf.pop_front() {
-            Some(mut bundler) => {
-                for event in bundler.on_message(message).into_iter() {
-                    emit_events.push(event);
-                }
-                if !bundler.is_finished() {
-                    keep_bundlers.push(bundler);
-                }
-            },
-            None => break
-        }
-    }
-    loop {
-        match keep_bundlers.pop_front() {
-            Some(watcher) => buf.push(watcher),
-            None => break
-        }
-    }
-    emit_events
-}
 
 
 impl IrcConnectionInternalState {
@@ -134,10 +56,8 @@ impl IrcConnectionInternalState {
         IrcConnectionInternalState {
             event_queue_tx: event_queue_tx,
             responders: Default::default(),
-            event_watchers: Default::default(),
-            event_bundlers: Default::default(),
+            bundler_man: BundlerManager::new(),
             current_nick: Default::default(),
-            bundler_triggers: Default::default()
         }
     }
 
@@ -165,23 +85,8 @@ impl IrcConnectionInternalState {
             };
         }
 
-        let mut outgoing_events: Vec<IrcEvent> = Vec::new();
-
-        for new_bundler in bundler_trigger_impl(&mut self.bundler_triggers, &message).into_iter() {
-            self.event_bundlers.push(new_bundler);
-        }
-
-        for event in bundler_accept_impl(&mut self.event_bundlers, &message).into_iter() {
-            outgoing_events.push(event);
-        }
-
-        outgoing_events.push(IrcEventMessage(message.clone()));
-
-        for event in outgoing_events.iter() {
-            for watcher in watcher_accept_impl(&mut self.event_watchers, event).into_iter() {
-                drop(watcher);
-            }
-        }
+        // XXX //
+        let outgoing_events = self.bundler_man.dispatch(&message);
 
         for responder in self.responders.iter_mut() {
             for message in responder.on_message(&message).into_iter() {
@@ -192,6 +97,15 @@ impl IrcConnectionInternalState {
         for event in outgoing_events.into_iter() {
             self.event_queue_tx.send(event);
         }
+    }
+
+    // Do we really need Send here?
+    fn add_watcher(&mut self, watcher: Box<EventWatcher+Send>) {
+        self.bundler_man.add_watcher(watcher);
+    }
+
+    fn add_bundler(&mut self, bundler: Box<Bundler+Send>) {
+        self.bundler_man.add_bundler(bundler);
     }
 }
 
@@ -243,22 +157,17 @@ impl IrcConnection {
         TaskBuilder::new().named("core-dispatch").spawn(proc() {
             let mut state = IrcConnectionInternalState::new(event_queue_tx);
 
-            state.bundler_triggers.push(box JoinBundlerTrigger::new());
+            state.bundler_man.add_bundler_trigger(box JoinBundlerTrigger::new());
+            state.bundler_man.add_bundler_trigger(box WhoBundlerTrigger::new());
             state.responders.push(box CtcpVersionResponder::new());
 
             loop {
                 select! {
                     command = command_queue_rx.recv() => {
                         match command {
-                            RawWrite(value) => {
-                                raw_writer_tx.send(value);
-                            },
-                            AddWatcher(value) => {
-                                state.event_watchers.push(value);
-                            },
-                            AddBundler(value) => {
-                                state.event_bundlers.push(value);
-                            }
+                            RawWrite(value) => raw_writer_tx.send(value),
+                            AddWatcher(value) => state.add_watcher(value),
+                            AddBundler(value) => state.add_bundler(value),
                         }
                     },
                     string = raw_reader_rx.recv() => {

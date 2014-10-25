@@ -1,4 +1,4 @@
-use watchers::base::{Bundler, EventWatcher};
+use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use watchers::event::{IrcEvent, IrcEventWhoBundle};
 
 use message::{
@@ -70,6 +70,31 @@ impl WhoRecord {
             },
             _ => None
         }
+    }
+}
+
+pub struct WhoBundlerTrigger;
+
+
+impl WhoBundlerTrigger {
+    pub fn new() -> WhoBundlerTrigger {
+        WhoBundlerTrigger
+    }
+}
+
+
+impl BundlerTrigger for WhoBundlerTrigger {
+    fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
+        let mut out = Vec::new();
+        if message.command() == "352" {
+            if message.get_args().len() <= 2 {
+                return out;
+            }
+            let bundler: Box<Bundler+Send> = box WhoBundler::new(
+                message.get_arg(2).as_slice());
+            out.push(bundler);
+        }
+        out
     }
 }
 
@@ -264,45 +289,3 @@ fn test_irc_user() {
     assert_eq!(user.username(), None);
     assert_eq!(user.hostname(), None);
 }
-
-
-// pub struct IrcChannel {
-//     name: String,
-//     users: Vec<IrcUser>
-// }
-// pub struct IrcStatePlugin {
-//     channels: TreeMap<String, IrcChannel>,
-//     users: TreeMap<String, IrcUser>,
-//     who_bundlers: RingBuf<WhoBundler>
-// }
-// impl IrcStatePlugin {
-//     pub fn new() -> IrcStatePlugin {
-//         IrcStatePlugin {
-//             channels: TreeMap::new(),
-//             users: TreeMap::new(),
-//             who_bundlers: RingBuf::new()
-//         }
-//     }
-//     fn update(&mut self, message: &IrcMessage) {s
-//         match message.get_prefix() {
-//             Some(&IrcHostmaskPrefix(ref mask)) => {
-//                 println!("{}", mask);
-//             },
-//             Some(&IrcOtherPrefix(ref other)) => {
-//                 println!("{}", other);
-//             },
-//             None => ()
-//         }
-//     }
-//     fn add_channel(&mut self, channel: IrcChannel) {
-//         self.channels.insert(channel.name.clone(), channel);
-//     }
-// }
-// impl RustBotPlugin for IrcStatePlugin {
-//     fn accept(&mut self, m: &CommandMapperDispatch, message: &IrcMessage) {
-//         // If we find a JOIN message:
-//         //   * Attach a WhoBundler to our listener buffer
-//         //   * send a WHO to that channel
-//         //   * on completion of the WhoBundler, update states.
-//     }
-// }

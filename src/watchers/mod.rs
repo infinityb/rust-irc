@@ -9,6 +9,7 @@ pub use self::join::{
 pub use self::base::{
     MessageWatcher,
     Bundler,
+    BundlerManager,
     BundlerTrigger,
     EventWatcher
 };
@@ -28,6 +29,7 @@ pub use self::who::{
     WhoSuccess,
     WhoError,
     WhoBundler,
+    WhoBundlerTrigger,
     WhoEventWatcher
 };
 
