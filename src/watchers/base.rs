@@ -1,7 +1,11 @@
 use std::collections::{RingBuf, Deque};
 
 use message::IrcMessage;
-use watchers::event::{IrcEvent, IrcEventMessage};
+use watchers::event::{
+    IrcEvent,
+    IrcEventMessage,
+};
+
 
 pub trait MessageResponder {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMessage>;
@@ -72,7 +76,7 @@ impl BundlerManager {
         self.bundler_triggers.push(bundler);
     }
 
-    pub fn dispatch(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
+    pub fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
         let mut outgoing_events: Vec<IrcEvent> = Vec::new();
 
         for new_bundler in bundler_trigger_impl(&mut self.bundler_triggers, message).into_iter() {
@@ -170,15 +174,60 @@ fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
 }
 
 
-#[test]
-fn test_bundle_watcher() {
-    //
-}
 
-// """
-// :botnick!rustbot@hostname JOIN :#
-// :server 332 botnick # :# - EBOLA EBOLA JUST LIVIN IN THE EBOLA | RIP LoleBola 2006 - 2014 | [21:16:06] <plus> Ebola sure takes a long time to compile | Take the # Fall Ebola Challenge | free EbolA, contact IB | EBOLA 2014 IS UPON US | much of # is relocating to flee the ebola menace | eBOWLa 2014 - WHO WILL EMERGE VICTORIOUS? | T
-// :server 333 botnick # owls!owl@miyu.godless-internets.org 1414115720
-// :server 353 botnick = # :+sell +nagisapls flsp +aibi botnick stick plus ngy|casper pem +ildverden +owls Leafa usagi Faux pasv +tanasinn +theLORD mr_flea Yukirin cthuljew betabot miyu tmpy 
-// :server 366 botnick # :End of /NAMES list.
-// """
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{IoResult, BufReader};
+
+    use message::IrcMessage;
+    use watchers::{
+        WhoBundlerTrigger,
+        JoinBundlerTrigger,
+    };
+    use watchers::event::{
+        IrcEventJoinBundle,
+        IrcEventWhoBundle,
+    };
+
+    const TEST_DATA: &'static [u8] = include_bin!("../../testdata/watcher.txt");
+
+    fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMessage {
+        let line = match line_res {
+            Ok(line) => line,
+            Err(err) => fail!("err: {}", err)
+        };
+        let totrim: &[_] = &['\n', '\r'];
+        match IrcMessage::from_str(line.as_slice().trim_right_chars(totrim)) {
+            Ok(message) => message,
+            Err(err) => fail!("err: {}", err)
+        }
+    }
+
+    #[test]
+    fn test_bundle_watcher() {
+        let mut reader = BufReader::new(TEST_DATA);
+        let mut bunman = BundlerManager::new();
+        bunman.add_bundler_trigger(box JoinBundlerTrigger::new());
+        bunman.add_bundler_trigger(box WhoBundlerTrigger::new());
+        let mut events = Vec::new();
+
+        for msg in reader.lines().map(unsafe_to_irc_message) {
+            events.extend(bunman.on_message(&msg).into_iter());
+        }
+
+        let mut join_bundles = 0u;
+        let mut who_bundles = 0u;
+
+        for event in events.into_iter() {
+            if let IrcEventJoinBundle(_) = event {
+                join_bundles += 1;
+            }
+            if let IrcEventWhoBundle(_) = event {
+                who_bundles += 1
+            }
+        }
+        assert_eq!(join_bundles, 1);
+        assert_eq!(who_bundles, 1);
+    }
+}

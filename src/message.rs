@@ -1,5 +1,6 @@
 use std::string::{String};
 use std::fmt;
+use parse::IrcMsg;
 
 
 pub type IrcProtocolMessage = self::IrcProtocolMessage::IrcProtocolMessage;
@@ -59,6 +60,7 @@ pub enum IrcPrefix {
 
 #[deriving(Clone)]
 pub struct IrcMessage {
+    msg: Option<IrcMsg<'static>>,
     prefix: Option<IrcPrefix>,
     prefix_raw: Option<String>,
     message: IrcProtocolMessage,
@@ -123,7 +125,8 @@ fn parse_message_rest(text: &str) -> Result<(String, Vec<String>), Option<String
 
 impl IrcMessage {
     pub fn notice(destination: &str, message: &str) -> IrcMessage {
-        IrcMessage {
+        let mut tmp = IrcMessage {
+            msg: None,
             prefix: None,
             prefix_raw: None,
             message: IrcProtocolMessage::Notice(
@@ -133,21 +136,24 @@ impl IrcMessage {
                 destination.to_string(),
                 message.to_string()
             ]
-        }
+        };
+        tmp.msg = IrcMsg::new(tmp.to_irc().into_maybe_owned());
+        tmp
     }
 
-    pub fn from_str(text: &str) -> Result<IrcMessage, Option<String>> {
+    pub fn from_str(text: &str) -> Result<IrcMessage, String> {
         if text.len() == 0 {
-            return Err(from_str("Invalid IRC message"));
+            return Err("Invalid IRC message; empty".to_string());
         }
+        
         let (prefix, command, mut args) = if text.char_at(0) == ':' {
                 let parts: Vec<&str> = text.splitn(1, ' ').collect();
                 if parts.len() < 2 {
-                    return Err(from_str("Invalid IRC message"));
+                    return Err("Invalid IRC message".to_string());
                 }
                 let (command, args) = match parse_message_rest(parts[1]) {
                     Ok(result) => result,
-                    Err(err) => return Err(Some(format!("Invalid IRC message: {}", err)))
+                    Err(err) => return Err(format!("Invalid IRC message: {}", err))
                 };
 
                 (Some(String::from_str(parts[0].slice_from(1))), command, args)
@@ -155,7 +161,7 @@ impl IrcMessage {
                 assert!(text.len() > 0);
                 let (command, args) = match parse_message_rest(text) {
                     Ok(result) => result,
-                    Err(err) => return Err(Some(format!("Invalid IRC message: {}", err)))
+                    Err(err) => return Err(format!("Invalid IRC message: {}", err))
                 };
                 (None, command, args)
             };
@@ -167,11 +173,11 @@ impl IrcMessage {
             ("PING", 1...2) => {
                 IrcProtocolMessage::Ping(args.remove(0).unwrap(), args.remove(0))
             },
-            ("PING", _) => return Err(from_str(
-                "Invalid IRC message: too many arguments to PING")),
+            ("PING", _) => return Err(
+                "Invalid IRC message: too many arguments to PING".to_string()),
             ("PONG", 1) => IrcProtocolMessage::Pong(args.remove(0).unwrap()),
-            ("PONG", _) => return Err(from_str(
-                "Invalid IRC message: too many arguments to PONG")),
+            ("PONG", _) => return Err(
+                "Invalid IRC message: too many arguments to PONG".to_string()),
             (_, _) => {
                 match from_str(command.as_slice()) {
                     Some(num) => IrcProtocolMessage::Numeric(num, args),
@@ -185,7 +191,13 @@ impl IrcMessage {
             None => None
         };
 
+        let msg = match IrcMsg::new(text.to_string().into_maybe_owned()) {
+            Some(msg) => msg,
+            None => return Err("Invalid IRC message; parse failure".to_string())
+        };
+
         Ok(IrcMessage {
+            msg: Some(msg),
             prefix: prefix_parsed,
             prefix_raw: prefix,
             message: message,
@@ -215,8 +227,8 @@ impl IrcMessage {
 
     pub fn channel(&self) -> Option<&str> {
         if self.is_privmsg() {
-            if self.get_arg(0).as_slice().starts_with("#") {
-                Some(self.get_arg(0).as_slice())
+            if self.get_args()[0].starts_with("#") {
+                Some(self.get_args()[0])
             } else {
                 None
             }
@@ -256,13 +268,8 @@ impl IrcMessage {
     }
 
     #[inline]
-    pub fn get_args(&self) -> &Vec<String> {
-        &self.args
-    }
-
-    #[inline]
-    pub fn get_arg<'a>(&'a self, i: uint) -> &'a String {
-        &self.args[i]
+    pub fn get_args<'a>(&'a self) -> Vec<&'a str> {
+        self.msg.as_ref().unwrap().get_args()
     }
 }
 

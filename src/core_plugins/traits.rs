@@ -6,4 +6,3 @@ pub trait MessageResponder {
 
     fn finished(&self) -> bool { false }
 }
-

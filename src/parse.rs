@@ -1,11 +1,12 @@
-
 use std::str::MaybeOwned;
 use util::{StringSlicer, OptionalStringSlicer};
 
-struct IrcMsg<'a> {
+#[deriving(Clone)]
+pub struct IrcMsg<'a> {
 	// RFC1459: max 512 bytes
 	data: MaybeOwned<'a>,
 	prefix: OptionalStringSlicer,
+	prefix_extra: Option<PrefixSlicer>,
 	command: StringSlicer,
 	args: Vec<StringSlicer>
 }
@@ -29,6 +30,11 @@ impl<'a> IrcMsg<'a> {
 		let (tmp, prefix_ss) = extract_prefix(cur_idx, msg_text.as_slice());
 		cur_idx = consume_spaces(tmp, msg_text.as_slice());
 		
+		let prefix_extra = match prefix_ss.slice_on(msg_text.as_slice()) {
+			Some(pref) => Some(PrefixSlicer::new(pref)),
+			None => None
+		};
+
 		let (tmp, command) = extract_word(cur_idx, msg_text.as_slice());
 		cur_idx = consume_spaces(tmp, msg_text.as_slice());
 
@@ -43,23 +49,36 @@ impl<'a> IrcMsg<'a> {
 		Some(IrcMsg {
 			data: msg_text,
 			prefix: prefix_ss,
+			prefix_extra: prefix_extra,
 			command: command,
 			args: args
 		})
 	}
 
 	#[inline]
-	pub fn get_prefix<'a>(&'a self) -> Option<&'a str> {
+	pub fn get_prefix_raw<'b>(&'b self) -> Option<&'b str> {
 		self.prefix.slice_on(self.data.as_slice())
 	}
 
 	#[inline]
-	pub fn get_command<'a>(&'a self) -> &'a str {
+	pub fn get_prefix<'b>(&'b self) -> Option<IrcMsgPrefix<'b>> {
+		let prefix = match self.prefix.slice_on(self.data.as_slice()) {
+			Some(prefix) => prefix,
+			None => return None
+		};
+		match self.prefix_extra {
+			Some(extra) => Some(extra.apply(prefix.into_maybe_owned())),
+			None => None
+		}
+	}
+
+	#[inline]
+	pub fn get_command<'b>(&'b self) -> &'b str {
 		self.command.slice_on(self.data.as_slice())
 	}
 
 	#[inline]
-	pub fn get_args<'a>(&'a self) -> Vec<&'a str> {
+	pub fn get_args<'b>(&'b self) -> Vec<&'b str> {
 		self.args.iter().map(|ss: &StringSlicer| {
 			ss.slice_on(self.data.as_slice())
 		}).collect()
@@ -76,8 +95,8 @@ fn consume_spaces(start: uint, text: &str) -> uint {
 				idx += 1;
 				tmp = rest;
 			},
-			(Some(_), rest) => break,
-			(None, rest) => return start + idx
+			(Some(_), _) => break,
+			(None, _) => return start + idx
 		}
 	}
 	start + idx
@@ -118,7 +137,6 @@ fn extract_arg(start: uint, text: &str) -> (uint, StringSlicer) {
 	(start + end_idx, StringSlicer::new(start + start_offset, start + end_idx))
 }
 
-
 #[test]
 fn test_irc_msg() {
 	let pings_noprefix_1server = vec![
@@ -132,7 +150,8 @@ fn test_irc_msg() {
 		let msg = IrcMsg::from_str(msg_text);
 		assert!(msg.is_some());
 		let msg = msg.unwrap();
-		assert_eq!(msg.get_prefix(), None);
+		assert_eq!(msg.get_prefix_raw(), None);
+		assert!(msg.get_prefix().is_none());
 		assert_eq!(msg.get_command(), "PING");
 		assert_eq!(msg.get_args().len(), 1);
 		assert_eq!(msg.get_args()[0], "server1");
@@ -149,7 +168,8 @@ fn test_irc_msg() {
 		let msg = IrcMsg::from_str(msg_text);
 		assert!(msg.is_some());
 		let msg = msg.unwrap();
-		assert_eq!(msg.get_prefix(), None);
+		assert_eq!(msg.get_prefix_raw(), None);
+		assert!(msg.get_prefix().is_none());
 		assert_eq!(msg.get_command(), "PING");
 		assert_eq!(msg.get_args().len(), 2);
 		assert_eq!(msg.get_args()[0], "server1");
@@ -167,7 +187,8 @@ fn test_irc_msg() {
 		let msg = IrcMsg::from_str(msg_text);
 		assert!(msg.is_some());
 		let msg = msg.unwrap();
-		assert_eq!(msg.get_prefix(), Some("nick!user@host"));
+		assert_eq!(msg.get_prefix_raw(), Some("nick!user@host"));
+		assert!(msg.get_prefix().is_some());
 		assert_eq!(msg.get_command(), "PING");
 		assert_eq!(msg.get_args().len(), 1);
 		assert_eq!(msg.get_args()[0], "server1");
@@ -184,12 +205,60 @@ fn test_irc_msg() {
 		let msg = IrcMsg::from_str(msg_text);
 		assert!(msg.is_some());
 		let msg = msg.unwrap();
-		assert_eq!(msg.get_prefix(), Some("nick!user@host"));
+		assert_eq!(msg.get_prefix_raw(), Some("nick!user@host"));
+		assert!(msg.get_prefix().is_some());
 		assert_eq!(msg.get_command(), "PING");
 		assert_eq!(msg.get_args().len(), 2);
 		assert_eq!(msg.get_args()[0], "server1");
 		assert_eq!(msg.get_args()[1], "server2");
 	}
+}
 
+#[deriving(Clone)]
+struct PrefixSlicer {
+	nick_idx_pair: OptionalStringSlicer,
+	username_idx_pair: OptionalStringSlicer,
+	hostname_idx_pair: StringSlicer
+}
 
+impl PrefixSlicer {
+	pub fn new(prefix: &str) -> PrefixSlicer {
+		let idx_pair = match prefix.find('!') {
+            Some(exc_idx) => match prefix[exc_idx+1..].find('@') {
+                Some(at_idx) => Some((exc_idx, exc_idx + at_idx + 1)),
+                None => None
+            },
+            None => None
+        };
+
+        match idx_pair {
+            Some((exc_idx, at_idx)) => PrefixSlicer {
+                nick_idx_pair: OptionalStringSlicer::new_some(0, exc_idx),
+                username_idx_pair: OptionalStringSlicer::new_some(exc_idx + 1, at_idx),
+                hostname_idx_pair: StringSlicer::new(at_idx + 1, prefix.len())
+            },
+            None => PrefixSlicer {
+                nick_idx_pair: OptionalStringSlicer::new_none(),
+                username_idx_pair: OptionalStringSlicer::new_none(),
+                hostname_idx_pair: StringSlicer::new(0, prefix.len())
+            }
+        }
+	}
+
+	pub fn apply<'a>(&self, prefix: MaybeOwned<'a>) -> IrcMsgPrefix<'a> {
+		IrcMsgPrefix {
+			data: prefix,
+			slicer: self.clone()
+		}
+	}
+}
+
+#[allow(dead_code)]
+pub struct IrcMsgPrefix<'a> {
+	data: MaybeOwned<'a>,
+	slicer: PrefixSlicer
+}
+
+impl<'a> IrcMsgPrefix<'a> {
+	//
 }

@@ -40,8 +40,9 @@ impl CtcpVersionResponder {
 impl MessageResponder for CtcpVersionResponder {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMessage> {
         let mut out = Vec::new();
-        if message.command() == "PRIVMSG" && message.get_args().len() >= 2 {
-            match (message.get_arg(1).as_slice(), message.source_nick()) {
+        let args = message.get_args();
+        if message.command() == "PRIVMSG" && args.len() >= 2 {
+            match (args[1], message.source_nick()) {
                 ("\x01VERSION\x01", Some(source_nick)) => {
                     let body = format!(
                         "\x01VERSION {}\x01",

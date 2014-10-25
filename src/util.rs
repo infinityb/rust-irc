@@ -4,6 +4,7 @@ pub struct StringSlicer {
     to_idx: uint
 }
 
+
 impl StringSlicer {
     #[inline]
     pub fn new(from_idx: uint, to_idx: uint) -> StringSlicer {

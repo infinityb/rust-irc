@@ -1,0 +1,29 @@
+:botnick!rustbot@hostname JOIN :#
+:server 332 botnick # :# - EBOLA EBOLA JUST LIVIN IN THE EBOLA | RIP LoleBola 2006 - 2014 | [21:16:06] <plus> Ebola sure takes a long time to compile | Take the # Fall Ebola Challenge | free EbolA, contact IB | EBOLA 2014 IS UPON US | much of # is relocating to flee the ebola menace | eBOWLa 2014 - WHO WILL EMERGE VICTORIOUS? | T
+:server 333 botnick # owls!owl@miyu.godless-internets.org 1414115720
+:server 353 botnick = # :+sell +nagisapls flsp +aibi botnick stick plus ngy|casper pem +ildverden +owls Leafa usagi Faux pasv +tanasinn +theLORD mr_flea Yukirin cthuljew betabot miyu tmpy
+:server 366 botnick # :End of /NAMES list.
+:server 352 botnick # sell 173.255.238.68 nagisa.yasashiisyndicate.org sell H+ :0 Stacey Ell
+:server 352 botnick # nevans nagisa.godless-internets.org nagisa.yasashiisyndicate.org nagisapls H+ :0 Owl
+:server 352 botnick # hahaohwow li408-94.members.linode.com nagisa.yasashiisyndicate.org flsp H :0 flamingspinach
+:server 352 botnick # q 172.17.42.1 miyuki.yasashiisyndicate.org aibi H*+ :0 q
+:server 352 botnick # rustbot out-ab-133.wireless.telus.com nagisa.yasashiisyndicate.org botnick H :0 Rust bot
+:server 352 botnick # stick 205.185.124.62 nagisa.yasashiisyndicate.org stick H :0 stick
+:server 352 botnick # plus 24-196-131-189.dhcp.mdsn.wi.charter.com nagisa.yasashiisyndicate.org plus H :0 plus
+:server 352 botnick # ngy bb219-74-235-37.singnet.com.sg nagisa.yasashiisyndicate.org ngy|casper H :0 ngy
+:server 352 botnick # wary potassium.eightbitoperation.com nagisa.yasashiisyndicate.org pem H :0 wary
+:server 352 botnick # ild miyu.godless-internets.org nagisa.yasashiisyndicate.org ildverden G+ :0 None
+:server 352 botnick # owl miyu.godless-internets.org nagisa.yasashiisyndicate.org owls H+ :0 Owl
+:server 352 botnick # Leafa S0106f46d041935d0.cg.shawcable.net nagisa.yasashiisyndicate.org Leafa H :0 .
+:server 352 botnick # aers usagi.yasashiisyndicate.org nagisa.yasashiisyndicate.org usagi H :0 aers
+:server 352 botnick # faux bb219-74-235-37.singnet.com.sg nagisa.yasashiisyndicate.org Faux H :0 realname
+:server 352 botnick # l c-76-104-2-73.hsd1.va.comcast.net nagisa.yasashiisyndicate.org pasv H :0 l
+:server 352 botnick # eric 24-196-131-189.dhcp.mdsn.wi.charter.com nagisa.yasashiisyndicate.org tanasinn H+ :0 GumbyBRAIN-2.00
+:server 352 botnick # eric 24-196-131-189.dhcp.mdsn.wi.charter.com nagisa.yasashiisyndicate.org theLORD H+ :0 GumbyBRAIN-2.00
+:server 352 botnick # mr_flea lakfakalle.mrflea.net nagisa.yasashiisyndicate.org mr_flea H :0 Phantom Flame
+:server 352 botnick # tempy-tan yukirin.nyanpa.su nagisa.yasashiisyndicate.org Yukirin H :0 tempy-tan
+:server 352 botnick # cthuljew c-50-148-229-24.hsd1.mn.comcast.net nagisa.yasashiisyndicate.org cthuljew H :0 realname
+:server 352 botnick # betabot bb219-74-235-37.singnet.com.sg nagisa.yasashiisyndicate.org betabot H :0 Romani ite domum
+:server 352 botnick # miyu miyu.godless-internets.org nagisa.yasashiisyndicate.org miyu H :0 Ruby bot (c) Tom Gilbert and the rbot development team
+:server 352 botnick # tempy 103.241.62.34 nagisa.yasashiisyndicate.org tmpy H :0 temporal
+:server 315 botnick # :End of /WHO list.

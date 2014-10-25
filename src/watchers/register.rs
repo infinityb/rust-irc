@@ -15,7 +15,6 @@ pub struct RegisterError {
     pub message: IrcMessage
 }
 
-
 impl RegisterError {
     pub fn should_pick_new_nickname(&self) -> bool {
         match *self.message.get_message() {

@@ -16,8 +16,7 @@ pub use self::base::{
 pub use self::event::{
     IrcEvent,
     IrcEventMessage,
-    IrcEventJoinBundle,
-    IrcEventWatcherResponse,
+    IrcEventJoinBundle
 };
 pub use self::register::{
     RegisterError,

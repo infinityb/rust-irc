@@ -1,7 +1,7 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
 #![license = "MIT"]
-#![feature(if_let, slicing_syntax)]
+#![feature(if_let, slicing_syntax, globs)]
 
 extern crate time;
 extern crate serialize;

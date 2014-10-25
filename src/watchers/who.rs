@@ -23,7 +23,7 @@ impl ChannelTargeted for WhoResult {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct WhoSuccess {
     pub channel: String,
     pub who_records: Vec<WhoRecord>,
@@ -46,7 +46,7 @@ pub struct WhoError {
 }
 
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct WhoRecord {
     hostname: String,
     server: String,
@@ -58,8 +58,8 @@ pub struct WhoRecord {
 impl WhoRecord {
     fn new(args: &Vec<String>) -> Option<WhoRecord> {
         match args.as_slice() {
-            [ref _self_nick, ref _channel, ref hostname,
-             ref server, ref nick, ref _unk, ref rest
+            [ref _self_nick, ref _channel, ref _unk0,
+             ref hostname, ref server, ref nick, ref _unk1, ref rest
             ] => {
                 Some(WhoRecord {
                     hostname: hostname.clone(),
@@ -73,12 +73,16 @@ impl WhoRecord {
     }
 }
 
-pub struct WhoBundlerTrigger;
+pub struct WhoBundlerTrigger {
+    suppress: bool
+}
 
 
 impl WhoBundlerTrigger {
     pub fn new() -> WhoBundlerTrigger {
-        WhoBundlerTrigger
+        WhoBundlerTrigger {
+            suppress: false
+        }
     }
 }
 
@@ -86,20 +90,27 @@ impl WhoBundlerTrigger {
 impl BundlerTrigger for WhoBundlerTrigger {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
         let mut out = Vec::new();
-        if message.command() == "352" {
-            if message.get_args().len() <= 2 {
+        if message.command() == "315" && self.suppress {
+            self.suppress = false;
+        }
+        if message.command() == "352" && !self.suppress {
+            let args = message.get_args();
+            if args.len() <= 2 {
                 return out;
             }
-            let bundler: Box<Bundler+Send> = box WhoBundler::new(
-                message.get_arg(2).as_slice());
-            out.push(bundler);
+            self.suppress = true;
+            let bundler: WhoBundler = WhoBundler::new(args[1]);
+            
+            println!("adding bundler: {}", bundler);
+            let boxed_bundler: Box<Bundler+Send> = box bundler;
+            out.push(boxed_bundler);
         }
         out
     }
 }
 
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct WhoBundler {
     target_channel: String,
     who_records: Vec<WhoRecord>,
@@ -129,10 +140,11 @@ impl WhoBundler {
 
 impl Bundler for WhoBundler {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
-        if message.get_args().len() < 2 {
+        let args = message.get_args();
+        if args.len() < 2 {
             return Vec::new();
         }
-        if message.get_arg(1).as_slice() != self.target_channel.as_slice() {
+        if args[1] != self.target_channel.as_slice() {
             return Vec::new();
         }
         match *message.get_message() {

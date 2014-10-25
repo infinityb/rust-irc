@@ -1,4 +1,4 @@
-use std::collections::{RingBuf, Deque};
+use std::collections::RingBuf;
 use std::task::TaskBuilder;
 use std::io::{TcpStream, IoResult, LineBufferedWriter, BufferedReader};
 use std::default::Default;
@@ -25,7 +25,6 @@ use watchers::{
     EventWatcher,
     BundlerTrigger,
     IrcEvent,
-    IrcEventMessage
 };
 
 
@@ -63,20 +62,18 @@ impl IrcConnectionInternalState {
 
     fn dispatch(&mut self, message: IrcMessage, raw_sender: &SyncSender<String>) {
         if message.command() == "PING" {
-            let ping_body: &String = message.get_arg(0);
-            raw_sender.send(format!("PONG :{}\n", ping_body));
+            raw_sender.send(format!("PONG :{}\n", message.get_args()[0]));
         }
 
         if message.command() == "001" {
-            let accepted_nick: &String = message.get_arg(0);
-            self.current_nick = Some(accepted_nick.clone());
+            self.current_nick = Some(message.get_args()[0].to_string());
         }
 
         if message.command() == "NICK" {
             self.current_nick = match (message.source_nick(), self.current_nick.take()) {
                 (Some(source_nick), Some(current_nick)) => {
                     if source_nick == current_nick {
-                        Some(message.get_arg(0).clone())
+                        Some(message.get_args()[0].to_string())
                     } else {
                         Some(current_nick)
                     }
@@ -86,7 +83,7 @@ impl IrcConnectionInternalState {
         }
 
         // XXX //
-        let outgoing_events = self.bundler_man.dispatch(&message);
+        let outgoing_events = self.bundler_man.on_message(&message);
 
         for responder in self.responders.iter_mut() {
             for message in responder.on_message(&message).into_iter() {

@@ -22,7 +22,7 @@ impl ChannelTargeted for JoinResult {
     }
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct JoinSuccess {
     pub channel: String,
     pub nicks: Vec<String>,
@@ -51,8 +51,8 @@ impl BundlerTrigger for JoinBundlerTrigger {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
         let mut out = Vec::new();
         if message.command() == "JOIN" {
-            let channel = message.get_arg(0);
-            let bundler: Box<Bundler+Send> = box JoinBundler::new(channel.as_slice());
+            let channel = message.get_args()[0];
+            let bundler: Box<Bundler+Send> = box JoinBundler::new(channel);
             out.push(bundler);
         }
         out
@@ -80,10 +80,10 @@ impl JoinBundler {
 
     fn accept_state0(&mut self, message: &IrcMessage) -> Option<i16> {
         let success = message.get_command().as_slice() == "JOIN" &&
-            *message.get_arg(0) == self.channel;
+            *message.get_args()[0] == self.channel.as_slice();
 
         let failure = message.get_command().as_slice() == "475" &&
-            *message.get_arg(1) == self.channel;
+            *message.get_args()[1] == self.channel.as_slice();
 
         if failure {
             self.result = Some(Err(JoinError {
@@ -102,21 +102,17 @@ impl JoinBundler {
     }
 
     fn accept_state1(&mut self, message: &IrcMessage) -> Option<i16> {
-        println!("JoinBundler#1 RX: {}", message);
-        // 353 contains nicks
-        // 366 is ``End of /NAMES list''
-
         let is_nicklist = message.get_command().as_slice() == "353" &&
-            *message.get_arg(2) == self.channel;
+            message.get_args()[2] == self.channel.as_slice();
 
         if is_nicklist {
-            for nick in message.get_arg(3).as_slice().split(' ') {
+            for nick in message.get_args()[3].split(' ') {
                 self.nicks.push(String::from_str(nick));
             }
         }
 
         let is_eon = message.get_command().as_slice() == "366" && 
-            *message.get_arg(1) == self.channel;
+            message.get_args()[1] == self.channel.as_slice();
 
         if is_eon {
             self.result = Some(Ok(JoinSuccess {
