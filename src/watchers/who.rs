@@ -48,28 +48,34 @@ pub struct WhoError {
 
 #[deriving(Clone, Show)]
 pub struct WhoRecord {
-    hostname: String,
-    server: String,
-    nick: String,
-    rest: String
+    pub hostname: String,
+    pub server: String,
+    pub username: String,
+    pub nick: String,
+    pub rest: String,
 }
 
 
 impl WhoRecord {
     fn new(args: &Vec<String>) -> Option<WhoRecord> {
         match args.as_slice() {
-            [ref _self_nick, ref _channel, ref _unk0,
+            [ref _self_nick, ref _channel, ref username,
              ref hostname, ref server, ref nick, ref _unk1, ref rest
             ] => {
                 Some(WhoRecord {
                     hostname: hostname.clone(),
                     server: server.clone(),
+                    username: username.clone(),
                     nick: nick.clone(),
                     rest: rest.clone()
                 })
             },
             _ => None
         }
+    }
+
+    pub fn get_prefix(&self) -> String {
+        format!("{}!{}@{}", self.nick, self.username, self.hostname)
     }
 }
 
@@ -100,8 +106,6 @@ impl BundlerTrigger for WhoBundlerTrigger {
             }
             self.suppress = true;
             let bundler: WhoBundler = WhoBundler::new(args[1]);
-            
-            println!("adding bundler: {}", bundler);
             let boxed_bundler: Box<Bundler+Send> = box bundler;
             out.push(boxed_bundler);
         }

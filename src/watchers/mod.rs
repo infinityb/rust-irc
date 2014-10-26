@@ -20,6 +20,7 @@ pub use self::register::{
 };
 pub use self::who::{
     WhoResult,
+    WhoRecord,
     WhoSuccess,
     WhoError,
     WhoBundler,

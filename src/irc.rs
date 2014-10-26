@@ -36,6 +36,7 @@ pub use self::watchers::{
     WhoBundler,
     WhoBundlerTrigger,
     WhoResult,
+    WhoRecord,
     WhoSuccess,
     WhoError,
 };

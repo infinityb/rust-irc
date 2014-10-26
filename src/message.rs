@@ -252,6 +252,13 @@ impl IrcMessage {
         }
     }
 
+    pub fn get_prefix_raw<'a>(&'a self) -> Option<&'a str> {
+        match self.prefix_raw {
+            Some(ref prefix) => Some(prefix.as_slice()),
+            None => None
+        }
+    }
+
     pub fn get_message<'a>(&'a self) -> &'a IrcProtocolMessage {
         &self.message
     }
