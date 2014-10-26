@@ -8,8 +8,8 @@ use core_plugins::{
     CtcpVersionResponder,
 };
 
+use event::IrcEvent;
 use message::IrcMessage;
-
 use watchers::{
     Bundler,
     BundlerManager,
@@ -24,7 +24,6 @@ use watchers::{
     WhoEventWatcher,
     EventWatcher,
     BundlerTrigger,
-    IrcEvent,
 };
 
 

@@ -3,7 +3,7 @@ use std::fmt;
 use numerics;
 use message::{IrcMessage, IrcProtocolMessage};
 use watchers::base::EventWatcher;
-use watchers::event::{
+use event::{
     IrcEvent,
     IrcEventMessage,
 };

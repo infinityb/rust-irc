@@ -13,11 +13,6 @@ pub use self::base::{
     BundlerTrigger,
     EventWatcher
 };
-pub use self::event::{
-    IrcEvent,
-    IrcEventMessage,
-    IrcEventJoinBundle
-};
 pub use self::register::{
     RegisterError,
     RegisterErrorType,
@@ -34,6 +29,5 @@ pub use self::who::{
 
 pub mod join;
 pub mod base;
-pub mod event;
 pub mod register;
 pub mod who;

@@ -1,7 +1,7 @@
 use std::collections::{RingBuf, Deque};
 
 use message::IrcMessage;
-use watchers::event::{
+use event::{
     IrcEvent,
     IrcEventMessage,
 };

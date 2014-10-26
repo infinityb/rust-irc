@@ -1,5 +1,5 @@
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
-use watchers::event::{IrcEvent, IrcEventWhoBundle};
+use event::{IrcEvent, IrcEventWhoBundle};
 
 use message::{
     IrcMessage,

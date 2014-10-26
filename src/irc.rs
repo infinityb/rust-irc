@@ -14,6 +14,7 @@ pub use self::message::{
 pub use self::connection::IrcConnection;
 
 pub use self::watchers::{
+	BundlerManager,
     MessageWatcher,
     JoinBundler,
     RegisterError,
@@ -29,3 +30,4 @@ pub mod watchers;
 pub mod core_plugins;
 pub mod util;
 pub mod parse;
+pub mod event;

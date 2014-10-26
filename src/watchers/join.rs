@@ -1,7 +1,7 @@
 use std::fmt;
 use message::IrcMessage;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
-use watchers::event::{
+use event::{
     IrcEvent,
     IrcEventJoinBundle
 };
