@@ -19,7 +19,6 @@ use watchers::{
     JoinResult,
     JoinEventWatcher,
     WhoBundlerTrigger,
-    WhoBundler,
     WhoResult,
     WhoEventWatcher,
     EventWatcher,
@@ -71,7 +70,7 @@ impl IrcConnectionInternalState {
         if message.command() == "NICK" {
             self.current_nick = match (message.source_nick(), self.current_nick.take()) {
                 (Some(source_nick), Some(current_nick)) => {
-                    if source_nick == current_nick {
+                    if source_nick == current_nick.as_slice() {
                         Some(message.get_args()[0].to_string())
                     } else {
                         Some(current_nick)
@@ -212,9 +211,6 @@ impl IrcConnection {
         let mut who_watcher = WhoEventWatcher::new(target);
         let result_rx = who_watcher.get_monitor();
         let watcher: Box<EventWatcher+Send> = box who_watcher;
-        // TODO: we should probably make this a bundle-trigger.  We need to 
-        // ensure bundle gets the message that triggers the bundle-trigger
-        self.command_queue.send(AddBundler(box WhoBundler::new(target)));
         self.command_queue.send(AddWatcher(watcher));
         self.command_queue.send(RawWrite(format!("WHO {}", target)));
         result_rx.recv()

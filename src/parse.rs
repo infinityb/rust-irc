@@ -56,12 +56,12 @@ impl<'a> IrcMsg<'a> {
 	}
 
 	#[inline]
-	pub fn get_prefix_raw<'b>(&'b self) -> Option<&'b str> {
+	pub fn get_prefix_raw(&'a self) -> Option<&'a str> {
 		self.prefix.slice_on(self.data.as_slice())
 	}
 
 	#[inline]
-	pub fn get_prefix<'b>(&'b self) -> Option<IrcMsgPrefix<'b>> {
+	pub fn get_prefix(&'a self) -> Option<IrcMsgPrefix<'a>> {
 		let prefix = match self.prefix.slice_on(self.data.as_slice()) {
 			Some(prefix) => prefix,
 			None => return None
@@ -73,15 +73,24 @@ impl<'a> IrcMsg<'a> {
 	}
 
 	#[inline]
-	pub fn get_command<'b>(&'b self) -> &'b str {
+	pub fn get_command(&'a self) -> &'a str {
 		self.command.slice_on(self.data.as_slice())
 	}
 
 	#[inline]
-	pub fn get_args<'b>(&'b self) -> Vec<&'b str> {
+	pub fn get_args(&'a self) -> Vec<&'a str> {
 		self.args.iter().map(|ss: &StringSlicer| {
 			ss.slice_on(self.data.as_slice())
 		}).collect()
+	}
+
+	#[inline]
+	pub fn source_nick(&'a self) -> Option<&'a str> {
+		let slicer = match self.prefix_extra {
+			Some(pe) => pe.nick_idx_pair.slice_from_opt(&self.prefix),
+			None => return None
+		};
+		slicer.slice_on(self.data.as_slice())
 	}
 }
 
@@ -260,5 +269,15 @@ pub struct IrcMsgPrefix<'a> {
 }
 
 impl<'a> IrcMsgPrefix<'a> {
-	//
+	pub fn nick(&'a self) -> Option<&'a str> {
+		self.slicer.nick_idx_pair.slice_on(self.data.as_slice())
+	}
+
+	pub fn username(&'a self) -> Option<&'a str> {
+		self.slicer.username_idx_pair.slice_on(self.data.as_slice())
+	}
+
+	pub fn hostname(&'a self) -> &'a str {
+		self.slicer.hostname_idx_pair.slice_on(self.data.as_slice())
+	}
 }

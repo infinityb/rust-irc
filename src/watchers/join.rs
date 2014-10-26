@@ -1,4 +1,6 @@
 use std::fmt;
+use std::from_str::from_str;
+
 use message::IrcMessage;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::{
@@ -26,6 +28,26 @@ impl ChannelTargeted for JoinResult {
 pub struct JoinSuccess {
     pub channel: String,
     pub nicks: Vec<String>,
+    pub topic: Option<TopicMeta>,
+}
+
+
+#[deriving(Clone, Show)]
+pub struct TopicMeta {
+    pub text: String,
+    pub set_at: u64,
+    pub set_by: String,
+}
+
+
+impl TopicMeta {
+    fn new(topic: &String, other: &BundlerTopicMeta) -> TopicMeta {
+        TopicMeta {
+            text: topic.clone(),
+            set_at: other.set_at,
+            set_by: other.set_by.clone(),
+        }
+    }
 }
 
 
@@ -60,9 +82,32 @@ impl BundlerTrigger for JoinBundlerTrigger {
 }
 
 
+struct BundlerTopicMeta {
+    set_by: String,
+    set_at: u64,
+}
+
+impl BundlerTopicMeta {
+    fn from_msg(msg: &IrcMessage) -> Option<BundlerTopicMeta> {
+        let args = msg.get_args();
+        match from_str(args[3]) {
+            Some(set_at) => {
+                Some(BundlerTopicMeta {
+                    set_by: args[2].to_string(),
+                    set_at: set_at,
+                })
+            },
+            None => None
+        }
+    }
+}
+
+
 pub struct JoinBundler {
     channel: String,
-    nicks: Vec<String>,
+    topic: Option<String>,
+    topic_meta: Option<BundlerTopicMeta>,
+    nicks: Option<Vec<String>>,
     state: i16,
     result: Option<JoinResult>,
 }
@@ -72,7 +117,9 @@ impl JoinBundler {
     pub fn new(channel: &str) -> JoinBundler {
         JoinBundler {
             channel: String::from_str(channel),
-            nicks: Vec::new(),
+            topic: None,
+            topic_meta: None,
+            nicks: Some(Vec::new()),
             state: 0,
             result: None
         }
@@ -101,30 +148,75 @@ impl JoinBundler {
         }
     }
 
-    fn accept_state1(&mut self, message: &IrcMessage) -> Option<i16> {
-        let is_nicklist = message.command() == "353" &&
-            message.get_args()[2] == self.channel.as_slice();
+    fn on_topic(&mut self, message: &IrcMessage) -> Option<i16> {
+        self.topic = Some(message.get_args()[2].to_string());
+        None
+    }
 
-        if is_nicklist {
+    fn on_topic_meta(&mut self, message: &IrcMessage) -> Option<i16> {
+        self.topic_meta = BundlerTopicMeta::from_msg(message);
+        None
+    }
+
+    fn on_names(&mut self, message: &IrcMessage) -> Option<i16> {
+        if let Some(nicks) = self.nicks.as_mut() {
             for nick in message.get_args()[3].split(' ') {
-                self.nicks.push(String::from_str(nick));
+                nicks.push(nick.to_string());
             }
         }
+        None
+    }
 
-        let is_eon = message.command() == "366" && 
-            message.get_args()[1] == self.channel.as_slice();
+    fn on_names_end(&mut self, _: &IrcMessage) -> Option<i16> {
+        let topic = match (self.topic.as_ref(), self.topic_meta.as_ref()) {
+            (Some(topic), Some(topic_meta)) => {
+                Some(TopicMeta::new(topic, topic_meta))
+            },
+            _ => None
+        };
+        self.result = Some(Ok(JoinSuccess {
+            channel: self.channel.clone(),
+            nicks: self.nicks.take().unwrap(),
+            topic: topic
+        }));
+        Some(2)
+    }
 
-        if is_eon {
-            self.result = Some(Ok(JoinSuccess {
-                channel: self.channel.clone(),
-                nicks: self.nicks.clone()
-            }));
+    /*
+    :aibi2!rustbot@out-ab-133.wireless.telus.com JOIN :#dicks                                                                               │
+    :nagisa.yasashiisyndicate.org 332 aibi2 #dicks :irc is bad.                                                                             │
+    :nagisa.yasashiisyndicate.org 333 aibi2 #dicks sell!sell@173.255.238.68 1414284306                                                      │
+    :nagisa.yasashiisyndicate.org 353 aibi2 = #dicks :@sell aibi aibi2 ngy|casper usagi Faux rustbot betabot                                │
+    :nagisa.yasashiisyndicate.org 366 aibi2 #dicks :End of /NAMES list.    
+    */
+
+    fn accept_state1(&mut self, message: &IrcMessage) -> Option<i16> {
+        if message.command() == "332" {
+            if message.get_args()[1] == self.channel.as_slice() {
+                return self.on_topic(message);
+            }
+            return None;
         }
-
-        match is_eon {
-            true => Some(2),
-            false => None
+        if message.command() == "333" {
+            if message.get_args()[1] == self.channel.as_slice() {
+                return self.on_topic_meta(message);
+            }
+            return None;
         }
+        if message.command() == "353" {
+            assert_eq!(message.get_args()[1], "=");
+            if message.get_args()[2] == self.channel.as_slice() {
+                return self.on_names(message);
+            }
+            return None;
+        }
+        if message.command() == "366" {
+            if message.get_args()[1] == self.channel.as_slice() {
+                return self.on_names_end(message);
+            }
+            return None;
+        }
+        None
     }
 }
 

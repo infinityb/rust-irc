@@ -18,6 +18,41 @@ impl StringSlicer {
     pub fn slice_on<'a>(&self, string: &'a str) -> &'a str {
         string[self.from_idx..self.to_idx]
     }
+
+
+    /// Composes slicers. The new slices will function as if
+    /// self.slice_from(ss.slice_on(...)) was called, carrying any
+    /// Options over
+    #[inline]
+    pub fn slice_from<'a>(&self, ss: &StringSlicer) -> StringSlicer {
+        let slicer = StringSlicer::new(
+            ss.from_idx + self.from_idx,
+            ss.from_idx + self.to_idx);
+        if slicer.to_idx > ss.to_idx {
+            fail!("excessively large subslice");
+        }
+        slicer
+    }
+
+    /// Composes slicers. The new slices will function as if
+    /// self.slice_from(ss.slice_on(...)) was called, carrying any
+    /// Options over
+    #[inline]
+    pub fn slice_from_opt<'a>(&self, ss: &OptionalStringSlicer) -> OptionalStringSlicer {
+        let mut slicer = OptionalStringSlicer {
+            exists: ss.exists,
+            from_idx: ss.from_idx + self.from_idx,
+            to_idx: ss.from_idx + self.to_idx,
+        };
+        if !slicer.exists {
+            slicer.from_idx = 0;
+            slicer.to_idx = 0;
+        }
+        if slicer.to_idx > ss.to_idx {
+            fail!("excessively large subslice");
+        }
+        slicer
+    }
 }
 
 #[deriving(PartialEq, Copy, Clone, Show)]
@@ -53,5 +88,45 @@ impl OptionalStringSlicer {
         } else {
             None
         }
+    }
+
+    /// Composes slicers. The new slices will function as if
+    /// self.slice_from(ss.slice_on(...)) was called, carrying any
+    /// Options over
+    #[inline]
+    pub fn slice_from<'a>(&self, ss: &StringSlicer) -> OptionalStringSlicer {
+        let mut slicer = OptionalStringSlicer {
+            exists: self.exists,
+            from_idx: ss.from_idx + self.from_idx,
+            to_idx: ss.from_idx + self.to_idx,
+        };
+        if !slicer.exists {
+            slicer.from_idx = 0;
+            slicer.to_idx = 0;
+        }
+        if slicer.to_idx > ss.to_idx {
+            fail!("excessively large subslice");
+        }
+        slicer
+    }
+
+    /// Composes slicers. The new slices will function as if
+    /// self.slice_from(ss.slice_on(...)) was called, carrying any
+    /// Options over
+    #[inline]
+    pub fn slice_from_opt<'a>(&self, ss: &OptionalStringSlicer) -> OptionalStringSlicer {
+        let mut slicer = OptionalStringSlicer {
+            exists: self.exists && ss.exists,
+            from_idx: ss.from_idx + self.from_idx,
+            to_idx: ss.from_idx + self.to_idx,
+        };
+        if !slicer.exists {
+            slicer.from_idx = 0;
+            slicer.to_idx = 0;
+        }
+        if slicer.to_idx > ss.to_idx {
+            fail!("excessively large subslice");
+        }
+        slicer
     }
 }

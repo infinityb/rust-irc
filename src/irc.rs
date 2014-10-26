@@ -13,14 +13,31 @@ pub use self::message::{
 
 pub use self::connection::IrcConnection;
 
+pub use self::event::{
+	IrcEvent,
+	IrcEventMessage,
+	IrcEventJoinBundle,
+	IrcEventWhoBundle,
+};
+
 pub use self::watchers::{
 	BundlerManager,
     MessageWatcher,
-    JoinBundler,
+    
     RegisterError,
     RegisterErrorType,
+
+    JoinBundler,
+    JoinBundlerTrigger,
     JoinResult,
+    JoinSuccess,
     JoinError,
+
+    WhoBundler,
+    WhoBundlerTrigger,
+    WhoResult,
+    WhoSuccess,
+    WhoError,
 };
 
 pub mod numerics;
