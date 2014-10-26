@@ -185,7 +185,7 @@ mod tests {
         WhoBundlerTrigger,
         JoinBundlerTrigger,
     };
-    use watchers::event::{
+    use event::{
         IrcEventJoinBundle,
         IrcEventWhoBundle,
     };
