@@ -204,7 +204,12 @@ impl JoinBundler {
             return None;
         }
         if message.command() == "353" {
-            assert_eq!(message.get_args()[1], "=");
+            assert!(match message.get_args()[1] {
+                "=" => true,
+                "*" => true,
+                "@" => true,
+                _ => false
+            });
             if message.get_args()[2] == self.channel.as_slice() {
                 return self.on_names(message);
             }
