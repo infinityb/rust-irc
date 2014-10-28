@@ -1,7 +1,10 @@
 use std::string::{String};
 use std::fmt;
-use parse::IrcMsg;
-
+use parse::{
+    IrcMsg,
+    is_channel,
+    can_target_channel
+};
 
 pub type IrcProtocolMessage = self::IrcProtocolMessage::IrcProtocolMessage;
 #[allow(non_snake_case)]
@@ -225,16 +228,16 @@ impl IrcMessage {
         self.channel().is_some()
     }
 
+    // can_target_channel is incomplete
+    // An enum of target types is probably better here, instead of a Option<&str>
     pub fn channel(&self) -> Option<&str> {
-        if self.is_privmsg() {
-            if self.get_args()[0].starts_with("#") {
-                Some(self.get_args()[0])
-            } else {
-                None
+        if can_target_channel(self.command()) && self.get_args().len() > 0 {
+            let channel_name = self.get_args()[0];
+            if is_channel(channel_name) {
+                return Some(channel_name)
             }
-        } else {
-            None
         }
+        None
     }
 
     #[inline]

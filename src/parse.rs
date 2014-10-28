@@ -1,5 +1,38 @@
-use std::str::MaybeOwned;
+use std::str::{
+	MaybeOwned,
+	CharEq
+};
+use std::ascii::AsciiExt;
 use util::{StringSlicer, OptionalStringSlicer};
+
+
+static CHANNEL_PREFIX_CHARS: &'static [char] = ['&', '#', '+', '!'];
+
+// Commands which target a msgtarget or channel
+static CHANNEL_TARGETED_COMMANDS: [&'static str, ..6] = [
+	"KICK",
+	"PART",
+	"MODE",
+	"PRIVMSG",
+	"NOTICE",
+	"TOPIC"
+];
+
+pub fn can_target_channel(identifier: &str) -> bool {
+	for command in CHANNEL_TARGETED_COMMANDS.as_slice().iter() {
+		if command.eq_ignore_ascii_case(identifier) {
+			return true;
+		}
+	}
+	false
+}
+
+pub fn is_channel(identifier: &str) -> bool {
+	// why mut?
+	let mut allowed_chars = CHANNEL_PREFIX_CHARS.as_slice();
+	identifier.char_len() > 0 &&
+		allowed_chars.matches(identifier.char_at(0))
+}
 
 #[deriving(Clone)]
 pub struct IrcMsg<'a> {
