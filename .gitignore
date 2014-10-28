@@ -3,6 +3,7 @@
 /config.stamp
 /Makefile
 /config.mk
+/Cargo.lock
 
 main
 main.exe
