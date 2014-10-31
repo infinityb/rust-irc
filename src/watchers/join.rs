@@ -182,14 +182,6 @@ impl JoinBundler {
         Some(2)
     }
 
-    /*
-    :aibi2!rustbot@out-ab-133.wireless.telus.com JOIN :#dicks                                                                               │
-    :nagisa.yasashiisyndicate.org 332 aibi2 #dicks :irc is bad.                                                                             │
-    :nagisa.yasashiisyndicate.org 333 aibi2 #dicks sell!sell@173.255.238.68 1414284306                                                      │
-    :nagisa.yasashiisyndicate.org 353 aibi2 = #dicks :@sell aibi aibi2 ngy|casper usagi Faux rustbot betabot                                │
-    :nagisa.yasashiisyndicate.org 366 aibi2 #dicks :End of /NAMES list.    
-    */
-
     fn accept_state1(&mut self, message: &IrcMessage) -> Option<i16> {
         if message.command() == "332" {
             if message.get_args()[1] == self.channel.as_slice() {
