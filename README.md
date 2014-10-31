@@ -13,4 +13,4 @@ Work in progress. Lots of unsupported stuff.
 
 Not really ready for the real world.  Usable in controlled circumstances where
 the server won't send you broken messages.  Broken messages will most likely
-result in fail!() at present.  This is considered a bug.
+result in panic!() at present.  This is considered a bug.
