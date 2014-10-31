@@ -144,7 +144,7 @@ impl JoinBundler {
             (false, false) => None,
             (false, true) => Some(-1),
             (true, false) => Some(1),
-            _ => fail!("invariant invalid")
+            _ => panic!("invariant invalid")
         }
     }
 
@@ -277,7 +277,7 @@ impl JoinEventWatcher {
         for monitor in self.monitors.iter() {
             match monitor.try_send(result.clone()) {
                 Ok(_) => (),
-                Err(_) => fail!("sending failed")
+                Err(_) => panic!("sending failed")
             }
         }
         self.monitors = Vec::new();

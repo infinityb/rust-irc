@@ -195,12 +195,12 @@ mod tests {
     fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMessage {
         let line = match line_res {
             Ok(line) => line,
-            Err(err) => fail!("err: {}", err)
+            Err(err) => panic!("err: {}", err)
         };
         let totrim: &[_] = &['\n', '\r'];
         match IrcMessage::from_str(line.as_slice().trim_right_chars(totrim)) {
             Ok(message) => message,
-            Err(err) => fail!("err: {}", err)
+            Err(err) => panic!("err: {}", err)
         }
     }
 

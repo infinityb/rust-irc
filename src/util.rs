@@ -29,7 +29,7 @@ impl StringSlicer {
             ss.from_idx + self.from_idx,
             ss.from_idx + self.to_idx);
         if slicer.to_idx > ss.to_idx {
-            fail!("excessively large subslice");
+            panic!("excessively large subslice");
         }
         slicer
     }
@@ -49,7 +49,7 @@ impl StringSlicer {
             slicer.to_idx = 0;
         }
         if slicer.to_idx > ss.to_idx {
-            fail!("excessively large subslice");
+            panic!("excessively large subslice");
         }
         slicer
     }
@@ -105,7 +105,7 @@ impl OptionalStringSlicer {
             slicer.to_idx = 0;
         }
         if slicer.to_idx > ss.to_idx {
-            fail!("excessively large subslice");
+            panic!("excessively large subslice");
         }
         slicer
     }
@@ -125,7 +125,7 @@ impl OptionalStringSlicer {
             slicer.to_idx = 0;
         }
         if slicer.to_idx > ss.to_idx {
-            fail!("excessively large subslice");
+            panic!("excessively large subslice");
         }
         slicer
     }

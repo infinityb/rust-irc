@@ -143,7 +143,7 @@ impl IrcConnection {
             loop {
                 let string = String::from_str(match reader.read_line() {
                         Ok(string) => string,
-                        Err(err) => fail!("{}", err)
+                        Err(err) => panic!("{}", err)
                     }.as_slice().trim_right());
                 raw_reader_tx.send(string);
             }

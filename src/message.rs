@@ -77,14 +77,14 @@ fn parse_prefix(text: &str) -> IrcPrefix {
     let (nick, rest) = match parts.as_slice() {
         [_] => return IrcOtherPrefix(String::from_str(text)),
         [nick, rest] => (nick, rest),
-        _ => fail!("programmer error")
+        _ => panic!("programmer error")
     };
 
     let parts: Vec<&str> = rest.splitn(1, '@').collect();
     let (user, host) = match parts.as_slice() {
         [_] => return IrcOtherPrefix(String::from_str(text)),
         [user, rest] => (user, rest),
-        _ => fail!("programmer error")
+        _ => panic!("programmer error")
     };  
     IrcHostmaskPrefix(IrcHostmask {
         nick: String::from_str(nick),
@@ -301,21 +301,21 @@ impl fmt::Show for IrcMessage {
 fn test_irc_message_general() {
     match IrcMessage::from_str("") {
         Ok(_) => {
-            fail!("empty string is invalid")
+            panic!("empty string is invalid")
         },
         Err(_) => ()
     };
 
     match IrcMessage::from_str(":") {
         Ok(_) => {
-            fail!("single colon is invalid")
+            panic!("single colon is invalid")
         },
         Err(_) => ()
     };
 
     match IrcMessage::from_str(" ") {
         Ok(_) => {
-            fail!("single space is invalid")
+            panic!("single space is invalid")
         },
         Err(_) => ()
     };
@@ -328,10 +328,10 @@ fn test_irc_message_general() {
                     assert_eq!(data.user.as_slice(), "user");
                     assert_eq!(data.host.as_slice(), "host");
                 }
-                _ => fail!("invalid parsed prefix")
+                _ => panic!("invalid parsed prefix")
             };
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
     match IrcMessage::from_str("PING server1") {
@@ -340,7 +340,7 @@ fn test_irc_message_general() {
             assert_eq!(message.command.as_slice(), "PING");
             assert_eq!(message.args.len(), 1);
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
 
@@ -350,11 +350,11 @@ fn test_irc_message_general() {
             assert_eq!(message.command.as_slice(), "PING");
             assert_eq!(message.args.len(), 2);
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
     match IrcMessage::from_str("PING server1 server2 server3") {
-        Ok(_) => fail!("should fail to parse"),
+        Ok(_) => panic!("should fail to parse"),
         Err(_) => ()
     };
 
@@ -364,7 +364,7 @@ fn test_irc_message_general() {
             assert_eq!(message.command.as_slice(), "PING");
             assert_eq!(message.args.len(), 1);
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
     
     match IrcMessage::from_str(":somewhere PING server1 server2") {
@@ -383,7 +383,7 @@ fn test_irc_message_general() {
             };
 
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
     match IrcMessage::from_str(":somewhere PING server1 :server2") {
@@ -395,7 +395,7 @@ fn test_irc_message_general() {
             assert_eq!(message.args[0].as_slice(), "server1");
             assert_eq!(message.args[1].as_slice(), "server2");
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
     match IrcMessage::from_str(":somewhere PING :server1 server2") {
@@ -405,7 +405,7 @@ fn test_irc_message_general() {
             assert_eq!(message.args.len(), 1);
             assert_eq!(message.args[0].as_slice(), "server1 server2");
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 }
 
@@ -418,11 +418,11 @@ fn test_irc_message_numerics() {
             assert_eq!(message.command.as_slice(), "001");
             match message.message {
                 IrcProtocolMessage::Numeric(num, _) => assert_eq!(num, 1),
-                _ => fail!("numbers should parse as numerics")
+                _ => panic!("numbers should parse as numerics")
             }
 
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
     match IrcMessage::from_str("001 nick :blah blah") {
@@ -431,21 +431,21 @@ fn test_irc_message_numerics() {
             assert_eq!(message.command.as_slice(), "001");
             match message.message {
                 IrcProtocolMessage::Numeric(num, _) => assert_eq!(num, 1),
-                _ => fail!("numbers should parse as numerics")
+                _ => panic!("numbers should parse as numerics")
             }
 
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 
     match IrcMessage::from_str("366 arg") {
         Ok(message) => {
             match message.message {
                 IrcProtocolMessage::Numeric(num, _) => assert_eq!(num, 366),
-                _ => fail!("numbers should parse as numerics")
+                _ => panic!("numbers should parse as numerics")
             }
 
         },
-        Err(_) => fail!("failed to parse")
+        Err(_) => panic!("failed to parse")
     };
 }

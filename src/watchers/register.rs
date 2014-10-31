@@ -81,7 +81,7 @@ impl RegisterEventWatcher {
         for monitor in self.monitors.iter() {
             match monitor.try_send(result.clone()) {
                 Ok(_) => (),
-                Err(_) => fail!("sending failed")
+                Err(_) => panic!("sending failed")
             }
         }
         self.monitors = Vec::new();
@@ -95,10 +95,10 @@ impl RegisterEventWatcher {
                 monitor.send(result.clone());
             },
             (true, None) => {
-                fail!("rx_connect without result");
+                panic!("rx_connect without result");
             },
             (false, Some(_)) => {
-                fail!("result without rx_connect");
+                panic!("result without rx_connect");
             },
             (false, None) => {
                 self.monitors.push(monitor);
