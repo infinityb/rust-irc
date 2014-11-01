@@ -112,11 +112,6 @@ pub struct IrcMessage {
     args: Vec<String>
 }
 
-#[deprecated="Use IrcPrefix::new"]
-fn parse_prefix(text: &str) -> IrcPrefix {
-    IrcPrefix::new(text)
-}
-
 fn parse_message_args(text: &str) -> Result<Vec<String>, Option<String>> {
     if text.len() == 0 {
         return Err(from_str("Invalid IRC message"));
@@ -214,7 +209,7 @@ impl IrcMessage {
         };
 
         let prefix_parsed = match prefix {
-            Some(ref pref) => Some(parse_prefix(pref.as_slice())),
+            Some(ref pref) => Some(IrcPrefix::new(pref.as_slice())),
             None => None
         };
 
