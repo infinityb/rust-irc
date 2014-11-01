@@ -108,8 +108,15 @@ pub struct JoinBundler {
     topic: Option<String>,
     topic_meta: Option<BundlerTopicMeta>,
     nicks: Option<Vec<String>>,
-    state: i16,
+    state: JoinBundlerState,
     result: Option<JoinResult>,
+}
+
+enum JoinBundlerState {
+    PreJoin,
+    Joining,
+    Joined,
+    JoinFail
 }
 
 
@@ -120,45 +127,49 @@ impl JoinBundler {
             topic: None,
             topic_meta: None,
             nicks: Some(Vec::new()),
-            state: 0,
+            state: PreJoin,
             result: None
         }
     }
 
-    fn accept_state0(&mut self, message: &IrcMessage) -> Option<i16> {
-        let success = message.command() == "JOIN" &&
-            *message.get_args()[0] == self.channel.as_slice();
+    fn accept_state_prejoin(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
+        let success = match message.command() {
+            "JOIN" => {
+                if *message.get_args()[0] != self.channel.as_slice() {
+                    return None;
+                }
+                true
+            },
+            "475" => {
+                if *message.get_args()[1] == self.channel.as_slice() {
+                    return None;
+                }
+                false
+            },
+            _ => return None
+        };
 
-        let failure = message.command() == "475" &&
-            *message.get_args()[1] == self.channel.as_slice();
-
-        if failure {
+        if !success {
             self.result = Some(Err(JoinError {
                 channel: String::from_str(self.channel.as_slice()),
                 errcode: 0,
                 message: String::from_str("")
             }));
         }
-
-        match (success, failure) {
-            (false, false) => None,
-            (false, true) => Some(-1),
-            (true, false) => Some(1),
-            _ => panic!("invariant invalid")
-        }
+        Some(if success { Joining } else { JoinFail })
     }
 
-    fn on_topic(&mut self, message: &IrcMessage) -> Option<i16> {
+    fn on_topic(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         self.topic = Some(message.get_args()[2].to_string());
         None
     }
 
-    fn on_topic_meta(&mut self, message: &IrcMessage) -> Option<i16> {
+    fn on_topic_meta(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         self.topic_meta = BundlerTopicMeta::from_msg(message);
         None
     }
 
-    fn on_names(&mut self, message: &IrcMessage) -> Option<i16> {
+    fn on_names(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         if let Some(nicks) = self.nicks.as_mut() {
             for nick in message.get_args()[3].split(' ') {
                 nicks.push(nick.to_string());
@@ -167,7 +178,7 @@ impl JoinBundler {
         None
     }
 
-    fn on_names_end(&mut self, _: &IrcMessage) -> Option<i16> {
+    fn on_names_end(&mut self, _: &IrcMessage) -> Option<JoinBundlerState> {
         let topic = match (self.topic.as_ref(), self.topic_meta.as_ref()) {
             (Some(topic), Some(topic_meta)) => {
                 Some(TopicMeta::new(topic, topic_meta))
@@ -179,10 +190,10 @@ impl JoinBundler {
             nicks: self.nicks.take().unwrap(),
             topic: topic
         }));
-        Some(2)
+        Some(Joined)
     }
 
-    fn accept_state1(&mut self, message: &IrcMessage) -> Option<i16> {
+    fn accept_state_joining(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         if message.command() == "332" {
             if message.get_args()[1] == self.channel.as_slice() {
                 return self.on_topic(message);
@@ -221,8 +232,8 @@ impl JoinBundler {
 impl Bundler for JoinBundler {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
         let new_state = match self.state {
-            0 => self.accept_state0(message),
-            1 => self.accept_state1(message),
+            PreJoin => self.accept_state_prejoin(message),
+            Joining => self.accept_state_joining(message),
             _ => None
         };
         match new_state {
@@ -240,7 +251,10 @@ impl Bundler for JoinBundler {
     }
 
     fn is_finished(&mut self) -> bool {
-        self.state == -1 || self.state == 2
+        match self.state {
+            JoinFail | Joined => true,
+            _ => false
+        }
     }
 
 }
