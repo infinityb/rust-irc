@@ -141,10 +141,12 @@ impl IrcConnection {
         TaskBuilder::new().named("core-reader").spawn(proc() {
             let mut reader = reader;
             loop {
-                let string = String::from_str(match reader.read_line() {
-                        Ok(string) => string,
-                        Err(err) => panic!("{}", err)
-                    }.as_slice().trim_right());
+                let line_bin = match reader.read_until('\n' as u8) {
+                    Ok(line_bin) => line_bin,
+                    Err(err) => panic!("I/O Error: {}", err)
+                };
+                let string = String::from_utf8_lossy(line_bin.as_slice());
+                let string = string.as_slice().trim_right().to_string();
                 raw_reader_tx.send(string);
             }
         });
@@ -193,7 +195,7 @@ impl IrcConnection {
         self.command_queue.send(AddWatcher(watcher));
         self.write_str(format!("NICK {}", nick).as_slice());
         if !self.has_registered {
-            self.write_str("USER rustbot 8 *: Rust Bot");
+            self.write_str("USER rustirc 0 *: http://github.com/infinityb/rust-irc");
         }
         result_rx.recv()
     }
