@@ -8,6 +8,7 @@ extern crate serialize;
 
 pub use self::message::{
     IrcMessage,
+    IrcPrefix,
     IrcProtocolMessage
 };
 

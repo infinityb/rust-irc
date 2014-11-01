@@ -60,6 +60,47 @@ pub enum IrcPrefix {
     IrcOtherPrefix(String)
 }
 
+impl IrcPrefix {
+    pub fn new(text: &str) -> IrcPrefix {
+        let parts: Vec<&str> = text.splitn(1, '!').collect();
+        let (nick, rest) = match parts.as_slice() {
+            [_] => return IrcOtherPrefix(String::from_str(text)),
+            [nick, rest] => (nick, rest),
+            _ => panic!("programmer error")
+        };
+
+        let parts: Vec<&str> = rest.splitn(1, '@').collect();
+        let (user, host) = match parts.as_slice() {
+            [_] => return IrcOtherPrefix(String::from_str(text)),
+            [user, rest] => (user, rest),
+            _ => panic!("programmer error")
+        };  
+        IrcHostmaskPrefix(IrcHostmask {
+            nick: String::from_str(nick),
+            user: String::from_str(user),
+            host: String::from_str(host),
+        })
+    }
+
+    pub fn with_nick(&self, nick: &str) -> IrcPrefix {
+        match *self {
+            IrcHostmaskPrefix(ref hostmask) => IrcHostmaskPrefix(IrcHostmask {
+                nick: nick.to_string(),
+                user: hostmask.user.clone(),
+                host: hostmask.host.clone(),
+            }),
+            IrcOtherPrefix(_) => IrcOtherPrefix(nick.to_string())
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match *self {
+            IrcHostmaskPrefix(ref hostmask) => format!("{}", hostmask),
+            IrcOtherPrefix(ref prefix) => prefix.clone()
+        }
+    }
+}
+
 
 #[deriving(Clone)]
 pub struct IrcMessage {
@@ -71,26 +112,9 @@ pub struct IrcMessage {
     args: Vec<String>
 }
 
-
+#[deprecated="Use IrcPrefix::new"]
 fn parse_prefix(text: &str) -> IrcPrefix {
-    let parts: Vec<&str> = text.splitn(1, '!').collect();
-    let (nick, rest) = match parts.as_slice() {
-        [_] => return IrcOtherPrefix(String::from_str(text)),
-        [nick, rest] => (nick, rest),
-        _ => panic!("programmer error")
-    };
-
-    let parts: Vec<&str> = rest.splitn(1, '@').collect();
-    let (user, host) = match parts.as_slice() {
-        [_] => return IrcOtherPrefix(String::from_str(text)),
-        [user, rest] => (user, rest),
-        _ => panic!("programmer error")
-    };  
-    IrcHostmaskPrefix(IrcHostmask {
-        nick: String::from_str(nick),
-        user: String::from_str(user),
-        host: String::from_str(host),
-    })
+    IrcPrefix::new(text)
 }
 
 fn parse_message_args(text: &str) -> Result<Vec<String>, Option<String>> {
