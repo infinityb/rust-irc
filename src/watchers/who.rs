@@ -1,3 +1,5 @@
+use std::ascii::AsciiExt;
+
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::{IrcEvent, IrcEventWhoBundle};
 
@@ -148,7 +150,8 @@ impl Bundler for WhoBundler {
         if args.len() < 2 {
             return Vec::new();
         }
-        if args[1] != self.target_channel.as_slice() {
+
+        if !args[1].eq_ignore_ascii_case(self.target_channel.as_slice()) {
             return Vec::new();
         }
         match *message.get_message() {
@@ -222,7 +225,7 @@ impl EventWatcher for WhoEventWatcher {
     fn on_event(&mut self, message: &IrcEvent) {
         match message {
             &IrcEventWhoBundle(ref result) => {
-                if result.get_channel() == self.channel.as_slice() {
+                if result.get_channel().eq_ignore_ascii_case(self.channel.as_slice()) {
                     self.result = Some(result.clone());
                     self.dispatch_monitors();
                     self.finished = true;
