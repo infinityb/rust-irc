@@ -1,4 +1,4 @@
-use std::collections::{RingBuf, Deque};
+use std::collections::RingBuf;
 
 use message::IrcMessage;
 use event::{
