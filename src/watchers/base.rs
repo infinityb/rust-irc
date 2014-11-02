@@ -36,6 +36,8 @@ pub trait Bundler {
 
     /// If true, the `Bundler` should be removed from the bundler set
     fn is_finished(&mut self) -> bool;
+
+    fn get_name(&self) -> &'static str;
 }
 
 

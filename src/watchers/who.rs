@@ -154,6 +154,7 @@ impl Bundler for WhoBundler {
         if !args[1].eq_ignore_ascii_case(self.target_channel.as_slice()) {
             return Vec::new();
         }
+        info!("WhoBundler on_message({})", message);
         match *message.get_message() {
             IrcProtocolMessage::Numeric(352, ref message) => {
                 self.add_record(message);
@@ -171,6 +172,10 @@ impl Bundler for WhoBundler {
 
     fn is_finished(&mut self) -> bool {
         self.finished
+    }
+
+    fn get_name(&self) -> &'static str {
+        "WhoBundler"
     }
 }
 

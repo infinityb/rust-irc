@@ -258,6 +258,9 @@ impl Bundler for JoinBundler {
         }
     }
 
+    fn get_name(&self) -> &'static str {
+        "JoinBundler"
+    }
 }
 
 
