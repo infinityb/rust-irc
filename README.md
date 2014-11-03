@@ -14,3 +14,10 @@ Work in progress. Lots of unsupported stuff.
 Not really ready for the real world.  Usable in controlled circumstances where
 the server won't send you broken messages.  Broken messages will most likely
 result in panic!() at present.  This is considered a bug.
+
+License
+=======
+This library is distributed under similar terms to Rust: dual licensed under
+the MIT license and the Apache license (version 2.0).
+
+See LICENSE-APACHE, LICENSE-MIT, and COPYRIGHT for details.
