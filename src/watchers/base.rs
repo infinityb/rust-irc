@@ -67,11 +67,11 @@ impl BundlerManager {
     
     // Do we really need +Send here?
     pub fn add_watcher(&mut self, watcher: Box<EventWatcher+Send>) {
-        self.event_watchers.push(watcher);
+        self.event_watchers.push_back(watcher);
     }
 
     pub fn add_bundler(&mut self, bundler: Box<Bundler+Send>) {
-        self.event_bundlers.push(bundler);
+        self.event_bundlers.push_back(bundler);
     }
 
     pub fn add_bundler_trigger(&mut self, bundler: Box<BundlerTrigger+Send>) {
@@ -82,7 +82,7 @@ impl BundlerManager {
         let mut outgoing_events: Vec<IrcEvent> = Vec::new();
 
         for new_bundler in bundler_trigger_impl(&mut self.bundler_triggers, message).into_iter() {
-            self.event_bundlers.push(new_bundler);
+            self.event_bundlers.push_back(new_bundler);
         }
 
         for event in bundler_accept_impl(&mut self.event_bundlers, message).into_iter() {
@@ -108,7 +108,7 @@ fn bundler_trigger_impl(triggers: &mut Vec<Box<BundlerTrigger+Send>>,
     let mut activating: Vec<Box<Bundler+Send>> = Vec::new();
     for trigger in triggers.iter_mut() {
         let new_bundlers = trigger.on_message(message);
-        activating.reserve_additional(new_bundlers.len());
+        activating.reserve(new_bundlers.len());
         for bundler in new_bundlers.into_iter() {
             activating.push(bundler);
         }
@@ -130,7 +130,7 @@ fn watcher_accept_impl(buf: &mut RingBuf<Box<EventWatcher+Send>>,
                 if watcher.is_finished() {
                     finished_watchers.push(watcher);
                 } else {
-                    keep_watchers.push(watcher);
+                    keep_watchers.push_back(watcher);
                 }
             },
             None => break
@@ -138,7 +138,7 @@ fn watcher_accept_impl(buf: &mut RingBuf<Box<EventWatcher+Send>>,
     }
     loop {
         match keep_watchers.pop_front() {
-            Some(watcher) => buf.push(watcher),
+            Some(watcher) => buf.push_back(watcher),
             None => break
         }
     }
@@ -160,7 +160,7 @@ fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
                     emit_events.push(event);
                 }
                 if !bundler.is_finished() {
-                    keep_bundlers.push(bundler);
+                    keep_bundlers.push_back(bundler);
                 }
             },
             None => break
@@ -168,7 +168,7 @@ fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
     }
     loop {
         match keep_bundlers.pop_front() {
-            Some(watcher) => buf.push(watcher),
+            Some(watcher) => buf.push_back(watcher),
             None => break
         }
     }

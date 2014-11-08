@@ -1,3 +1,4 @@
+use std::io::net::ip::ToSocketAddr;
 use std::collections::RingBuf;
 use std::task::TaskBuilder;
 use std::io::{
@@ -167,7 +168,7 @@ impl IrcConnection {
             let mut state = IrcConnectionInternalState::new(event_queue_tx);
             state.bundler_man.add_bundler_trigger(box JoinBundlerTrigger::new());
             state.bundler_man.add_bundler_trigger(box WhoBundlerTrigger::new());
-            state.responders.push(box CtcpVersionResponder::new());
+            state.responders.push_back(box CtcpVersionResponder::new());
 
             loop {
                 select! {
@@ -198,8 +199,8 @@ impl IrcConnection {
         Ok((conn, event_queue_rx))
     }
 
-    pub fn new(host: &str, port: u16) -> IoResult<(IrcConnection, Receiver<IrcEvent>)> {
-        let stream = match TcpStream::connect(host, port) {
+    pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<(IrcConnection, Receiver<IrcEvent>)> {
+        let stream = match TcpStream::connect(addr) {
             Ok(stream) => stream,
             Err(err) => return Err(err)
         };
