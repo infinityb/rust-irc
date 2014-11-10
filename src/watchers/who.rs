@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ascii::AsciiExt;
 
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
@@ -226,6 +227,12 @@ impl WhoEventWatcher {
     }
 }
 
+impl fmt::Show for WhoEventWatcher {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "WhoEventWatcher(channel={})", self.channel.as_slice())
+    }
+}
+
 impl EventWatcher for WhoEventWatcher {
     fn on_event(&mut self, message: &IrcEvent) {
         match message {
@@ -246,6 +253,10 @@ impl EventWatcher for WhoEventWatcher {
 
     fn get_name(&self) -> &'static str {
         "WhoEventWatcher"
+    }
+    
+    fn display(&self) -> String {
+        format!("{}", self)
     }
 }
 

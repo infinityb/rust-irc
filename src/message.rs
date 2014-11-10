@@ -44,6 +44,12 @@ pub struct IrcHostmask {
     host: String
 }
 
+impl IrcHostmask {
+    pub fn nick(&self) -> &str {
+        self.nick.as_slice()
+    }
+}
+
 impl fmt::Show for IrcHostmask {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}!{}@{}",
@@ -239,7 +245,8 @@ impl IrcMessage {
 
     #[inline]
     pub fn is_privmsg(&self) -> bool {
-        self.command() == "PRIVMSG"
+        self.command() == "PRIVMSG" &&
+        self.get_args().len() == 2
     }
 
     #[inline]

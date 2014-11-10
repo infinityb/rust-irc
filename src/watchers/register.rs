@@ -157,6 +157,10 @@ impl EventWatcher for RegisterEventWatcher {
     fn get_name(&self) -> &'static str {
         "RegisterEventWatcher"
     }
+    
+    fn display(&self) -> String {
+        format!("{}", self)
+    }
 }
 
 

@@ -1,3 +1,4 @@
+:server 001 botnick :blah
 :botnick!rustbot@hostname JOIN :#
 :server 332 botnick # :# - EBOLA EBOLA JUST LIVIN IN THE EBOLA | RIP LoleBola 2006 - 2014 | [21:16:06] <plus> Ebola sure takes a long time to compile | Take the # Fall Ebola Challenge | free EbolA, contact IB | EBOLA 2014 IS UPON US | much of # is relocating to flee the ebola menace | eBOWLa 2014 - WHO WILL EMERGE VICTORIOUS? | T
 :server 333 botnick # owls!owl@miyu.godless-internets.org 1414115720

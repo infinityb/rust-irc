@@ -1,4 +1,5 @@
 use std::collections::RingBuf;
+use std::fmt::Show;
 
 use message::IrcMessage;
 use event::{
@@ -21,13 +22,15 @@ pub trait MessageWatcher {
 }
 
 
-pub trait EventWatcher{
+pub trait EventWatcher : Show {
     fn on_event(&mut self, message: &IrcEvent);
 
     /// If true, the `EventWatcher` should be removed from the watcher set
     fn is_finished(&self) -> bool;
 
     fn get_name(&self) -> &'static str;
+
+    fn display(&self) -> String;
 }
 
 
@@ -96,7 +99,6 @@ impl BundlerManager {
                 drop(watcher);
             }
         }
-
         outgoing_events
     }
 }

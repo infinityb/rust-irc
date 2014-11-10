@@ -2,7 +2,7 @@ use std::fmt;
 use std::from_str::from_str;
 use std::ascii::AsciiExt;
 
-use message::IrcMessage;
+use message::{IrcMessage, IrcHostmaskPrefix};
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::{
     IrcEvent,
@@ -59,26 +59,77 @@ pub struct JoinError {
     pub message: String
 }
 
+enum JoinBundlerTriggerState {
+    Unregistered,
+    Running
+}
 
-pub struct JoinBundlerTrigger;
+pub struct JoinBundlerTrigger {
+    state: JoinBundlerTriggerState,
+    current_nick: String
+}
 
 
 impl JoinBundlerTrigger {
     pub fn new() -> JoinBundlerTrigger {
-        JoinBundlerTrigger
+        JoinBundlerTrigger {
+            state: Unregistered,
+            current_nick: String::new()
+        }
+    }
+
+    fn on_nick(&mut self, message: &IrcMessage) {
+        if let Some(&IrcHostmaskPrefix(ref pref)) = message.get_prefix() {
+            if pref.nick() == self.current_nick.as_slice() {
+                let new_nick = message.get_args()[0].to_string();
+                info!("{} detected nick change {} -> {}",
+                    self, self.current_nick, new_nick);
+                self.current_nick = new_nick;
+            }
+        }
+    }
+
+    fn is_self_join(&self, message: &IrcMessage) -> bool {
+        if let Some(&IrcHostmaskPrefix(ref pref)) = message.get_prefix() {
+            pref.nick() == self.current_nick.as_slice()
+        } else {
+            false
+        }
     }
 }
 
 
 impl BundlerTrigger for JoinBundlerTrigger {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
-        let mut out = Vec::new();
-        if message.command() == "JOIN" {
-            let channel = message.get_args()[0];
-            let bundler: Box<Bundler+Send> = box JoinBundler::new(channel);
-            out.push(bundler);
+        match (self.state, message.command()) {
+            (Unregistered, "001") => {
+                self.state = Running;
+                self.current_nick = message.get_args()[0].to_string();
+                Vec::new()
+            },
+            (Unregistered, _) => Vec::new(),
+            (Running, "JOIN") => {
+                let mut out = Vec::new();
+                if self.is_self_join(message) {
+                    let channel = message.get_args()[0];
+                    let bundler: Box<Bundler+Send> = box JoinBundler::new(channel);
+                    out.push(bundler);
+                }
+                out
+            },
+            (Running, "NICK") => {
+                // potentially our nick is changing
+                self.on_nick(message);
+                Vec::new()
+            }
+            (Running, _) => Vec::new()
         }
-        out
+    }
+}
+
+impl fmt::Show for JoinBundlerTrigger {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "JoinBundlerTrigger(current_nick={})", self.current_nick.as_slice())
     }
 }
 
@@ -276,7 +327,6 @@ pub struct JoinEventWatcher {
     channel: String,
     result: Option<JoinResult>,
     monitors: Vec<SyncSender<JoinResult>>,
-    finished: bool
 }
 
 
@@ -286,7 +336,6 @@ impl JoinEventWatcher {
             channel: String::from_str(channel),
             monitors: Vec::new(),
             result: None,
-            finished: false
         }
     }
 
@@ -318,6 +367,13 @@ impl JoinEventWatcher {
 }
 
 
+impl fmt::Show for JoinEventWatcher {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "JoinEventWatcher(channel={})", self.channel.as_slice())
+    }
+}
+
+
 impl EventWatcher for JoinEventWatcher {
     fn on_event(&mut self, message: &IrcEvent) {
         match *message {
@@ -329,16 +385,17 @@ impl EventWatcher for JoinEventWatcher {
             },
             _ => ()
         }
-        self.finished = true;
     }
 
     fn is_finished(&self) -> bool {
-        false
+        self.result.is_some()
     }
 
     fn get_name(&self) -> &'static str {
         "JoinEventWatcher"
     }
+
+    fn display(&self) -> String {
+        format!("{}", self)
+    }
 }
-
-
