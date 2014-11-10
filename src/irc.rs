@@ -35,6 +35,10 @@ pub use self::watchers::{
     WhoRecord,
     WhoSuccess,
     WhoError,
+
+    BundlerManager,
+    JoinBundlerTrigger,
+    WhoBundlerTrigger,
 };
 
 pub use self::parse::{
