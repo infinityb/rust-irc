@@ -1,18 +1,10 @@
 use std::collections::RingBuf;
-use std::fmt::Show;
 
 use message::IrcMessage;
 use event::{
     IrcEvent,
     IrcEventMessage,
 };
-
-
-pub trait MessageResponder {
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMessage>;
-
-    fn finished(&self) -> bool { false }
-}
 
 pub trait MessageWatcher {
     fn on_message(&mut self, message: &IrcMessage);
@@ -22,7 +14,7 @@ pub trait MessageWatcher {
 }
 
 
-pub trait EventWatcher : Show {
+pub trait EventWatcher {
     fn on_event(&mut self, message: &IrcEvent);
 
     /// If true, the `EventWatcher` should be removed from the watcher set
@@ -34,6 +26,7 @@ pub trait EventWatcher : Show {
 }
 
 
+/// Emits IrcEvents when certain messages are detected 
 pub trait Bundler {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent>;
 
@@ -43,19 +36,20 @@ pub trait Bundler {
     fn get_name(&self) -> &'static str;
 }
 
-
+/// Emits Bundlers when certain messages are detected
 pub trait BundlerTrigger {
 	fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>>;
 }
 
+/// Controls the lifecycle of EventWatchers, Bundlers, and BundlerTriggers
 pub struct BundlerManager {
-    // Unfinished watchers currently attached to the stream
+    /// Unfinished watchers currently attached to the stream
     event_watchers: RingBuf<Box<EventWatcher+Send>>,
 
-    // Active event bundlers.
+    /// Active event bundlers.
     event_bundlers: RingBuf<Box<Bundler+Send>>,
 
-    // Bundler triggers.  They create Bundlers.
+    /// Bundler triggers.  They create Bundlers.
     bundler_triggers: Vec<Box<BundlerTrigger+Send>>,
 }
 

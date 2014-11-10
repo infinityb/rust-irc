@@ -2,6 +2,7 @@ use std::string::{String};
 use std::fmt;
 use parse::{
     IrcMsg,
+    IrcMsgPrefix,
     is_channel,
     can_target_channel
 };
@@ -36,85 +37,11 @@ impl fmt::Show for IrcProtocolMessage {
     }
 }
 
-
-#[deriving(PartialEq, Clone)]
-pub struct IrcHostmask {
-    nick: String,
-    user: String,
-    host: String
-}
-
-impl IrcHostmask {
-    pub fn nick(&self) -> &str {
-        self.nick.as_slice()
-    }
-}
-
-impl fmt::Show for IrcHostmask {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}!{}@{}",
-            self.nick.as_slice(),
-            self.user.as_slice(),
-            self.host.as_slice())
-    }
-}
-
-
-#[deriving(PartialEq, Clone, Show)]
-pub enum IrcPrefix {
-    IrcHostmaskPrefix(IrcHostmask),
-    IrcOtherPrefix(String)
-}
-
-impl IrcPrefix {
-    pub fn new(text: &str) -> IrcPrefix {
-        let parts: Vec<&str> = text.splitn(1, '!').collect();
-        let (nick, rest) = match parts.as_slice() {
-            [_] => return IrcOtherPrefix(String::from_str(text)),
-            [nick, rest] => (nick, rest),
-            _ => panic!("programmer error")
-        };
-
-        let parts: Vec<&str> = rest.splitn(1, '@').collect();
-        let (user, host) = match parts.as_slice() {
-            [_] => return IrcOtherPrefix(String::from_str(text)),
-            [user, rest] => (user, rest),
-            _ => panic!("programmer error")
-        };  
-        IrcHostmaskPrefix(IrcHostmask {
-            nick: String::from_str(nick),
-            user: String::from_str(user),
-            host: String::from_str(host),
-        })
-    }
-
-    pub fn with_nick(&self, nick: &str) -> IrcPrefix {
-        match *self {
-            IrcHostmaskPrefix(ref hostmask) => IrcHostmaskPrefix(IrcHostmask {
-                nick: nick.to_string(),
-                user: hostmask.user.clone(),
-                host: hostmask.host.clone(),
-            }),
-            IrcOtherPrefix(_) => IrcOtherPrefix(nick.to_string())
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match *self {
-            IrcHostmaskPrefix(ref hostmask) => format!("{}", hostmask),
-            IrcOtherPrefix(ref prefix) => prefix.clone()
-        }
-    }
-}
-
-
 #[deriving(Clone)]
 pub struct IrcMessage {
     msg: Option<IrcMsg<'static>>,
-    prefix: Option<IrcPrefix>,
-    prefix_raw: Option<String>,
+    prefix: Option<IrcMsgPrefix<'static>>,
     message: IrcProtocolMessage,
-    command: String,
     args: Vec<String>
 }
 
@@ -156,10 +83,8 @@ impl IrcMessage {
         let mut tmp = IrcMessage {
             msg: None,
             prefix: None,
-            prefix_raw: None,
             message: IrcProtocolMessage::Notice(
                 destination.to_string(), message.to_string()),
-            command: "NOTICE".to_string(),
             args: vec![
                 destination.to_string(),
                 message.to_string()
@@ -194,7 +119,6 @@ impl IrcMessage {
                 (None, command, args)
             };
 
-        let message_command = command.clone();
         let message_args = args.clone();
 
         let message = match (command.as_slice(), args.len()) {
@@ -215,7 +139,10 @@ impl IrcMessage {
         };
 
         let prefix_parsed = match prefix {
-            Some(ref pref) => Some(IrcPrefix::new(pref.as_slice())),
+            Some(ref pref) => {
+                let prefix_alloc = pref.to_string().into_maybe_owned();
+                Some(IrcMsgPrefix::new(prefix_alloc))
+            },
             None => None
         };
 
@@ -227,9 +154,7 @@ impl IrcMessage {
         Ok(IrcMessage {
             msg: Some(msg),
             prefix: prefix_parsed,
-            prefix_raw: prefix,
             message: message,
-            command: message_command,
             args: message_args
         })
     }
@@ -274,15 +199,15 @@ impl IrcMessage {
         }
     }
 
-    pub fn get_prefix<'a>(&'a self) -> Option<&'a IrcPrefix> {
+    pub fn get_prefix<'a>(&'a self) -> Option<&'a IrcMsgPrefix<'a>> {
         match self.prefix {
-            Some(ref pref) => Some(pref),
+            Some(ref prefix) => Some(prefix),
             None => None
         }
     }
 
     pub fn get_prefix_raw<'a>(&'a self) -> Option<&'a str> {
-        match self.prefix_raw {
+        match self.prefix {
             Some(ref prefix) => Some(prefix.as_slice()),
             None => None
         }
@@ -313,11 +238,11 @@ impl fmt::Show for IrcMessage {
         }
         arg_string.push_str("]");
 
-        match self.prefix_raw {
+        match self.get_prefix_raw() {
             Some(ref prefix) => write!(f, "IrcMessage({}, {}, {})",
-                prefix.as_slice(), self.command.as_slice(), arg_string.as_slice()),
+                prefix.as_slice(), self.command(), arg_string.as_slice()),
             None => write!(f, "IrcMessage({}, {})",
-                self.command.as_slice(), arg_string.as_slice())
+                self.command(), arg_string.as_slice())
         }
     }
 }
@@ -349,11 +274,11 @@ fn test_irc_message_general() {
     match IrcMessage::from_str(":nick!user@host PING server1 :server2") {
         Ok(message) => {
             match message.prefix {
-                Some(IrcHostmaskPrefix(ref data)) => {
-                    assert_eq!(data.nick.as_slice(), "nick");
-                    assert_eq!(data.user.as_slice(), "user");
-                    assert_eq!(data.host.as_slice(), "host");
-                }
+                Some(ref prefix) => {
+                    assert_eq!(prefix.nick(), Some("nick"));
+                    assert_eq!(prefix.username(), Some("user"));
+                    assert_eq!(prefix.hostname(), "host");
+                },
                 _ => panic!("invalid parsed prefix")
             };
         },
@@ -362,8 +287,8 @@ fn test_irc_message_general() {
 
     match IrcMessage::from_str("PING server1") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, None);
-            assert_eq!(message.command.as_slice(), "PING");
+            assert_eq!(message.get_prefix_raw(), None);
+            assert_eq!(message.command(), "PING");
             assert_eq!(message.args.len(), 1);
         },
         Err(_) => panic!("failed to parse")
@@ -372,8 +297,8 @@ fn test_irc_message_general() {
 
     match IrcMessage::from_str("PING server1 server2") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, None);
-            assert_eq!(message.command.as_slice(), "PING");
+            assert_eq!(message.get_prefix_raw(), None);
+            assert_eq!(message.command(), "PING");
             assert_eq!(message.args.len(), 2);
         },
         Err(_) => panic!("failed to parse")
@@ -386,8 +311,8 @@ fn test_irc_message_general() {
 
     match IrcMessage::from_str(":somewhere PING server1") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, Some(String::from_str("somewhere")));
-            assert_eq!(message.command.as_slice(), "PING");
+            assert_eq!(message.get_prefix_raw(), Some("somewhere"));
+            assert_eq!(message.command(), "PING");
             assert_eq!(message.args.len(), 1);
         },
         Err(_) => panic!("failed to parse")
@@ -395,8 +320,8 @@ fn test_irc_message_general() {
     
     match IrcMessage::from_str(":somewhere PING server1 server2") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, Some(String::from_str("somewhere")));
-            assert_eq!(message.command.as_slice(), "PING");
+            assert_eq!(message.get_prefix_raw(), Some("somewhere"));
+            assert_eq!(message.command(), "PING");
             assert_eq!(message.args.len(), 2);
             assert_eq!(message.args[0].as_slice(), "server1");
             assert_eq!(message.args[1].as_slice(), "server2");
@@ -414,9 +339,13 @@ fn test_irc_message_general() {
 
     match IrcMessage::from_str(":somewhere PING server1 :server2") {
         Ok(message) => {
-            assert_eq!(message.prefix, Some(IrcOtherPrefix(String::from_str("somewhere"))));
-            assert_eq!(message.prefix_raw, Some(String::from_str("somewhere")));
-            assert_eq!(message.command.as_slice(), "PING");
+            if let Some(ref prefix) = message.prefix {
+                assert_eq!(prefix.nick(), None);
+                assert_eq!(prefix.username(), None);
+                assert_eq!(prefix.hostname(), "somewhere");
+            }
+            assert_eq!(message.get_prefix_raw(), Some("somewhere"));
+            assert_eq!(message.command(), "PING");
             assert_eq!(message.args.len(), 2);
             assert_eq!(message.args[0].as_slice(), "server1");
             assert_eq!(message.args[1].as_slice(), "server2");
@@ -426,8 +355,8 @@ fn test_irc_message_general() {
 
     match IrcMessage::from_str(":somewhere PING :server1 server2") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, Some(String::from_str("somewhere")));
-            assert_eq!(message.command.as_slice(), "PING");
+            assert_eq!(message.get_prefix_raw(), Some("somewhere"));
+            assert_eq!(message.command(), "PING");
             assert_eq!(message.args.len(), 1);
             assert_eq!(message.args[0].as_slice(), "server1 server2");
         },
@@ -440,8 +369,8 @@ fn test_irc_message_general() {
 fn test_irc_message_numerics() {
     match IrcMessage::from_str(":somewhere 001 nick :blah blah") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, Some(String::from_str("somewhere")));
-            assert_eq!(message.command.as_slice(), "001");
+            assert_eq!(message.get_prefix_raw(), Some("somewhere"));
+            assert_eq!(message.command(), "001");
             match message.message {
                 IrcProtocolMessage::Numeric(num, _) => assert_eq!(num, 1),
                 _ => panic!("numbers should parse as numerics")
@@ -453,8 +382,8 @@ fn test_irc_message_numerics() {
 
     match IrcMessage::from_str("001 nick :blah blah") {
         Ok(message) => {
-            assert_eq!(message.prefix_raw, None);
-            assert_eq!(message.command.as_slice(), "001");
+            assert_eq!(message.get_prefix_raw(), None);
+            assert_eq!(message.command(), "001");
             match message.message {
                 IrcProtocolMessage::Numeric(num, _) => assert_eq!(num, 1),
                 _ => panic!("numbers should parse as numerics")

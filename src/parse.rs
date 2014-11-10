@@ -1,7 +1,9 @@
 use std::str::{
 	MaybeOwned,
-	CharEq
+	CharEq,
 };
+use std::fmt;
+use std::from_str::FromStr;
 use std::ascii::AsciiExt;
 use util::{StringSlicer, OptionalStringSlicer};
 
@@ -18,6 +20,8 @@ static CHANNEL_TARGETED_COMMANDS: [&'static str, ..6] = [
 	"TOPIC"
 ];
 
+
+/// Whether or not a command name is allowed to target a channel
 pub fn can_target_channel(identifier: &str) -> bool {
 	for command in CHANNEL_TARGETED_COMMANDS.as_slice().iter() {
 		if command.eq_ignore_ascii_case(identifier) {
@@ -27,6 +31,8 @@ pub fn can_target_channel(identifier: &str) -> bool {
 	false
 }
 
+/// Determines whether or not an identifier is a channel, by checking
+/// the first character.
 pub fn is_channel(identifier: &str) -> bool {
 	// why mut?
 	let mut allowed_chars = CHANNEL_PREFIX_CHARS.as_slice();
@@ -35,6 +41,8 @@ pub fn is_channel(identifier: &str) -> bool {
 }
 
 #[deriving(Clone)]
+/// Represents any syntactically valid IRC message.
+/// No semantic checking is applied.
 pub struct IrcMsg<'a> {
 	// RFC1459: max 512 bytes
 	data: MaybeOwned<'a>,
@@ -53,10 +61,13 @@ pub struct IrcMsg<'a> {
 
 impl<'a> IrcMsg<'a> {
 	#[inline]
-	pub fn from_str(msg_text: &'a str) -> Option<IrcMsg<'a>> {
+	fn from_str(msg_text: &'a str) -> Option<IrcMsg<'a>> {
+		// TODO: find out how to make this allocation-free again
 		IrcMsg::new(msg_text.into_maybe_owned())
 	}
 
+	/// Parses a string into an optional IrcMsg.  If the string is not syntactically valid,
+	/// None is returned.
 	pub fn new(msg_text: MaybeOwned<'a>) -> Option<IrcMsg<'a>> {
 		let mut cur_idx = 0;
 
@@ -89,11 +100,13 @@ impl<'a> IrcMsg<'a> {
 	}
 
 	#[inline]
+	/// The prefix which identifies the source of a message, as a string slice
 	pub fn get_prefix_raw(&'a self) -> Option<&'a str> {
 		self.prefix.slice_on(self.data.as_slice())
 	}
 
 	#[inline]
+	/// The prefix which identifies the source of a message
 	pub fn get_prefix(&'a self) -> Option<IrcMsgPrefix<'a>> {
 		let prefix = match self.prefix.slice_on(self.data.as_slice()) {
 			Some(prefix) => prefix,
@@ -106,11 +119,13 @@ impl<'a> IrcMsg<'a> {
 	}
 
 	#[inline]
+	/// The command name of a message as received i.e. without normalisation.
 	pub fn get_command(&'a self) -> &'a str {
 		self.command.slice_on(self.data.as_slice())
 	}
 
 	#[inline]
+	/// The arguments of a message
 	pub fn get_args(&'a self) -> Vec<&'a str> {
 		self.args.iter().map(|ss: &StringSlicer| {
 			ss.slice_on(self.data.as_slice())
@@ -118,12 +133,22 @@ impl<'a> IrcMsg<'a> {
 	}
 
 	#[inline]
+	/// The nick of the user a message came from, if any.
 	pub fn source_nick(&'a self) -> Option<&'a str> {
 		let slicer = match self.prefix_extra {
 			Some(pe) => pe.nick_idx_pair.slice_from_opt(&self.prefix),
 			None => return None
 		};
 		slicer.slice_on(self.data.as_slice())
+	}
+}
+
+
+impl<'a> FromStr for IrcMsg<'a> {
+	#[inline]
+	fn from_str(msg_text: &str) -> Option<IrcMsg<'a>> {
+		// TODO: find out how to make this allocation-free again
+		IrcMsg::new(msg_text.to_string().into_maybe_owned())
 	}
 }
 
@@ -295,22 +320,64 @@ impl PrefixSlicer {
 	}
 }
 
-#[allow(dead_code)]
+/// An IRC prefix, which identifies the source of a message.
+#[deriving(Clone)]
 pub struct IrcMsgPrefix<'a> {
 	data: MaybeOwned<'a>,
 	slicer: PrefixSlicer
 }
 
 impl<'a> IrcMsgPrefix<'a> {
+	/// Parse a MaybeOwned into a IrcMsgPrefix
+	pub fn new(s: MaybeOwned<'a>) -> IrcMsgPrefix {
+		let slicer = PrefixSlicer::new(s.as_slice());
+		IrcMsgPrefix {
+			data: s,
+			slicer: slicer
+		}
+	}
+
+	/// The nick component of a prefix
 	pub fn nick(&'a self) -> Option<&'a str> {
 		self.slicer.nick_idx_pair.slice_on(self.data.as_slice())
 	}
 
+	/// The username component of a prefix
 	pub fn username(&'a self) -> Option<&'a str> {
 		self.slicer.username_idx_pair.slice_on(self.data.as_slice())
 	}
 
+	/// The hostname component of a prefix
 	pub fn hostname(&'a self) -> &'a str {
 		self.slicer.hostname_idx_pair.slice_on(self.data.as_slice())
 	}
+
+	/// Get the protocol representation as a slice
+	pub fn as_slice(&self) -> &str {
+		self.data.as_slice()
+	}
+
+	/// Get an owned copy
+	pub fn into_owned(&self) -> IrcMsgPrefix<'static> {
+		IrcMsgPrefix {
+			data: self.data.to_string().into_maybe_owned(),
+			slicer: self.slicer.clone()
+		}
+	}
+
+	pub fn with_nick(&self, nick: &str) -> Option<IrcMsgPrefix<'static>> {
+		match (self.nick(), self.username(), self.hostname()) {
+			(Some(_), Some(username), hostname) => {
+				let prefix_data = format!("{}!{}@{}", nick, username, hostname);
+				Some(IrcMsgPrefix::new(prefix_data.into_maybe_owned()))
+			},
+			_ => None
+		}
+	}
+}
+
+impl<'a> fmt::Show for IrcMsgPrefix<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "IrcMsgPrefix::new({})", self.as_slice())
+    }
 }

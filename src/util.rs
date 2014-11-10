@@ -6,6 +6,7 @@ pub struct StringSlicer {
 
 
 impl StringSlicer {
+    /// Create a new StringSlicer
     #[inline]
     pub fn new(from_idx: uint, to_idx: uint) -> StringSlicer {
         StringSlicer {
@@ -14,6 +15,7 @@ impl StringSlicer {
         }
     }
 
+    /// Apply the slice operation to a string
     #[inline]
     pub fn slice_on<'a>(&self, string: &'a str) -> &'a str {
         string[self.from_idx..self.to_idx]

@@ -2,7 +2,7 @@ use std::fmt;
 use std::from_str::from_str;
 use std::ascii::AsciiExt;
 
-use message::{IrcMessage, IrcHostmaskPrefix};
+use message::IrcMessage;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::{
     IrcEvent,
@@ -79,8 +79,8 @@ impl JoinBundlerTrigger {
     }
 
     fn on_nick(&mut self, message: &IrcMessage) {
-        if let Some(&IrcHostmaskPrefix(ref pref)) = message.get_prefix() {
-            if pref.nick() == self.current_nick.as_slice() {
+        if let Some(ref pref) = message.get_prefix() {
+            if pref.nick() == Some(self.current_nick.as_slice()) {
                 let new_nick = message.get_args()[0].to_string();
                 info!("{} detected nick change {} -> {}",
                     self, self.current_nick, new_nick);
@@ -90,8 +90,8 @@ impl JoinBundlerTrigger {
     }
 
     fn is_self_join(&self, message: &IrcMessage) -> bool {
-        if let Some(&IrcHostmaskPrefix(ref pref)) = message.get_prefix() {
-            pref.nick() == self.current_nick.as_slice()
+        if let Some(ref pref) = message.get_prefix() {
+            pref.nick() == Some(self.current_nick.as_slice())
         } else {
             false
         }

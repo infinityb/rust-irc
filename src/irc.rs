@@ -1,19 +1,20 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![license = "MIT"]
+#![license = "MIT/ASL2"]
 #![feature(if_let, slicing_syntax, globs, phase)]
+
+#![allow(dead_code)]
+#![deny(unused_must_use)]
+#![deny(warnings)]
 
 #[phase(plugin, link)] extern crate log;
 extern crate time;
 extern crate serialize;
 
-pub use self::message::{
-    IrcMessage,
-    IrcPrefix,
-    IrcProtocolMessage
-};
+pub use self::message::IrcMessage;
 
 pub use self::connection::IrcConnection;
+pub use self::connection::RawWrite;
 
 pub use self::event::{
 	IrcEvent,
@@ -22,32 +23,38 @@ pub use self::event::{
 	IrcEventWhoBundle,
 };
 
-pub use self::watchers::{
-	BundlerManager,
-    MessageWatcher,
-    
+pub use self::watchers::{   
     RegisterError,
     RegisterErrorType,
 
-    JoinBundler,
-    JoinBundlerTrigger,
     JoinResult,
     JoinSuccess,
     JoinError,
 
-    WhoBundler,
-    WhoBundlerTrigger,
     WhoResult,
     WhoRecord,
     WhoSuccess,
     WhoError,
 };
 
-pub mod numerics;
-pub mod connection;
-pub mod message;
-pub mod watchers;
-pub mod core_plugins;
+pub use self::parse::{
+    IrcMsgPrefix,
+};
+
+
+mod numerics;
+mod connection;
+mod message;
+mod watchers;
+mod core_plugins;
+
+#[experimental = "Subject to being moved"]
+/// Experimental utility code
 pub mod util;
+
+#[experimental = "Subject to being moved"]
+/// Experimental parsing code
 pub mod parse;
-pub mod event;
+
+/// Event types
+mod event;

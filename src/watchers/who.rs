@@ -6,10 +6,10 @@ use event::{IrcEvent, IrcEventWhoBundle};
 
 use message::{
     IrcMessage,
-    IrcProtocolMessage
+    IrcProtocolMessage,
 };
+use parse::IrcMsgPrefix;
 use util::{StringSlicer, OptionalStringSlicer};
-
 
 pub type WhoResult = Result<WhoSuccess, WhoError>;
 
@@ -44,12 +44,14 @@ impl WhoSuccess {
 
 // Does /WHO even error? 
 #[deriving(Clone, Show)]
+#[experimental = "Public fields definitely going away"]
 pub struct WhoError {
     pub channel: String
 }
 
 
 #[deriving(Clone, Show)]
+#[experimental = "Public fields definitely going away"]
 pub struct WhoRecord {
     pub hostname: String,
     pub server: String,
@@ -77,8 +79,15 @@ impl WhoRecord {
         }
     }
 
-    pub fn get_prefix(&self) -> String {
+    #[stable]
+    pub fn get_prefix_raw(&self) -> String {
         format!("{}!{}@{}", self.nick, self.username, self.hostname)
+    }
+
+    #[stable]
+    pub fn get_prefix(&self) -> IrcMsgPrefix {
+        let prefix_str = format!("{}!{}@{}", self.nick, self.username, self.hostname);
+        IrcMsgPrefix::new(prefix_str.into_maybe_owned())
     }
 }
 
@@ -254,7 +263,7 @@ impl EventWatcher for WhoEventWatcher {
     fn get_name(&self) -> &'static str {
         "WhoEventWatcher"
     }
-    
+
     fn display(&self) -> String {
         format!("{}", self)
     }

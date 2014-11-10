@@ -9,6 +9,7 @@ static VERSION: &'static str = "rust-irc v0.1.0 https://github.com/infinityb/rus
 type OwnedOrStatic = MaybeOwned<'static>;
 
 
+/// Responds to CTCP Version requests
 pub struct CtcpVersionResponder {
     customized: Option<String>,
     include_rust_irc: bool,
