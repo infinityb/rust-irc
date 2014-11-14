@@ -4,8 +4,8 @@
 #![feature(if_let, slicing_syntax, globs, phase)]
 
 #![allow(dead_code)]
-#![deny(unused_must_use)]
-#![deny(warnings)]
+#![deny(unused_must_use, warnings, unused_variables, unused_mut)]
+
 
 #[phase(plugin, link)] extern crate log;
 extern crate time;
