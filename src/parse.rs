@@ -376,6 +376,14 @@ impl<'a> IrcMsgPrefix<'a> {
 	}
 }
 
+
+impl<'a> PartialEq for IrcMsgPrefix<'a> {
+    fn eq(&self, other: &IrcMsgPrefix<'a>) -> bool {
+    	self.as_slice() == other.as_slice()
+    }
+}
+impl<'a> Eq for IrcMsgPrefix<'a> {}
+
 impl<'a> fmt::Show for IrcMsgPrefix<'a> {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "IrcMsgPrefix::new({})", self.as_slice())

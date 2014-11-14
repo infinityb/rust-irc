@@ -224,7 +224,9 @@ impl JoinBundler {
     fn on_names(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         if let Some(nicks) = self.nicks.as_mut() {
             for nick in message.get_args()[3].split(' ') {
-                nicks.push(nick.to_string());
+                if nick.len() > 0 {
+                    nicks.push(nick.to_string());
+                }
             }
         }
         None

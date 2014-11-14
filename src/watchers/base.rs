@@ -93,6 +93,7 @@ impl BundlerManager {
                 drop(watcher);
             }
         }
+        
         outgoing_events
     }
 }
