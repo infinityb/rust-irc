@@ -3,13 +3,10 @@ use std::fmt;
 use numerics;
 use message::{IrcMessage, IrcProtocolMessage};
 use watchers::base::EventWatcher;
-use event::{
-    IrcEvent,
-    IrcEventMessage,
-};
+use event::IrcEvent;
 
 
-#[deriving(Clone, Show)]
+#[deriving(Clone, Send, Show)]
 pub struct RegisterError {
     pub errtype: RegisterErrorType,
     pub message: IrcMessage
@@ -26,34 +23,30 @@ impl RegisterError {
     }
 }
 
-pub type RegisterErrorType = self::RegisterErrorType::RegisterErrorType;
+#[deriving(Clone, Send, Show)]
+pub enum RegisterErrorType {
+    NoNicknameGiven,
+    NicknameInUse,
+    UnavailableResource,
+    ErroneousNickname,
+    NicknameCollision,
+    Restricted,
+}
 
-#[allow(non_snake_case)]
-pub mod RegisterErrorType {
-    use numerics;
-
-    #[deriving(Clone, Send, Show)]
-    pub enum RegisterErrorType {
-        NoNicknameGiven,
-        NicknameInUse,
-        UnavailableResource,
-        ErroneousNickname,
-        NicknameCollision,
-        Restricted,
-    }
-
+impl RegisterErrorType {
+    
     pub fn is_known_error(result: i32) -> bool {
-        from_ord_known(result).is_some()
+        RegisterErrorType::from_ord_known(result).is_some()
     }
 
     pub fn from_ord_known(result: i32) -> Option<RegisterErrorType> {
         match result {
-            numerics::ERR_NONICKNAMEGIVEN => Some(NoNicknameGiven),
-            numerics::ERR_NICKNAMEINUSE => Some(NicknameInUse),
-            numerics::ERR_UNAVAILRESOURCE => Some(UnavailableResource),
-            numerics::ERR_ERRONEUSNICKNAME => Some(ErroneousNickname),
-            numerics::ERR_NICKCOLLISION => Some(NicknameCollision),
-            numerics::ERR_RESTRICTED => Some(Restricted),
+            numerics::ERR_NONICKNAMEGIVEN => Some(RegisterErrorType::NoNicknameGiven),
+            numerics::ERR_NICKNAMEINUSE => Some(RegisterErrorType::NicknameInUse),
+            numerics::ERR_UNAVAILRESOURCE => Some(RegisterErrorType::UnavailableResource),
+            numerics::ERR_ERRONEUSNICKNAME => Some(RegisterErrorType::ErroneousNickname),
+            numerics::ERR_NICKCOLLISION => Some(RegisterErrorType::NicknameCollision),
+            numerics::ERR_RESTRICTED => Some(RegisterErrorType::Restricted),
             _ => None
         }
     }
@@ -143,7 +136,7 @@ impl RegisterEventWatcher {
 impl EventWatcher for RegisterEventWatcher {
     fn on_event(&mut self, event: &IrcEvent) {
         match *event {
-            IrcEventMessage(ref message) => {
+            IrcEvent::Message(ref message) => {
                 self.accept_ircmessage(message);
             },
             _ => ()

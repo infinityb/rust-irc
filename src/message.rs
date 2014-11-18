@@ -7,21 +7,17 @@ use parse::{
     can_target_channel
 };
 
-pub type IrcProtocolMessage = self::IrcProtocolMessage::IrcProtocolMessage;
-#[allow(non_snake_case)]
-pub mod IrcProtocolMessage {
-    #[deriving(Clone)]
-    pub enum IrcProtocolMessage {
-        Ping(String, Option<String>),
-        Pong(String),
-        Notice(String, String),
-        Join(String),
-        Numeric(u16, Vec<String>),
-        // parsed but not processed into a safe message type. command, rest
-        Unknown(String, Vec<String>)
-    }
-}
 
+#[deriving(Clone)]
+pub enum IrcProtocolMessage {
+    Ping(String, Option<String>),
+    Pong(String),
+    Notice(String, String),
+    Join(String),
+    Numeric(u16, Vec<String>),
+    // parsed but not processed into a safe message type. command, rest
+    Unknown(String, Vec<String>)
+}
 
 impl fmt::Show for IrcProtocolMessage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

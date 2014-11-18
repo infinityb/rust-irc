@@ -16,6 +16,11 @@ use core_plugins::{
 
 use event::IrcEvent;
 use message::IrcMessage;
+use connection::IrcConnectionCommand::{
+    RawWrite,
+    AddWatcher,
+    AddBundler,
+};
 use watchers::{
     Bundler,
     BundlerManager,
@@ -117,13 +122,12 @@ pub enum IrcConnectionCommand {
     AddBundler(Box<Bundler+Send>),
 }
 
-
 impl fmt::Show for IrcConnectionCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            RawWrite(ref s) => write!(f, "RawWrite({})", s),
-            AddWatcher(ref ew) => write!(f, "AddWatcher({}(...))", ew.get_name()),
-            AddBundler(ref bun) => write!(f, "AddBundler({}(...))", bun.get_name()),
+            IrcConnectionCommand::RawWrite(ref s) => write!(f, "RawWrite({})", s),
+            IrcConnectionCommand::AddWatcher(ref ew) => write!(f, "AddWatcher({}(...))", ew.get_name()),
+            IrcConnectionCommand::AddBundler(ref bun) => write!(f, "AddBundler({}(...))", bun.get_name()),
         }
     }
 }
@@ -174,9 +178,9 @@ impl IrcConnection {
                 select! {
                     command = command_queue_rx.recv() => {
                         match command {
-                            RawWrite(value) => raw_writer_tx.send(value),
-                            AddWatcher(value) => state.add_watcher(value),
-                            AddBundler(value) => state.add_bundler(value),
+                            IrcConnectionCommand::RawWrite(value) => raw_writer_tx.send(value),
+                            IrcConnectionCommand::AddWatcher(value) => state.add_watcher(value),
+                            IrcConnectionCommand::AddBundler(value) => state.add_bundler(value),
                         }
                     },
                     string = raw_reader_rx.recv() => {
@@ -224,8 +228,9 @@ impl IrcConnection {
         let mut join_watcher = JoinEventWatcher::new(channel);
         let result_rx = join_watcher.get_monitor();
         let watcher: Box<EventWatcher+Send> = box join_watcher;
-        self.command_queue.send(AddWatcher(watcher));
-        self.command_queue.send(RawWrite(format!("JOIN {}", channel.as_slice())));
+        self.command_queue.send(IrcConnectionCommand::AddWatcher(watcher));
+        self.command_queue.send(IrcConnectionCommand::RawWrite(
+            format!("JOIN {}", channel.as_slice())));
         result_rx.recv()
     }
 

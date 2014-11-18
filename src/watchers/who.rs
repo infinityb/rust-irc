@@ -2,7 +2,7 @@ use std::fmt;
 use std::ascii::AsciiExt;
 
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
-use event::{IrcEvent, IrcEventWhoBundle};
+use event::IrcEvent;
 
 use message::{
     IrcMessage,
@@ -173,7 +173,7 @@ impl Bundler for WhoBundler {
             IrcProtocolMessage::Numeric(315, ref _message) => {
                 self.finished = true;
                 let mut out = Vec::new();
-                out.push(IrcEventWhoBundle(Ok(WhoSuccess::from_bundler(self.clone()))));
+                out.push(IrcEvent::WhoBundle(Ok(WhoSuccess::from_bundler(self.clone()))));
                 out
             },
             _ => Vec::new()
@@ -245,7 +245,7 @@ impl fmt::Show for WhoEventWatcher {
 impl EventWatcher for WhoEventWatcher {
     fn on_event(&mut self, message: &IrcEvent) {
         match message {
-            &IrcEventWhoBundle(ref result) => {
+            &IrcEvent::WhoBundle(ref result) => {
                 if result.get_channel().eq_ignore_ascii_case(self.channel.as_slice()) {
                     self.result = Some(result.clone());
                     self.dispatch_monitors();

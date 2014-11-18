@@ -1,9 +1,6 @@
-use std::str::{
-	MaybeOwned,
-	CharEq,
-};
+use std::str::MaybeOwned;
 use std::fmt;
-use std::from_str::FromStr;
+use std::str::FromStr;
 use std::ascii::AsciiExt;
 use util::{StringSlicer, OptionalStringSlicer};
 
@@ -34,15 +31,20 @@ pub fn can_target_channel(identifier: &str) -> bool {
 /// Determines whether or not an identifier is a channel, by checking
 /// the first character.
 pub fn is_channel(identifier: &str) -> bool {
-	// why mut?
-	let mut allowed_chars = CHANNEL_PREFIX_CHARS.as_slice();
-	identifier.char_len() > 0 &&
-		allowed_chars.matches(identifier.char_at(0))
+	if identifier.char_len() == 0 {
+		return false;
+	}
+	for character in CHANNEL_PREFIX_CHARS.iter() {
+		if identifier.char_at(0) == *character {
+			return true;
+		}
+	}
+	false
 }
 
-#[deriving(Clone)]
 /// Represents any syntactically valid IRC message.
 /// No semantic checking is applied.
+#[deriving(Clone)]
 pub struct IrcMsg<'a> {
 	// RFC1459: max 512 bytes
 	data: MaybeOwned<'a>,

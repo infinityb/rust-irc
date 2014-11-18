@@ -14,14 +14,9 @@ extern crate serialize;
 pub use self::message::IrcMessage;
 
 pub use self::connection::IrcConnection;
-pub use self::connection::RawWrite;
+pub use self::connection::IrcConnectionCommand::RawWrite;
 
-pub use self::event::{
-	IrcEvent,
-	IrcEventMessage,
-	IrcEventJoinBundle,
-	IrcEventWhoBundle,
-};
+pub use self::event::IrcEvent;
 
 pub use self::watchers::{   
     RegisterError,

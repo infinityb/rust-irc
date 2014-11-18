@@ -1,10 +1,7 @@
 use std::collections::RingBuf;
 
 use message::IrcMessage;
-use event::{
-    IrcEvent,
-    IrcEventMessage,
-};
+use event::IrcEvent;
 
 pub trait MessageWatcher {
     fn on_message(&mut self, message: &IrcMessage);
@@ -86,7 +83,7 @@ impl BundlerManager {
             outgoing_events.push(event);
         }
 
-        outgoing_events.push(IrcEventMessage(message.clone()));
+        outgoing_events.push(IrcEvent::Message(message.clone()));
 
         for event in outgoing_events.iter() {
             for watcher in watcher_accept_impl(&mut self.event_watchers, event).into_iter() {
@@ -184,9 +181,9 @@ mod tests {
         WhoBundlerTrigger,
         JoinBundlerTrigger,
     };
-    use event::{
-        IrcEventJoinBundle,
-        IrcEventWhoBundle,
+    use event::IrcEvent::{
+        JoinBundle,
+        WhoBundle,
     };
 
     const TEST_DATA: &'static [u8] = include_bin!("../../testdata/watcher.txt");
@@ -219,10 +216,10 @@ mod tests {
         let mut who_bundles = 0u;
 
         for event in events.into_iter() {
-            if let IrcEventJoinBundle(_) = event {
+            if let JoinBundle(_) = event {
                 join_bundles += 1;
             }
-            if let IrcEventWhoBundle(_) = event {
+            if let WhoBundle(_) = event {
                 who_bundles += 1
             }
         }

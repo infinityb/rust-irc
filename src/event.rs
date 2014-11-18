@@ -8,9 +8,9 @@ use watchers::who::WhoResult;
 #[deriving(Show)]
 pub enum IrcEvent {
 	/// An IRC message from the server
-    IrcEventMessage(IrcMessage),
+    Message(IrcMessage),
     /// The bundled result of a JOIN command
-    IrcEventJoinBundle(JoinResult),
+    JoinBundle(JoinResult),
     /// The bundled result of a WHO command
-    IrcEventWhoBundle(WhoResult)
+    WhoBundle(WhoResult)
 }

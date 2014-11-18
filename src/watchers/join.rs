@@ -1,13 +1,10 @@
 use std::fmt;
-use std::from_str::from_str;
+use std::str::from_str;
 use std::ascii::AsciiExt;
 
 use message::IrcMessage;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
-use event::{
-    IrcEvent,
-    IrcEventJoinBundle
-};
+use event::IrcEvent;
 
 
 pub type JoinResult = Result<JoinSuccess, JoinError>;
@@ -64,6 +61,7 @@ enum JoinBundlerTriggerState {
     Running
 }
 
+
 pub struct JoinBundlerTrigger {
     state: JoinBundlerTriggerState,
     current_nick: String
@@ -73,7 +71,7 @@ pub struct JoinBundlerTrigger {
 impl JoinBundlerTrigger {
     pub fn new() -> JoinBundlerTrigger {
         JoinBundlerTrigger {
-            state: Unregistered,
+            state: JoinBundlerTriggerState::Unregistered,
             current_nick: String::new()
         }
     }
@@ -102,13 +100,13 @@ impl JoinBundlerTrigger {
 impl BundlerTrigger for JoinBundlerTrigger {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
         match (self.state, message.command()) {
-            (Unregistered, "001") => {
-                self.state = Running;
+            (JoinBundlerTriggerState::Unregistered, "001") => {
+                self.state = JoinBundlerTriggerState::Running;
                 self.current_nick = message.get_args()[0].to_string();
                 Vec::new()
             },
-            (Unregistered, _) => Vec::new(),
-            (Running, "JOIN") => {
+            (JoinBundlerTriggerState::Unregistered, _) => Vec::new(),
+            (JoinBundlerTriggerState::Running, "JOIN") => {
                 let mut out = Vec::new();
                 if self.is_self_join(message) {
                     let channel = message.get_args()[0];
@@ -117,12 +115,12 @@ impl BundlerTrigger for JoinBundlerTrigger {
                 }
                 out
             },
-            (Running, "NICK") => {
+            (JoinBundlerTriggerState::Running, "NICK") => {
                 // potentially our nick is changing
                 self.on_nick(message);
                 Vec::new()
             }
-            (Running, _) => Vec::new()
+            (JoinBundlerTriggerState::Running, _) => Vec::new()
         }
     }
 }
@@ -179,7 +177,7 @@ impl JoinBundler {
             topic: None,
             topic_meta: None,
             nicks: Some(Vec::new()),
-            state: PreJoin,
+            state: JoinBundlerState::PreJoin,
             result: None
         }
     }
@@ -208,7 +206,7 @@ impl JoinBundler {
                 message: String::from_str("")
             }));
         }
-        Some(if success { Joining } else { JoinFail })
+        Some(if success { JoinBundlerState::Joining } else { JoinBundlerState::JoinFail })
     }
 
     fn on_topic(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
@@ -244,7 +242,7 @@ impl JoinBundler {
             nicks: self.nicks.take().unwrap(),
             topic: topic
         }));
-        Some(Joined)
+        Some(JoinBundlerState::Joined)
     }
 
     fn accept_state_joining(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
@@ -286,8 +284,8 @@ impl JoinBundler {
 impl Bundler for JoinBundler {
     fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
         let new_state = match self.state {
-            PreJoin => self.accept_state_prejoin(message),
-            Joining => self.accept_state_joining(message),
+            JoinBundlerState::PreJoin => self.accept_state_prejoin(message),
+            JoinBundlerState::Joining => self.accept_state_joining(message),
             _ => None
         };
         match new_state {
@@ -298,7 +296,7 @@ impl Bundler for JoinBundler {
         }
         match self.result.take() {
             Some(result) => {
-                vec![IrcEventJoinBundle(result)]
+                vec![IrcEvent::JoinBundle(result)]
             },
             None => vec![]
         }
@@ -306,7 +304,7 @@ impl Bundler for JoinBundler {
 
     fn is_finished(&mut self) -> bool {
         match self.state {
-            JoinFail | Joined => true,
+            JoinBundlerState::JoinFail | JoinBundlerState::Joined => true,
             _ => false
         }
     }
@@ -379,7 +377,7 @@ impl fmt::Show for JoinEventWatcher {
 impl EventWatcher for JoinEventWatcher {
     fn on_event(&mut self, message: &IrcEvent) {
         match *message {
-            IrcEventJoinBundle(ref result) => {
+            IrcEvent::JoinBundle(ref result) => {
                 if result.get_channel().eq_ignore_ascii_case(self.channel.as_slice()) {
                     self.result = Some(result.clone());
                     self.dispatch_monitors();
