@@ -12,7 +12,7 @@ after_success: |
     echo '<meta http-equiv=refresh content=0;url=irc/index.html>' > target/doc/index.html &&
     sudo pip install ghp-import &&
     ghp-import -n target/doc &&
-    (cd target/doc; curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh)
+    curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
 
 env:
     global:
