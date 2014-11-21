@@ -14,7 +14,7 @@ extern crate serialize;
 pub use self::message::IrcMessage;
 
 pub use self::connection::IrcConnection;
-pub use self::connection::IrcConnectionCommand::RawWrite;
+pub use self::connection::IrcConnectionCommand;
 
 pub use self::event::IrcEvent;
 

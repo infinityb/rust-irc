@@ -5,7 +5,7 @@ use std::ascii::AsciiExt;
 use util::{StringSlicer, OptionalStringSlicer};
 
 
-static CHANNEL_PREFIX_CHARS: &'static [char] = ['&', '#', '+', '!'];
+static CHANNEL_PREFIX_CHARS: [char, ..4] = ['&', '#', '+', '!'];
 
 // Commands which target a msgtarget or channel
 static CHANNEL_TARGETED_COMMANDS: [&'static str, ..6] = [
@@ -160,12 +160,12 @@ fn consume_spaces(start: uint, text: &str) -> uint {
 	let mut tmp = text[start..];
 	loop {
 		match tmp.slice_shift_char() {
-			(Some(' '), rest) => {
+			Some((' ', rest)) => {
 				idx += 1;
 				tmp = rest;
 			},
-			(Some(_), _) => break,
-			(None, _) => return start + idx
+			Some((_, _)) => break,
+			None => return start + idx
 		}
 	}
 	start + idx

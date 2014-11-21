@@ -16,11 +16,12 @@ use core_plugins::{
 
 use event::IrcEvent;
 use message::IrcMessage;
-use connection::IrcConnectionCommand::{
+pub use connection::IrcConnectionCommand::{
     RawWrite,
     AddWatcher,
     AddBundler,
 };
+
 use watchers::{
     Bundler,
     BundlerManager,
@@ -120,6 +121,12 @@ pub enum IrcConnectionCommand {
     RawWrite(String),
     AddWatcher(Box<EventWatcher+Send>),
     AddBundler(Box<Bundler+Send>),
+}
+
+impl IrcConnectionCommand {
+    pub fn raw_write(string: String) -> IrcConnectionCommand {
+        IrcConnectionCommand::RawWrite(string)
+    }
 }
 
 impl fmt::Show for IrcConnectionCommand {
