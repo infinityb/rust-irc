@@ -1,11 +1,10 @@
+env:
+  global:
+    - secure: aZaxFFC+vufTbRAs27PrCvR/h2/0r6RDw4rzdmEI3iyHpbwFijasK5NeOnd1LOjMQA8qyWZc6stc3NN5CzDexACN/5Lr0b8yfGZCAOf/koJbYhSMuJh+PGJXVmkOo916hRDmfBLyGzEQxvlzfMgW7aG+wReDcXLufgdE/bnhm4I=
+
 language: rust
 
 after_success: |
     [ $TRAVIS_BRANCH = master ] &&
     [ $TRAVIS_PULL_REQUEST = false ] &&
     curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
-
-env:
-    global:
-        - secure: aZaxFFC+vufTbRAs27PrCvR/h2/0r6RDw4rzdmEI3iyHpbwFijasK5NeOnd1LOjMQA8qyWZc6stc3NN5CzDexACN/5Lr0b8yfGZCAOf/koJbYhSMuJh+PGJXVmkOo916hRDmfBLyGzEQxvlzfMgW7aG+wReDcXLufgdE/bnhm4I=
-
