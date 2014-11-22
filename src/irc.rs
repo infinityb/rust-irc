@@ -39,6 +39,7 @@ pub use self::watchers::{
 pub use self::parse::{
     IrcMsgPrefix,
 };
+pub use self::irccase::IrcAsciiExt;
 
 
 mod numerics;
@@ -57,3 +58,7 @@ pub mod parse;
 
 /// Event types
 mod event;
+
+
+/// IRC case manipulation
+mod irccase;
