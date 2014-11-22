@@ -1,20 +1,11 @@
 language: rust
 
-script:
-    - cargo build
-    - cargo test
-    - cargo bench --no-run
-
 after_success: |
     [ $TRAVIS_BRANCH = master ] &&
     [ $TRAVIS_PULL_REQUEST = false ] &&
-    cargo doc &&
-    echo '<meta http-equiv=refresh content=0;url=irc/index.html>' > target/doc/index.html &&
-    sudo pip install ghp-import &&
-    ghp-import -n target/doc &&
     curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
 
 env:
     global:
-        - secure: Gveds7W5zXmOhaE1ol4CmAC+DJaRCqoF3UxFOVGgRRi96vz5FbhRyS2lCXIQffg2Zxw1kJ/XcaIuVJac0E/uWYvVzCQMG8dt9RElmRODkrIfhB6/EGNlxipCvCuqiYlrSNCiWQGvuj52xo71Ya5Qw9zjbVHgtiwGmXYFWf5oCHk=
+        - secure: aZaxFFC+vufTbRAs27PrCvR/h2/0r6RDw4rzdmEI3iyHpbwFijasK5NeOnd1LOjMQA8qyWZc6stc3NN5CzDexACN/5Lr0b8yfGZCAOf/koJbYhSMuJh+PGJXVmkOo916hRDmfBLyGzEQxvlzfMgW7aG+wReDcXLufgdE/bnhm4I=
 
