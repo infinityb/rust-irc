@@ -56,7 +56,7 @@ pub static IRC_ASCII_LOWER_MAP: [u8, ..256] = [
 pub trait IrcAsciiExt<T> for Sized? {
     /// Makes a copy of the string in IRC ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
-    /// and "[]\~" are mapped to "{}|^" respectively,
+    /// and "[]\\~" are mapped to "{}|\^" respectively,
     /// but all other characters are unchanged.
     fn to_irc_lower(&self) -> T;
 
