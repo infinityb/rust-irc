@@ -129,4 +129,6 @@ fn test_basics() {
     assert_eq!("]".to_irc_lower()[], "}");
     assert_eq!("\\".to_irc_lower()[], "|");
     assert_eq!("~".to_irc_lower()[], "^");
+
+    assert_eq!("~".to_string().into_irc_lower()[], "^");
 }

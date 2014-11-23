@@ -1,7 +1,7 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
 #![license = "MIT/ASL2"]
-#![feature(if_let, slicing_syntax, globs, phase)]
+#![feature(if_let, slicing_syntax, globs, phase, macro_rules)]
 
 #![allow(dead_code)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
@@ -39,8 +39,22 @@ pub use self::watchers::{
 pub use self::parse::{
     IrcMsgPrefix,
 };
-pub use self::irccase::IrcAsciiExt;
 
+pub use self::irccase::{
+    IrcAsciiExt,
+    OwnedIrcAsciiExt,
+};
+
+pub use self::state::{
+    User,
+    UserId,
+    
+    Channel,
+    ChannelId,
+
+    State,
+    MessageEndpoint,
+};
 
 mod numerics;
 mod connection;
@@ -59,6 +73,8 @@ pub mod parse;
 /// Event types
 mod event;
 
-
 /// IRC case manipulation
 mod irccase;
+
+/// IRC state tracker
+mod state;
