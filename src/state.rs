@@ -619,67 +619,6 @@ impl State {
         };
     }
 
-    fn validate_state_internal_panic(&mut self) {
-        match self.validate_state_internal() {
-            Ok(()) => (),
-            Err(msg) => panic!("invalid state: {}, dump = {}", msg, self)
-        };
-    }
-
-    fn validate_state_internal(&self) -> Result<(), String> {
-        for (&id, state) in self.channels.iter() {
-            if id != state.id {
-                return Err(format!("{} at channels[{}]", state.id, id));
-            }
-            for &user_id in state.users.iter() {
-                if let Some(user_state) = self.users.get(&user_id) {
-                    if !user_state.channels.contains(&id) {
-                        return Err(format!("{0} ref {1} => {1} ref {0} not holding", id, user_id));
-                    }
-                } else {
-                    return Err(format!("{} refs non-existent {}", id, user_id));
-                }
-            }
-        }
-        for (&id, state) in self.users.iter() {
-            if id != state.id {
-                return Err(format!("{} at users[{}]", state.id, id));
-            }
-            for &chan_id in state.channels.iter() {
-                if let Some(chan_state) = self.channels.get(&chan_id) {
-                    if !chan_state.users.contains(&id) {
-                        return Err(format!("{0} ref {1} => {1} ref {0} not holding", id, chan_id));
-                    }
-                } else {
-                    return Err(format!("{} refs non-existent {}", id, chan_id));
-                }
-            }
-        }
-        for (name, &id) in self.channel_map.iter() {
-            if let Some(state) = self.channels.get(&id) {
-                if *name != IrcIdentifier::from_str(state.name[]) {
-                    return Err(format!("{} at channel_map[{}]", state.id, name));
-                }
-            } else {
-                return Err(format!("channel map inconsistent"));
-            }
-        }
-        for (name, &id) in self.user_map.iter() {
-            if let Some(state) = self.users.get(&id) {
-                if *name != IrcIdentifier::from_str(state.get_nick()) {
-                    return Err(format!("{} at user_map[{}]", state.id, name));
-                }
-            } else {
-                return Err(format!(
-                    concat!(
-                        "user map inconsistent: self.user_map[{}] is not None ",
-                        "=> self.users[{}] is not None"
-                    ), name, id));
-            }
-        }
-        Ok(())
-    }
-
     pub fn get_self_nick<'a>(&'a self) -> &'a str {
         self.self_nick.as_slice()
     }
@@ -988,6 +927,77 @@ impl State {
 
     pub fn resolve_user(&self, uid: UserId) -> Option<&User> {
         self.users.get(&uid)
+    }
+}
+
+#[cfg(not(test))]
+impl State {
+    fn validate_state_internal_panic(&mut self) {
+    }
+}
+
+#[cfg(test)]
+impl State {
+    fn validate_state_internal_panic(&mut self) {
+        match self.validate_state_internal() {
+            Ok(()) => (),
+            Err(msg) => panic!("invalid state: {}, dump = {}", msg, self)
+        };
+    }
+
+
+    fn validate_state_internal(&self) -> Result<(), String> {
+        for (&id, state) in self.channels.iter() {
+            if id != state.id {
+                return Err(format!("{} at channels[{}]", state.id, id));
+            }
+            for &user_id in state.users.iter() {
+                if let Some(user_state) = self.users.get(&user_id) {
+                    if !user_state.channels.contains(&id) {
+                        return Err(format!("{0} ref {1} => {1} ref {0} not holding", id, user_id));
+                    }
+                } else {
+                    return Err(format!("{} refs non-existent {}", id, user_id));
+                }
+            }
+        }
+        for (&id, state) in self.users.iter() {
+            if id != state.id {
+                return Err(format!("{} at users[{}]", state.id, id));
+            }
+            for &chan_id in state.channels.iter() {
+                if let Some(chan_state) = self.channels.get(&chan_id) {
+                    if !chan_state.users.contains(&id) {
+                        return Err(format!("{0} ref {1} => {1} ref {0} not holding", id, chan_id));
+                    }
+                } else {
+                    return Err(format!("{} refs non-existent {}", id, chan_id));
+                }
+            }
+        }
+        for (name, &id) in self.channel_map.iter() {
+            if let Some(state) = self.channels.get(&id) {
+                if *name != IrcIdentifier::from_str(state.name[]) {
+                    return Err(format!("{} at channel_map[{}]", state.id, name));
+                }
+            } else {
+                return Err(format!("channel map inconsistent"));
+            }
+        }
+        for (name, &id) in self.user_map.iter() {
+            if let Some(state) = self.users.get(&id) {
+                if *name != IrcIdentifier::from_str(state.get_nick()) {
+                    return Err(format!("{} at user_map[{}]", state.id, name));
+                }
+            } else {
+                return Err(format!(
+                    concat!(
+                        "user map inconsistent: self.user_map[{}] is not None ",
+                        "=> self.users[{}] is not None"
+                    ), name, id));
+            }
+        }
+        Ok(())
     }
 }
 
