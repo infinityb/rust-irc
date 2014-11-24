@@ -11,7 +11,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::string::{mod, String};
+use std::string::String;
+
 
 pub static IRC_ASCII_LOWER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -101,7 +102,7 @@ impl IrcAsciiExt<String> for str {
     #[inline]
     fn to_irc_lower(&self) -> String {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
-        unsafe { string::raw::from_utf8(self.as_bytes().to_irc_lower()) }
+        unsafe { String::from_utf8_unchecked(self.as_bytes().to_irc_lower()) }
     }
 
     #[inline]
@@ -114,7 +115,7 @@ impl OwnedIrcAsciiExt for String {
     #[inline]
     fn into_irc_lower(self) -> String {
         // Vec<u8>::into_irc_lower() preserves the UTF-8 invariant.
-        unsafe { string::raw::from_utf8(self.into_bytes().into_irc_lower()) }
+        unsafe { String::from_utf8_unchecked(self.into_bytes().into_irc_lower()) }
     }
 }
 

@@ -1,4 +1,4 @@
-use std::str::{is_utf8, raw, MaybeOwned};
+use std::str::{mod, MaybeOwned};
 use std::fmt;
 use util::{StringSlicer, OptionalStringSlicer};
 
@@ -8,7 +8,7 @@ static CHANNEL_PREFIX_CHARS: [char, ..4] = ['&', '#', '+', '!'];
 
 // Commands which target a msgtarget or channel
 static CHANNEL_TARGETED_COMMANDS: [&'static str, ..6] = [
-	"KICK",
+	"KICK",	
 	"PART",
 	"MODE",
 	"PRIVMSG",
@@ -236,10 +236,10 @@ impl IrcMsg {
 			Ok(parsed) => parsed,
 			Err(err) => return Err(err)
 		};
-		if is_utf8(parsed.get_prefix_raw()) {
+		if str::is_utf8(parsed.get_prefix_raw()) {
 			return Err(ParseError::EncodingError)
 		}
-		if is_utf8(parsed.get_command()) {
+		if str::is_utf8(parsed.get_command()) {
 			return Err(ParseError::EncodingError)
 		}
 		Ok(parsed)
@@ -256,7 +256,7 @@ impl IrcMsg {
 	}
 
 	pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
-		let prefix_ref = unsafe { raw::from_utf8(self.get_prefix_raw()) };
+		let prefix_ref = unsafe { str::from_utf8_unchecked(self.get_prefix_raw()) };
 		IrcMsgPrefix::new(prefix_ref.into_maybe_owned())
 	}
 
