@@ -6,5 +6,5 @@ authors = [ "Stacey Ell <stacey.ell@gmail.com>" ]
 [lib]
 name = "irc"
 
-[dependencies.time]
-git = "http://github.com/rust-lang/time"
+[dependencies]
+time = "~0.0.3"
