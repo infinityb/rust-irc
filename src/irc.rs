@@ -6,7 +6,7 @@
 #![allow(dead_code)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
-
+#[cfg(test)] extern crate test;
 #[phase(plugin, link)] extern crate log;
 extern crate time;
 extern crate serialize;
@@ -34,10 +34,6 @@ pub use self::watchers::{
     BundlerManager,
     JoinBundlerTrigger,
     WhoBundlerTrigger,
-};
-
-pub use self::parse::{
-    IrcMsgPrefix,
 };
 
 pub use self::irccase::{
