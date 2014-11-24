@@ -94,7 +94,7 @@ impl User {
     fn from_who(id: UserId, who: &WhoRecord) -> User {
         User {
             id: id,
-            prefix: who.get_prefix().into_owned(),
+            prefix: who.get_prefix().to_owned(),
             channels: Default::default(),
         }
     }
@@ -231,7 +231,7 @@ impl UserInfo {
     fn from_internal(user: &User) -> UserInfo {
         UserInfo {
             id: user.id,
-            prefix: user.prefix.into_owned(),
+            prefix: user.prefix.to_owned(),
         }
     }
 
@@ -422,7 +422,7 @@ impl State {
         if is_create {
             let user = User {
                 id: user_id,
-                prefix: join.get_prefix().expect("user lacking prefix").into_owned(),
+                prefix: join.get_prefix().expect("user lacking prefix").to_owned(),
                 channels: HashSet::new(),
             };
             self.users.insert(user_id, user);

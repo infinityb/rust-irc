@@ -410,13 +410,14 @@ impl<'a> IrcMsgPrefix<'a> {
 	}
 
 	/// Get an owned copy
-	pub fn into_owned(&self) -> IrcMsgPrefix<'static> {
+	pub fn to_owned(&self) -> IrcMsgPrefix<'static> {
 		IrcMsgPrefix {
 			data: self.data.to_string().into_maybe_owned(),
 			slicer: self.slicer.clone()
 		}
 	}
 
+	/// Get an owned copy with a replaced nick
 	pub fn with_nick(&self, nick: &str) -> Option<IrcMsgPrefix<'static>> {
 		match (self.nick(), self.username(), self.hostname()) {
 			(Some(_), Some(username), hostname) => {
