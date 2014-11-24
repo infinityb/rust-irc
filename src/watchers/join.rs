@@ -1,6 +1,6 @@
 use std::fmt;
 use std::str::from_str;
-use std::ascii::AsciiExt;
+use irccase::IrcAsciiExt;
 
 use message::IrcMessage;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
@@ -185,13 +185,13 @@ impl JoinBundler {
     fn accept_state_prejoin(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         let success = match message.command() {
             "JOIN" => {
-                if !message.get_args()[0].eq_ignore_ascii_case(self.channel.as_slice()) {
+                if !message.get_args()[0].eq_ignore_irc_case(self.channel.as_slice()) {
                     return None;
                 }
                 true
             },
             "475" => {
-                if message.get_args()[1].eq_ignore_ascii_case(self.channel.as_slice()) {
+                if message.get_args()[1].eq_ignore_irc_case(self.channel.as_slice()) {
                     return None;
                 }
                 false
@@ -247,13 +247,13 @@ impl JoinBundler {
 
     fn accept_state_joining(&mut self, message: &IrcMessage) -> Option<JoinBundlerState> {
         if message.command() == "332" {
-            if message.get_args()[1].eq_ignore_ascii_case(self.channel.as_slice()) {
+            if message.get_args()[1].eq_ignore_irc_case(self.channel.as_slice()) {
                 return self.on_topic(message);
             }
             return None;
         }
         if message.command() == "333" {
-            if message.get_args()[1].eq_ignore_ascii_case(self.channel.as_slice()) {
+            if message.get_args()[1].eq_ignore_irc_case(self.channel.as_slice()) {
                 return self.on_topic_meta(message);
             }
             return None;
@@ -265,13 +265,13 @@ impl JoinBundler {
                 "@" => true,
                 _ => false
             });
-            if message.get_args()[2].eq_ignore_ascii_case(self.channel.as_slice()) {
+            if message.get_args()[2].eq_ignore_irc_case(self.channel.as_slice()) {
                 return self.on_names(message);
             }
             return None;
         }
         if message.command() == "366" {
-            if message.get_args()[1].eq_ignore_ascii_case(self.channel.as_slice()) {
+            if message.get_args()[1].eq_ignore_irc_case(self.channel.as_slice()) {
                 return self.on_names_end(message);
             }
             return None;
@@ -378,7 +378,7 @@ impl EventWatcher for JoinEventWatcher {
     fn on_event(&mut self, message: &IrcEvent) {
         match *message {
             IrcEvent::JoinBundle(ref result) => {
-                if result.get_channel().eq_ignore_ascii_case(self.channel.as_slice()) {
+                if result.get_channel().eq_ignore_irc_case(self.channel.as_slice()) {
                     self.result = Some(result.clone());
                     self.dispatch_monitors();
                 }
