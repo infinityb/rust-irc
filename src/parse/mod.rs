@@ -7,6 +7,8 @@ pub use self::parse::{
 
 pub use self::oldparse::IrcMsg as IrcMsg;
 pub use self::parse::IrcMsgPrefix;
+pub use self::parse::is_full_prefix;
+
 
 mod parse;
 mod oldparse;

@@ -42,6 +42,34 @@ pub fn is_channel(identifier: &str) -> bool {
 }
 
 
+enum PrefixCheckerState {
+	Failed,
+	Nick,
+	User,
+	Host,
+}
+
+/// Checks whether a prefix contains nick, username and host or not.
+pub fn is_full_prefix(prefix: &str) -> bool {
+	let mut state = PrefixCheckerState::Nick;
+	for &byte in prefix.as_bytes().iter() {
+		state = match (state, byte) {
+			(PrefixCheckerState::Failed, _) => PrefixCheckerState::Failed,
+			(PrefixCheckerState::Nick, b'!') => PrefixCheckerState::User,
+			(PrefixCheckerState::Nick, _) => PrefixCheckerState::Nick,
+			(PrefixCheckerState::User, b'@') => PrefixCheckerState::Host,
+			(PrefixCheckerState::User, _) => PrefixCheckerState::User,
+			(PrefixCheckerState::Host, _) => PrefixCheckerState::Host,
+		};
+	}
+	match state {
+		PrefixCheckerState::Host => true,
+		_ => false
+	}
+}
+
+
+
 enum IrcParserState {
 	Initial,
 	Prefix,
@@ -239,7 +267,7 @@ impl IrcMsg {
 		if str::is_utf8(parsed.get_prefix_raw()) {
 			return Err(ParseError::EncodingError)
 		}
-		if str::is_utf8(parsed.get_command()) {
+		if str::is_utf8(parsed.get_command_raw()) {
 			return Err(ParseError::EncodingError)
 		}
 		Ok(parsed)
@@ -255,14 +283,21 @@ impl IrcMsg {
 		self.data[prefix_start as uint..prefix_end as uint]
 	}
 
-	pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
-		let prefix_ref = unsafe { str::from_utf8_unchecked(self.get_prefix_raw()) };
-		IrcMsgPrefix::new(prefix_ref.into_maybe_owned())
+	pub fn get_prefix_str(&self) -> &str {
+		unsafe { str::from_utf8_unchecked(self.get_prefix_raw()) }
 	}
 
-	pub fn get_command(&self) -> &[u8] {
+	pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
+		IrcMsgPrefix::new(self.get_prefix_str().into_maybe_owned())
+	}
+
+	fn get_command_raw<'a>(&'a self) -> &[u8] {
 		let (command_start, command_end) = self.command;
 		self.data[command_start as uint..command_end as uint]
+	}
+
+	pub fn get_command(&self) -> &str {
+		unsafe { str::from_utf8_unchecked(self.get_command_raw()) }
 	}
 
 	pub fn get_args(&self) -> Vec<&[u8]> {
@@ -274,8 +309,19 @@ impl IrcMsg {
 		out
 	}
 
+	pub fn len(&self) -> uint {
+		self.arg_len as uint
+	}
+
 	pub fn unwrap(self) -> Vec<u8> {
 		self.data
+	}
+}
+
+impl Index<u32, [u8]> for IrcMsg {
+	fn index<'a>(&'a self, index: &u32) -> &'a [u8] {
+		let (arg_start, arg_end) = self.args[*index as uint];
+		self.data[arg_start as uint..arg_end as uint]
 	}
 }
 
