@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `IrcMsgPrefix` struct in crate `irc`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, IrcMsgPrefix">
+
+    <title>irc::parse::IrcMsgPrefix - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='../index.html'>irc</a>::<wbr><a href='index.html'>parse</a></p><div class='block struct'><h2>Structs</h2><a class='struct ' href='struct.IrcMsg.html'>IrcMsg</a><a class='struct ' href='struct.IrcMsgNew.html'>IrcMsgNew</a><a class='struct current' href='struct.IrcMsgPrefix.html'>IrcMsgPrefix</a></div><div class='block fn'><h2>Functions</h2><a class='fn ' href='fn.can_target_channel.html'>can_target_channel</a><a class='fn ' href='fn.is_channel.html'>is_channel</a><a class='fn ' href='fn.is_full_prefix.html'>is_full_prefix</a></div>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>irc</a>::<wbr><a href='index.html'>parse</a>::<wbr><a class='struct' href=''>IrcMsgPrefix</a><wbr><a class='stability Experimental' title='Subject to being moved'>Experimental</a></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]
+            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-13312' href='../../src/irc/src/parse/parse.rs.html#426-429'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct IrcMsgPrefix&lt;'a&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>An IRC prefix, which identifies the source of a message.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>impl&lt;'a&gt; <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.new' class='fnname'>new</a>(s: <a class='enum' href='http://doc.rust-lang.org/nightly/collections/str/enum.MaybeOwned.html' title='collections::str::MaybeOwned'>MaybeOwned</a>&lt;'a&gt;) -&gt; <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a></code></h4>
+<div class='docblock'><p>Parse a MaybeOwned into a IrcMsgPrefix</p>
+</div><h4 id='method.nick' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.nick' class='fnname'>nick</a>(&amp;'a self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h4>
+<div class='docblock'><p>The nick component of a prefix</p>
+</div><h4 id='method.username' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.username' class='fnname'>username</a>(&amp;'a self) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h4>
+<div class='docblock'><p>The username component of a prefix</p>
+</div><h4 id='method.hostname' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.hostname' class='fnname'>hostname</a>(&amp;'a self) -&gt; &amp;'a <a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a></code></h4>
+<div class='docblock'><p>The hostname component of a prefix</p>
+</div><h4 id='method.as_slice' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.as_slice' class='fnname'>as_slice</a>(&amp;self) -&gt; &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a></code></h4>
+<div class='docblock'><p>Get the protocol representation as a slice</p>
+</div><h4 id='method.to_owned' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.to_owned' class='fnname'>to_owned</a>(&amp;self) -&gt; <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'static&gt;</code></h4>
+<div class='docblock'><p>Get an owned copy</p>
+</div><h4 id='method.with_nick' class='method'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>fn <a href='#method.with_nick' class='fnname'>with_nick</a>(&amp;self, nick: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'static&gt;&gt;</code></h4>
+<div class='docblock'><p>Get an owned copy with a replaced nick</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html' title='core::cmp::PartialEq'>PartialEq</a> for <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.eq' class='method'><a class='stability Unstable' title='Unstable: Definition may change slightly after trait reform'></a><code>fn <a href='#method.eq' class='fnname'>eq</a>(&amp;self, other: &amp;<a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+<h4 id='method.ne' class='tymethod'><a class='stability Unstable' title='Unstable: Definition may change slightly after trait reform'></a><code>fn <a href='#tymethod.ne' class='fnname'>ne</a>(&amp;self, other: &amp;Self) -&gt; <a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a></code></h4>
+</div><h3 class='impl'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html' title='core::cmp::Eq'>Eq</a> for <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.assert_receiver_is_total_eq' class='tymethod'><a class='stability Unstable' title='Unstable: Definition may change slightly after trait reform'></a><code>fn <a href='#tymethod.assert_receiver_is_total_eq' class='fnname'>assert_receiver_is_total_eq</a>(&amp;self)</code></h4>
+</div><h3 class='impl'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.Show.html' title='core::fmt::Show'>Show</a> for <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><a class='stability Unstable' title='Unstable: I/O and core have yet to be reconciled'></a><code>fn <a href='#method.fmt' class='fnname'>fmt</a>(&amp;self, f: &amp;mut <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='type' href='http://doc.rust-lang.org/nightly/core/fmt/type.Result.html' title='core::fmt::Result'>Result</a></code></h4>
+</div><h3 id='derived_implementations'>Derived Implementations </h3><h3 class='impl'><a class='stability Experimental' title='Experimental: Subject to being moved'></a><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a> for <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.clone' class='method'><a class='stability Unstable' title='Unstable'></a><code>fn <a href='#method.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class='struct' href='../../irc/parse/struct.IrcMsgPrefix.html' title='irc::parse::IrcMsgPrefix'>IrcMsgPrefix</a>&lt;'a&gt;</code></h4>
+<h4 id='method.clone_from' class='tymethod'><a class='stability Experimental' title='Experimental: this function is mostly unused'></a><code>fn <a href='#tymethod.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: &amp;Self)</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "irc";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script async src="../../search-index.js"></script>
+</body>
+</html>
