@@ -1,4 +1,4 @@
-use std::str::MaybeOwned;
+use std::str::{MaybeOwned, IntoMaybeOwned};
 
 use message::IrcMessage;
 use core_plugins::traits::MessageResponder;

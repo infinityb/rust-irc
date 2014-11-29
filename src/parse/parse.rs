@@ -1,5 +1,6 @@
-use std::str::{mod, MaybeOwned};
+use std::str::{mod, MaybeOwned, IntoMaybeOwned};
 use std::fmt;
+
 use util::{StringSlicer, OptionalStringSlicer};
 
 use irccase::IrcAsciiExt;
@@ -342,7 +343,8 @@ mod tests {
 			};
 			assert!(parsed.has_prefix());
 			assert_eq!(parsed.get_prefix_raw(), b"prefix");
-			assert_eq!(parsed.get_command(), b"PING");
+			assert_eq!(parsed.get_prefix_str(), "prefix");
+			assert_eq!(parsed.get_command(), "PING");
 			assert_eq!(parsed.get_args().as_slice(), [b"foo", b"bar", b"baz"].as_slice());
 		}
 
@@ -360,7 +362,8 @@ mod tests {
 			};
 			assert!(parsed.has_prefix());
 			assert_eq!(parsed.get_prefix_raw(), b"prefix");
-			assert_eq!(parsed.get_command(), b"PING");
+			assert_eq!(parsed.get_prefix_str(), "prefix");
+			assert_eq!(parsed.get_command(), "PING");
 			assert_eq!(parsed.get_args().as_slice(), [b"foo", b"bar baz"].as_slice());
 		}
 	}

@@ -1,7 +1,7 @@
 use std::str::{MaybeOwned, FromStr};
 use util::{StringSlicer, OptionalStringSlicer};
 use parse::parse::{IrcMsgPrefix, PrefixSlicer};
-
+use std::str::IntoMaybeOwned;
 
 /// Represents any syntactically valid IRC message.
 /// No semantic checking is applied.

@@ -1,4 +1,5 @@
-use std::string::{String};
+use std::str::IntoMaybeOwned;
+use std::string::String;
 use std::fmt;
 use parse::{
     IrcMsg,

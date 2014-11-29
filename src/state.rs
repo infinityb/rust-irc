@@ -2,7 +2,7 @@
 #![deny(unused_variables, unused_mut)]
 
 use std::cmp::max;
-
+use std::str::IntoMaybeOwned;
 use std::default::Default;
 use std::collections::{
     HashMap,

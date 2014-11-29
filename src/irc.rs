@@ -3,7 +3,7 @@
 #![license = "MIT/ASL2"]
 #![feature(if_let, slicing_syntax, globs, phase, macro_rules)]
 
-#![allow(dead_code)]
+#![allow(dead_code, deprecated)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
 #[cfg(test)] extern crate test;

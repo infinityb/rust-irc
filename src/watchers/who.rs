@@ -1,9 +1,9 @@
+use std::str::IntoMaybeOwned;
 use std::fmt;
-use irccase::IrcAsciiExt;
 
+use irccase::IrcAsciiExt;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::IrcEvent;
-
 use message::{
     IrcMessage,
     IrcProtocolMessage,
