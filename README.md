@@ -2,7 +2,7 @@ rust-irc
 ========
 [![Build Status](https://travis-ci.org/infinityb/rust-irc.svg?branch=master)](https://travis-ci.org/infinityb/rust-irc)
 
-[Documentation](http://www.rust-ci.org/infinityb/rust-irc)
+[Documentation](http://elsa.godless-internets.org/~sell/rust-irc)
 
 Parsing IRC messages and maybe a bit more!
 

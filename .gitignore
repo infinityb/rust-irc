@@ -4,6 +4,7 @@
 /Makefile
 /config.mk
 /Cargo.lock
+/regen-docs.sh
 
 main
 main.exe
