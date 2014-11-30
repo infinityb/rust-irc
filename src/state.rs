@@ -13,6 +13,7 @@ use std::collections::hash_map::{
     Vacant,
 };
 
+use message_types::server;
 use message::{
     IrcMessage,
 };
@@ -38,7 +39,7 @@ macro_rules! deref_opt_or_return(
         match $inp {
             Some(x) => *x,
             _ => {
-                warn!($erp);
+                println!($erp);
                 return $fr;
             }
         }
@@ -344,21 +345,12 @@ impl State {
         }
     }
 
-    fn on_other_part(&mut self, msg: &IrcMessage) {
-        let msg_args = msg.get_args();
-        if msg_args.len() < 1 {
-            warn!("Invalid message. PART with no arguments: {}", msg);
-            return;
-        }
+    fn on_other_part(&mut self, part: &server::Part) {
+        println!("part.channel = {}, part.nick = {}", 
+            part.get_channel(), part.get_nick());
 
-        let channel_name = IrcIdentifier::from_str(msg_args[0]);
-        let user_nick = match msg.source_nick() {
-            Some(user_nick) => IrcIdentifier::from_str(user_nick),
-            None => {
-                warn!("Invalid message. PART with no prefix: {}", msg);
-                return;
-            }
-        };
+        let channel_name = IrcIdentifier::from_str(part.get_channel());
+        let user_nick = IrcIdentifier::from_str(part.get_nick());
 
         let chan_id = deref_opt_or_return!(self.channel_map.get(&channel_name),
             "Got channel without knowing about it.", ());
@@ -368,46 +360,25 @@ impl State {
 
         self.validate_state_internal_panic();
         self.unlink_user_channel(user_id, chan_id);
+        self.validate_state_internal_panic();
     }
 
-    fn on_self_part(&mut self, msg: &IrcMessage) {
-        let msg_args = msg.get_args();
-        if msg_args.len() < 1 {
-            warn!("Invalid message. PART with no arguments: {}", msg);
-            return;
-        }
-        assert!(self.remove_channel_by_name(msg_args[0]).is_some());
+    fn on_self_part(&mut self, part: &server::Part) {
+        assert!(self.remove_channel_by_name(part.get_channel()).is_some());
     }
 
-    fn on_other_quit(&mut self, msg: &IrcMessage) {
-        match msg.source_nick() {
-            Some(user_nick) => self.remove_user_by_nick(user_nick),
-            None => {
-                warn!("Invalid message. QUIT with no prefix: {}", msg);
-                return;
-            }
-        };
+    fn on_other_quit(&mut self, quit: &server::Quit) {
+        assert!(self.remove_user_by_nick(quit.get_nick()).is_some());
     }
 
-    fn on_other_join(&mut self, join: &IrcMessage) {
-        let msg_args = join.get_args();
-        if msg_args.len() < 1 {
-            warn!("Invalid message. JOIN with no arguments: {}", join);
-            return;
-        }
-        let channel_name = IrcIdentifier::from_str(msg_args[0]);
-        let user_nick = match join.source_nick() {
-            Some(user_nick) => IrcIdentifier::from_str(user_nick),
-            None => {
-                warn!("Invalid message. JOIN with no prefix: {}", join);
-                return;
-            }
-        };
+    fn on_other_join(&mut self, join: &server::Join) {
+        let channel_name = IrcIdentifier::from_str(join.get_channel());
+        let user_nick = IrcIdentifier::from_str(join.get_nick());
+
         let chan_id = match self.channel_map.get(&channel_name) {
             Some(chan_id) => *chan_id,
             None => panic!("Got message for channel {} without knowing about it.", channel_name)
         };
-        
 
         let (is_create, user_id) = match self.user_map.get(&user_nick) {
             Some(user_id) => {
@@ -422,7 +393,7 @@ impl State {
         if is_create {
             let user = User {
                 id: user_id,
-                prefix: join.get_prefix().expect("user lacking prefix").to_owned(),
+                prefix: join.borrow_inner().get_prefix().to_owned(),
                 channels: HashSet::new(),
             };
             self.users.insert(user_id, user);
@@ -547,30 +518,23 @@ impl State {
         }), "Got message for channel {} without knowing about it.");
     }
 
-    fn on_topic(&mut self, msg: &IrcMessage) {
-        assert_eq!(msg.command(), "TOPIC");
-        assert_eq!(msg.get_args().len(), 2);
-
-        assert!(self.update_channel_by_name(msg.get_args()[0], proc(channel) {
-            channel.set_topic(msg.get_args()[1]);
+    fn on_topic(&mut self, topic: &server::Topic) {
+        assert!(self.update_channel_by_name(topic.get_channel(), proc(channel) {
+            let topic = String::from_utf8_lossy(topic.get_body_raw()).into_owned();
+            channel.set_topic(topic[]);
         }));
     }
 
-    fn on_nick(&mut self, msg: &IrcMessage) {
-        assert_eq!(msg.command(), "NICK");
-        assert_eq!(msg.get_args().len(), 1);
-
-        assert!(self.update_user_by_nick(msg.source_nick().unwrap(), proc(user) {
-            user.set_nick(msg.get_args()[0]);
+    fn on_nick(&mut self, nick: &server::Nick) {
+        assert!(self.update_user_by_nick(nick.get_nick(), proc(user) {
+            user.set_nick(nick.get_new_nick());
         }))
     }
 
-    fn on_kick(&mut self, msg: &IrcMessage) {
-        assert_eq!(msg.command(), "KICK");
-        assert_eq!(msg.get_args().len(), 3);
-
-        let channel_name = IrcIdentifier::from_str(msg.get_args()[0]);
-        let kicked_user_nick = IrcIdentifier::from_str(msg.get_args()[1]);
+    // 
+    fn on_kick(&mut self, kick: &server::Kick) {
+        let channel_name = IrcIdentifier::from_str(kick.get_channel());
+        let kicked_user_nick = IrcIdentifier::from_str(kick.get_nicked_nick());
 
         let (chan_id, user_id) = match (
             self.channel_map.get(&channel_name),
@@ -594,17 +558,27 @@ impl State {
     }
 
     fn from_message(&mut self, msg: &IrcMessage) {
-        let is_self = msg.source_nick() == Some(self.self_nick.as_slice());
+        use message_types::server::IncomingMsg::{Part, Quit, Join, Topic, Kick, Nick};
+
+        let is_self = match msg.source_nick() {
+            Some(ref heaped) => heaped[] == self.self_nick.as_slice(),
+            None => false
+        };
+
+        match (msg.get_typed_message(), is_self) {
+            (&Part(ref part), true) => return self.on_self_part(part),
+            (&Part(ref part), false) => return self.on_other_part(part),
+            (&Quit(ref quit), false) => return self.on_other_quit(quit),
+            // is this JOIN right?
+            (&Join(ref join), false) => return self.on_other_join(join),
+            (&Topic(ref topic), _) => return self.on_topic(topic),
+            (&Nick(ref nick), _) => return self.on_nick(nick),
+            (&Kick(ref kick), _) => return self.on_kick(kick),
+            (_, _) => ()
+        }
+
         let () = match (msg.command(), is_self, msg.get_prefix().is_some()) {
             ("001", _, _) => self.initialize_self_nick(msg.get_args()[0]),
-            ("PART", true, _) => return self.on_self_part(msg),
-            ("PART", false, _) => return self.on_other_part(msg),
-            ("QUIT", false, _) => return self.on_other_quit(msg),
-            // is this JOIN right?
-            ("JOIN", false, true) => return self.on_other_join(msg),
-            ("TOPIC", _, true) => self.on_topic(msg),
-            ("NICK", _, true) => return self.on_nick(msg),
-            ("KICK", _, true) => return self.on_kick(msg),
             _ => ()
         };
     }
@@ -693,7 +667,7 @@ impl State {
     fn apply_update_user(&mut self, id: UserId, diff: &Vec<UserDiffCmd>) {
         match self.users.entry(id) {
             Occupied(mut entry) => {
-
+     
                 let old_nick = IrcIdentifier::from_str(entry.get().get_nick());
                 let new_user = entry.get().patch(diff);
                 let new_nick = IrcIdentifier::from_str(new_user.get_nick());
@@ -918,7 +892,6 @@ impl State {
     }
 
     pub fn identify_nick(&self, nick: &str) -> Option<UserId> {
-
         match self.user_map.get(&IrcIdentifier::from_str(nick)) {
             Some(user_id) => Some(*user_id),
             None => None
@@ -1194,6 +1167,7 @@ mod tests {
         let it = |target: &str, statefunc: |&mut State|| {
             if target != "" {
                 for rec in iterator {
+                    println!("Processing message: {}", rec);
                     if marker_match(&rec, target) {
                         break;
                     }

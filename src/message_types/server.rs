@@ -1,7 +1,7 @@
 use std::str;
 
 use parse::is_full_prefix;
-use parse::IrcMsgNew as IrcMsg;
+use parse::IrcMsg;
 use irccase::IrcAsciiExt;
 use message_types::traits::FromIrcMsg;
 
@@ -35,10 +35,16 @@ macro_rules! incoming_msg_common {
 				let $t(msg) = self;
 				msg
 			}
+
+			pub fn borrow_inner<'a>(&'a self) -> &'a IrcMsg {
+				let $t(ref msg) = *self;
+				msg
+			}
 		}
 	}
 }
 
+#[deriving(Clone, Show)]
 pub enum IncomingMsg {
 	Join(Join),
 	Ping(Ping),
@@ -65,7 +71,33 @@ impl IncomingMsg {
 			"NICK" => to_incoming::<Nick>(msg),
 			"MODE" => to_incoming::<Mode>(msg),
 			"PART" => to_incoming::<Part>(msg),
-			_ => IncomingMsg::Unknown(msg)
+			_ => match str::from_str::<u16>(msg.get_command()) {
+				Some(_) => to_incoming::<Numeric>(msg),
+				None => IncomingMsg::Unknown(msg)
+			}
+		}
+	}
+
+	pub fn is_privmsg(&self) -> bool {
+		match *self {
+			IncomingMsg::Privmsg(_) => true,
+			_ => false
+		}
+	}
+
+	pub fn borrow_inner<'a>(&'a self) -> &'a IrcMsg {
+		match *self {
+			IncomingMsg::Join(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Ping(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Privmsg(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Quit(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Topic(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Kick(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Nick(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Mode(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Part(ref msg) => msg.borrow_inner(),
+			IncomingMsg::Numeric(_, ref msg) => msg.borrow_inner(),
+			IncomingMsg::Unknown(ref msg) => msg,
 		}
 	}
 }
@@ -86,6 +118,7 @@ fn test_incoming() {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Join(IrcMsg);
 incoming_msg_common!(Join)
 impl_into_incoming_msg!(Join)
@@ -109,11 +142,11 @@ impl FromIrcMsg for Join {
 			return Err(msg);
 		}
 		if msg.len() == 0 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid JOIN: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid JOIN: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		Ok(Join(msg))
@@ -141,12 +174,20 @@ fn test_join_basics() {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Numeric(IrcMsg);
 incoming_msg_common!(Numeric)
 
+impl Numeric {
+	pub fn get_code(&self) -> u16 {
+		let Numeric(ref msg) = *self;
+		from_str::<u16>(msg.get_command()).unwrap()
+	}
+}
+
 impl IntoIncomingMsg for Numeric {
 	fn into_incoming_msg(self) -> IncomingMsg {
-		let numeric_num = 0;
+		let numeric_num = self.get_code();
 		IncomingMsg::Numeric(numeric_num, self)	
 	}
 }
@@ -161,6 +202,7 @@ impl FromIrcMsg for Numeric {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Quit(IrcMsg);
 impl_into_incoming_msg!(Quit)
 incoming_msg_common!(Quit)
@@ -188,8 +230,8 @@ impl FromIrcMsg for Quit {
 		if !msg.get_command().eq_ignore_irc_case("QUIT") {
 			return Err(msg);
 		}
-		if msg.len() < 2 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+		if msg.len() < 1 {
+			warn!("Invalid QUIT: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		Ok(Quit(msg))
@@ -204,18 +246,30 @@ fn test_quit_basics() {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Ping(IrcMsg);
 impl_into_incoming_msg!(Ping)
 incoming_msg_common!(Ping)
 
+impl Ping {
+	pub fn get_response(&self) -> Vec<u8> {
+		let Ping(ref msg) = *self;
+		let mut response = Vec::new();
+		response.push_all(b"PONG ");
+		for args in msg.get_args().into_iter() {
+			response.push_all(args);
+		}
+		response
+	}
+}
 
 impl FromIrcMsg for Ping {
 	fn from_irc_msg(msg: IrcMsg) -> Result<Ping, IrcMsg> {
 		if !msg.get_command().eq_ignore_irc_case("PING") {
 			return Err(msg);
 		}
-		if msg.len() < 2 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+		if msg.len() < 1 {
+			warn!("Invalid PING: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		Ok(Ping(msg))
@@ -232,6 +286,7 @@ fn test_ping_basics() {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Privmsg(IrcMsg);
 impl_into_incoming_msg!(Privmsg)
 incoming_msg_common!(Privmsg)
@@ -260,11 +315,11 @@ impl FromIrcMsg for Privmsg {
 			return Err(msg);
 		}
 		if msg.len() < 2 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid PRIVMSG: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid PRIVMSG: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		if !str::is_utf8(&msg[0]) {
@@ -308,6 +363,7 @@ fn test_privmsg_basics() {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Topic(IrcMsg);
 impl_into_incoming_msg!(Topic)
 incoming_msg_common!(Topic)
@@ -336,11 +392,11 @@ impl FromIrcMsg for Topic {
 			return Err(msg);
 		}
 		if msg.len() < 2 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid TOPIC: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid TOPIC: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		if !str::is_utf8(&msg[0]) {
@@ -351,6 +407,7 @@ impl FromIrcMsg for Topic {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Kick(IrcMsg);
 impl_into_incoming_msg!(Kick)
 incoming_msg_common!(Kick)
@@ -387,11 +444,11 @@ impl FromIrcMsg for Kick {
 			return Err(msg);
 		}
 		if msg.len() < 3 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid KICK: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid KICK: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		// msg[0] is channel, msg[1] is kicked nick
@@ -403,6 +460,7 @@ impl FromIrcMsg for Kick {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Nick(IrcMsg);
 impl_into_incoming_msg!(Nick)
 incoming_msg_common!(Nick)
@@ -428,11 +486,11 @@ impl FromIrcMsg for Nick {
 			return Err(msg);
 		}
 		if msg.len() < 1 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid NICK: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid NICK: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		// msg[0] is channel, msg[1] is kicked nick
@@ -444,6 +502,7 @@ impl FromIrcMsg for Nick {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Part(IrcMsg);
 impl_into_incoming_msg!(Part)
 incoming_msg_common!(Part)
@@ -465,15 +524,15 @@ impl Part {
 
 impl FromIrcMsg for Part {
 	fn from_irc_msg(msg: IrcMsg) -> Result<Part, IrcMsg> {
-		if !msg.get_command().eq_ignore_irc_case("NICK") {
+		if !msg.get_command().eq_ignore_irc_case("PART") {
 			return Err(msg);
 		}
 		if msg.len() < 1 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid PART: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid PART: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		if !str::is_utf8(&msg[0]) {
@@ -484,6 +543,7 @@ impl FromIrcMsg for Part {
 }
 
 
+#[deriving(Clone, Show)]
 pub struct Mode(IrcMsg);
 impl_into_incoming_msg!(Mode)
 incoming_msg_common!(Mode)
@@ -509,11 +569,11 @@ impl FromIrcMsg for Mode {
 			return Err(msg);
 		}
 		if msg.len() < 1 {
-			warn!("Invalid message: Not enough arguments {}", msg.len());
+			warn!("Invalid MODE: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid message: Insufficient prefix `{}`", msg.get_prefix_str());
+			warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		unimplemented!();

@@ -4,12 +4,10 @@ use std::fmt;
 use irccase::IrcAsciiExt;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::IrcEvent;
-use message::{
-    IrcMessage,
-    IrcProtocolMessage,
-};
+use message::IrcMessage;
 use parse::IrcMsgPrefix;
 use util::{StringSlicer, OptionalStringSlicer};
+use message_types::server::IncomingMsg;
 
 pub type WhoResult = Result<WhoSuccess, WhoError>;
 
@@ -62,20 +60,23 @@ pub struct WhoRecord {
 
 
 impl WhoRecord {
-    fn new(args: &Vec<String>) -> Option<WhoRecord> {
-        match args.as_slice() {
-            [ref _self_nick, ref _channel, ref username,
-             ref hostname, ref server, ref nick, ref _unk1, ref rest
+    fn new(args: &[&[u8]]) -> Option<WhoRecord> {
+        match args {
+            [_self_nick, _channel, username,
+             hostname, server, nick, _unk1, rest
             ] => {
-                Some(WhoRecord {
-                    hostname: hostname.clone(),
-                    server: server.clone(),
-                    username: username.clone(),
-                    nick: nick.clone(),
-                    rest: rest.clone()
-                })
+                let whorec = WhoRecord {
+                    hostname: String::from_utf8_lossy(hostname).into_owned(),
+                    server: String::from_utf8_lossy(server).into_owned(),
+                    username: String::from_utf8_lossy(username).into_owned(),
+                    nick: String::from_utf8_lossy(nick).into_owned(),
+                    rest: String::from_utf8_lossy(rest).into_owned(),
+                };
+                Some(whorec)
             },
-            _ => None
+            _ => {
+                None
+            }
         }
     }
 
@@ -143,7 +144,7 @@ impl WhoBundler {
         }
     }
 
-    fn add_record(&mut self, args: &Vec<String>) {
+    fn add_record(&mut self, args: &[&[u8]]) {
         match WhoRecord::new(args) {
             Some(who_rec) => {
                 self.who_records.push(who_rec);
@@ -164,13 +165,13 @@ impl Bundler for WhoBundler {
         if !args[1].eq_ignore_irc_case(self.target_channel.as_slice()) {
             return Vec::new();
         }
-        info!("WhoBundler on_message({})", message);
-        match *message.get_message() {
-            IrcProtocolMessage::Numeric(352, ref message) => {
-                self.add_record(message);
+        
+        match *message.get_typed_message() {
+            IncomingMsg::Numeric(352, ref message2) => {
+                self.add_record(message2.borrow_inner().get_args().as_slice());
                 Vec::new()
             },
-            IrcProtocolMessage::Numeric(315, ref _message) => {
+            IncomingMsg::Numeric(315, ref _message) => {
                 self.finished = true;
                 let mut out = Vec::new();
                 out.push(IrcEvent::WhoBundle(Ok(WhoSuccess::from_bundler(self.clone()))));

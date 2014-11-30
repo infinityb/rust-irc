@@ -39,7 +39,7 @@ impl CtcpVersionResponder {
 
 
 impl MessageResponder for CtcpVersionResponder {
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMessage> {
+    fn on_message(&mut self, message: &IrcMessage) -> Vec<String> {
         let mut out = Vec::new();
         let args = message.get_args();
         if message.command() == "PRIVMSG" && args.len() >= 2 {
@@ -48,7 +48,7 @@ impl MessageResponder for CtcpVersionResponder {
                     let body = format!(
                         "\x01VERSION {}\x01",
                         self.get_version().as_slice());
-                    out.push(IrcMessage::notice(source_nick[], body[]));
+                    out.push(format!("PRIVMSG {} :{}", source_nick[], body[]));
                 },
                 _ => ()
             }

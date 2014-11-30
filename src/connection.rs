@@ -16,6 +16,7 @@ use core_plugins::{
 
 use event::IrcEvent;
 use message::IrcMessage;
+use message_types::server;
 pub use connection::IrcConnectionCommand::{
     RawWrite,
     AddWatcher,
@@ -70,26 +71,22 @@ impl IrcConnectionInternalState {
         }
     }
 
-    fn dispatch(&mut self, message: IrcMessage, raw_sender: &SyncSender<String>) {
-        if message.command() == "PING" {
-            raw_sender.send(format!("PONG :{}\n", message.get_args()[0]));
+    fn dispatch(&mut self, message: IrcMessage, raw_sender: &SyncSender<Vec<u8>>) {
+        if let server::IncomingMsg::Ping(ref msg) = *message.get_typed_message() {
+            raw_sender.send(msg.get_response());
         }
 
         if message.command() == "001" {
-            self.current_nick = Some(message.get_args()[0].to_string());
+            let msg = message.get_typed_message().borrow_inner();
+            self.current_nick = Some(String::from_utf8_lossy(&msg[0]).into_owned());
         }
 
-        if message.command() == "NICK" {
-            self.current_nick = match (message.source_nick(), self.current_nick.take()) {
-                (Some(source_nick), Some(current_nick)) => {
-                    if source_nick == current_nick.as_slice() {
-                        Some(message.get_args()[0].to_string())
-                    } else {
-                        Some(current_nick)
-                    }
-                },
-                (_, any) => any
-            };
+        if let server::IncomingMsg::Nick(ref msg) = *message.get_typed_message() {
+            if let Some(current_nick) = self.current_nick.take() {
+                if current_nick[] == msg.get_nick() {
+                    self.current_nick = Some(msg.get_new_nick().to_string())
+                }
+            }
         }
 
         // XXX //
@@ -97,7 +94,7 @@ impl IrcConnectionInternalState {
 
         for responder in self.responders.iter_mut() {
             for message in responder.on_message(&message).into_iter() {
-                raw_sender.send(message.to_irc());
+                raw_sender.send(message.into_bytes());
             }
         }
 
@@ -118,14 +115,14 @@ impl IrcConnectionInternalState {
 
 
 pub enum IrcConnectionCommand {
-    RawWrite(String),
+    RawWrite(Vec<u8>),
     AddWatcher(Box<EventWatcher+Send>),
     AddBundler(Box<Bundler+Send>),
 }
 
 impl IrcConnectionCommand {
     pub fn raw_write(string: String) -> IrcConnectionCommand {
-        IrcConnectionCommand::RawWrite(string)
+        IrcConnectionCommand::RawWrite(string.into_bytes())
     }
 }
 
@@ -146,15 +143,15 @@ impl IrcConnection {
         let (command_queue_tx, command_queue_rx) = sync_channel::<IrcConnectionCommand>(0);
         let (event_queue_tx, event_queue_rx) = sync_channel(10);
         
-        let (raw_writer_tx, raw_writer_rx) = sync_channel::<String>(20);
+        let (raw_writer_tx, raw_writer_rx) = sync_channel::<Vec<u8>>(20);
         let (raw_reader_tx, raw_reader_rx) = sync_channel::<String>(20);
 
         TaskBuilder::new().named("core-writer").spawn(proc() {
             let mut writer = LineBufferedWriter::new(writer);
             for message in raw_writer_rx.iter() {
                 let mut message = message.clone();
-                message.push_str("\r\n");
-                assert!(writer.write_str(message.as_slice()).is_ok());
+                message.push_all(b"\r\n");
+                assert!(writer.write(message.as_slice()).is_ok());
             }
             warn!("--!-- core-writer is ending! --!--");
         });
@@ -236,8 +233,12 @@ impl IrcConnection {
         let result_rx = join_watcher.get_monitor();
         let watcher: Box<EventWatcher+Send> = box join_watcher;
         self.command_queue.send(IrcConnectionCommand::AddWatcher(watcher));
-        self.command_queue.send(IrcConnectionCommand::RawWrite(
-            format!("JOIN {}", channel.as_slice())));
+
+        let mut join_msg = Vec::new();
+        join_msg.push_all(b"JOIN ");
+        join_msg.push_all(channel.as_slice().as_bytes());
+
+        self.command_queue.send(IrcConnectionCommand::RawWrite(join_msg));
         result_rx.recv()
     }
 
@@ -246,12 +247,21 @@ impl IrcConnection {
         let result_rx = who_watcher.get_monitor();
         let watcher: Box<EventWatcher+Send> = box who_watcher;
         self.command_queue.send(AddWatcher(watcher));
-        self.command_queue.send(RawWrite(format!("WHO {}", target)));
+
+        let mut who_msg = Vec::new();
+        who_msg.push_all(b"WHO ");
+        who_msg.push_all(target.as_bytes());
+
+        self.command_queue.send(RawWrite(who_msg));
         result_rx.recv()
     }
 
     pub fn write_str(&mut self, content: &str) {
-        self.command_queue.send(RawWrite(String::from_str(content)))
+        self.write_buf(content.as_bytes());
+    }
+
+    pub fn write_buf(&mut self, content: &[u8]) {
+        self.command_queue.send(RawWrite(content.into_cow().into_owned()));
     }
 
     pub fn get_command_queue(&mut self) -> SyncSender<IrcConnectionCommand> {

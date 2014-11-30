@@ -259,7 +259,7 @@ impl IrcParser {
 // more) ASCII space character(s) (0x20).
 
 #[experimental]
-#[deriving(Clone)]
+#[deriving(Clone, Show)]
 pub struct IrcMsg {
 	data: Vec<u8>,
 	prefix: (u32, u32),

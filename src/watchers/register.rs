@@ -1,7 +1,8 @@
 use std::fmt;
 
 use numerics;
-use message::{IrcMessage, IrcProtocolMessage};
+use message::IrcMessage;
+use message_types::server::IncomingMsg;
 use watchers::base::EventWatcher;
 use event::IrcEvent;
 
@@ -14,8 +15,8 @@ pub struct RegisterError {
 
 impl RegisterError {
     pub fn should_pick_new_nickname(&self) -> bool {
-        match *self.message.get_message() {
-            IrcProtocolMessage::Numeric(num, _) => {
+        match *self.message.get_typed_message() {
+            IncomingMsg::Numeric(num, _) => {
                 numerics::ERR_NICKNAMEINUSE == (num as i32)
             },
             _ => false
@@ -107,11 +108,11 @@ impl RegisterEventWatcher {
 
     fn accept_ircmessage(&mut self, message: &IrcMessage) {
         println!("RegisterEventWatcher: RX {}", message);
-        let (interested, err) = match *message.get_message() {
-            IrcProtocolMessage::Numeric(1, _) => {
+        let (interested, err) = match *message.get_typed_message() {
+            IncomingMsg::Numeric(1, _) => {
                 (true, None)
             },
-            IrcProtocolMessage::Numeric(other, _) => {
+            IncomingMsg::Numeric(other, _) => {
                 let res = RegisterErrorType::from_ord_known(other as i32);
                 (res.is_some(), res)
             },

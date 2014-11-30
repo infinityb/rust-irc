@@ -1,4 +1,4 @@
-use parse::IrcMsgNew as IrcMsg;
+use parse::IrcMsg;
 
 
 pub trait FromIrcMsg {
