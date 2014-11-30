@@ -1,5 +1,6 @@
-mod common;
+/// Messages that come from the server
 pub mod server;
-pub mod client;
+
+
 mod traits;
 mod util;

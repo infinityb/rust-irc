@@ -231,12 +231,20 @@ impl IrcParser {
 			parsed.args[i as uint] = parser.args[i as uint];
 		}
 
-		// Carriage return removal
+		// Newline and Carriage return removal
 		let last_idx = (parsed.arg_len - 1) as uint;
+
 		let (arg_start, arg_end) = parsed.args[last_idx];
-		if parsed.data[arg_end as uint - 1] == b'\r' {
-			parsed.args[last_idx] = (arg_start, arg_end - 1) ;
+		if parsed.data[arg_end as uint - 1] == b'\n' {
+			parsed.args[last_idx] = (arg_start, arg_end - 1);
+
+			let (arg_start, arg_end) = parsed.args[last_idx];
+			if parsed.data[arg_end as uint - 1] == b'\r' {
+				parsed.args[last_idx] = (arg_start, arg_end - 1) ;
+			}
 		}
+
+		
 
 		Ok(parsed)
 	}
@@ -251,6 +259,7 @@ impl IrcParser {
 // more) ASCII space character(s) (0x20).
 
 #[experimental]
+#[deriving(Clone)]
 pub struct IrcMsg {
 	data: Vec<u8>,
 	prefix: (u32, u32),
@@ -265,10 +274,10 @@ impl IrcMsg {
 			Ok(parsed) => parsed,
 			Err(err) => return Err(err)
 		};
-		if str::is_utf8(parsed.get_prefix_raw()) {
+		if !str::is_utf8(parsed.get_prefix_raw()) {
 			return Err(ParseError::EncodingError)
 		}
-		if str::is_utf8(parsed.get_command_raw()) {
+		if !str::is_utf8(parsed.get_command_raw()) {
 			return Err(ParseError::EncodingError)
 		}
 		Ok(parsed)
