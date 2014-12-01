@@ -477,7 +477,7 @@ mod benchmarks {
 		b.iter(|| {
 			let vec = as_vec(b":aibi!q@172.17.42.1 KICK #test randomuser :reason");
 			let verified = to_incoming::<Kick>(IrcMsg::new(vec.deref().clone()).ok().unwrap());
-			assert_eq!(verified.get_command(), "KICK")
+			assert_eq!(verified.borrow_inner().get_command(), "KICK")
 		});
 	}
 }
