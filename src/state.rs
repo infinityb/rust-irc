@@ -534,7 +534,7 @@ impl State {
     // 
     fn on_kick(&mut self, kick: &server::Kick) {
         let channel_name = IrcIdentifier::from_str(kick.get_channel());
-        let kicked_user_nick = IrcIdentifier::from_str(kick.get_nicked_nick());
+        let kicked_user_nick = IrcIdentifier::from_str(kick.get_kicked_nick());
 
         let (chan_id, user_id) = match (
             self.channel_map.get(&channel_name),

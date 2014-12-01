@@ -531,14 +531,12 @@ impl_into_incoming_msg!(Part)
 incoming_msg_common!(Part)
 
 impl Part {
-	/// The previous nick of the user
 	pub fn get_nick<'a>(&'a self) -> &'a str {
 		let Part(ref msg) = *self;
 		let prefix = msg.get_prefix_str();
 		prefix[..prefix.find('!').unwrap()]
 	}
 
-	/// The new nick of the user
 	pub fn get_channel<'a>(&'a self) -> &'a str {
 		let Part(ref msg) = *self;
 		unsafe { str::from_utf8_unchecked(&msg[0]) }
@@ -572,15 +570,8 @@ impl_into_incoming_msg!(Mode)
 incoming_msg_common!(Mode)
 
 impl Mode {
-	/// The previous nick of the user
-	pub fn get_nick<'a>(&'a self) -> &'a str {
-		let Mode(ref msg) = *self;
-		let prefix = msg.get_prefix_str();
-		prefix[..prefix.find('!').unwrap()]
-	}
-
-	/// The new nick of the user
-	pub fn get_channel<'a>(&'a self) -> &'a str {
+	/// Target of the MODE command, channel or user
+	pub fn get_target<'a>(&'a self) -> &'a str {
 		let Mode(ref msg) = *self;
 		unsafe { str::from_utf8_unchecked(&msg[0]) }
 	}
@@ -591,7 +582,7 @@ impl FromIrcMsg for Mode {
 		if !msg.get_command().eq_ignore_irc_case("MODE") {
 			return Err(msg);
 		}
-		if msg.len() < 1 {
+		if msg.len() < 2 {
 			warn!("Invalid MODE: Not enough arguments {}", msg.len());
 			return Err(msg);
 		}
@@ -602,6 +593,6 @@ impl FromIrcMsg for Mode {
 		if !str::is_utf8(&msg[0]) {
 			return Err(msg);
 		}
-		unimplemented!();
+		Ok(Mode(msg))
 	}
 }
