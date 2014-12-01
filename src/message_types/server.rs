@@ -149,6 +149,9 @@ impl FromIrcMsg for Join {
 			warn!("Invalid JOIN: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
+		if !str::is_utf8(&msg[0]) {
+			return Err(msg);
+		}
 		Ok(Join(msg))
 	}
 }
@@ -232,6 +235,9 @@ impl FromIrcMsg for Quit {
 		}
 		if msg.len() < 1 {
 			warn!("Invalid QUIT: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !str::is_utf8(&msg[0]) {
 			return Err(msg);
 		}
 		Ok(Quit(msg))
@@ -420,7 +426,7 @@ impl Kick {
 	}
 
 	/// nick of the user being kicked
-	pub fn get_nicked_nick<'a>(&'a self) -> &'a str {
+	pub fn get_kicked_nick<'a>(&'a self) -> &'a str {
 		let Kick(ref msg) = *self;
 		unsafe { str::from_utf8_unchecked(&msg[1]) }
 	}
@@ -456,6 +462,23 @@ impl FromIrcMsg for Kick {
 			return Err(msg);
 		}
 		Ok(Kick(msg))
+	}
+}
+
+#[cfg(test)]
+mod benchmarks {
+	use std::vec::as_vec;
+	use test::Bencher;
+	use parse::IrcMsg;
+	use super::{to_incoming, Kick};
+
+	#[bench]
+	fn bench_kick_parsing(b: &mut Bencher) {
+		b.iter(|| {
+			let vec = as_vec(b":aibi!q@172.17.42.1 KICK #test randomuser :reason");
+			let verified = to_incoming::<Kick>(IrcMsg::new(vec.deref().clone()).ok().unwrap());
+			assert_eq!(verified.get_command(), "KICK")
+		});
 	}
 }
 
@@ -574,6 +597,9 @@ impl FromIrcMsg for Mode {
 		}
 		if !is_full_prefix(msg.get_prefix_str()) {
 			warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
+			return Err(msg);
+		}
+		if !str::is_utf8(&msg[0]) {
 			return Err(msg);
 		}
 		unimplemented!();
