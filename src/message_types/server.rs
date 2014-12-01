@@ -1,9 +1,11 @@
 use std::str;
+use std::cmp::min;
 
 use parse::is_full_prefix;
 use parse::IrcMsg;
 use irccase::IrcAsciiExt;
 use message_types::traits::FromIrcMsg;
+use message_types::client;
 
 
 pub trait IntoIncomingMsg {
@@ -28,7 +30,7 @@ macro_rules! impl_into_incoming_msg {
     }
 }
 
-macro_rules! incoming_msg_common {
+macro_rules! msg_wrapper_common {
 	($t:ident) => {
 		impl $t {
 			pub fn unwrap(self) -> IrcMsg {
@@ -36,7 +38,11 @@ macro_rules! incoming_msg_common {
 				msg
 			}
 
-			pub fn borrow_inner<'a>(&'a self) -> &'a IrcMsg {
+			pub fn borrow_inner(&self) -> &IrcMsg {
+				self.to_irc_msg()
+			}
+
+			pub fn to_irc_msg<'a>(&'a self) -> &'a IrcMsg {
 				let $t(ref msg) = *self;
 				msg
 			}
@@ -47,14 +53,17 @@ macro_rules! incoming_msg_common {
 #[deriving(Clone, Show)]
 pub enum IncomingMsg {
 	Join(Join),
+	Kick(Kick),
+	Mode(Mode),
+	Nick(Nick),
+	Notice(Notice),
+	Part(Part),
 	Ping(Ping),
 	Privmsg(Privmsg),
 	Quit(Quit),
 	Topic(Topic),
-	Kick(Kick),
-	Nick(Nick),
-	Mode(Mode),
-	Part(Part),
+	
+	// Others
 	Numeric(u16, Numeric),
 	Unknown(IrcMsg),
 }
@@ -63,14 +72,15 @@ impl IncomingMsg {
 	pub fn from_msg(msg: IrcMsg) -> IncomingMsg {
 		match msg.get_command() {
 			"JOIN" => to_incoming::<Join>(msg),
+			"KICK" => to_incoming::<Kick>(msg),
+			"MODE" => to_incoming::<Mode>(msg),
+			"NICK" => to_incoming::<Nick>(msg),
+			"NOTICE" => to_incoming::<Notice>(msg),
+			"PART" => to_incoming::<Part>(msg),
 			"PING" => to_incoming::<Ping>(msg),
 			"PRIVMSG" => to_incoming::<Privmsg>(msg),
 			"QUIT" => to_incoming::<Quit>(msg),
 			"TOPIC" => to_incoming::<Topic>(msg),
-			"KICK" => to_incoming::<Kick>(msg),
-			"NICK" => to_incoming::<Nick>(msg),
-			"MODE" => to_incoming::<Mode>(msg),
-			"PART" => to_incoming::<Part>(msg),
 			_ => match str::from_str::<u16>(msg.get_command()) {
 				Some(_) => to_incoming::<Numeric>(msg),
 				None => IncomingMsg::Unknown(msg)
@@ -85,18 +95,23 @@ impl IncomingMsg {
 		}
 	}
 
-	pub fn borrow_inner<'a>(&'a self) -> &'a IrcMsg {
+	pub fn borrow_inner(&self) -> &IrcMsg {
+		self.to_irc_msg()
+	}
+
+	pub fn to_irc_msg<'a>(&'a self) -> &'a IrcMsg {
 		match *self {
-			IncomingMsg::Join(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Ping(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Privmsg(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Quit(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Topic(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Kick(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Nick(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Mode(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Part(ref msg) => msg.borrow_inner(),
-			IncomingMsg::Numeric(_, ref msg) => msg.borrow_inner(),
+			IncomingMsg::Join(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Kick(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Mode(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Nick(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Notice(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Part(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Ping(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Privmsg(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Quit(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Topic(ref msg) => msg.to_irc_msg(),
+			IncomingMsg::Numeric(_, ref msg) => msg.to_irc_msg(),
 			IncomingMsg::Unknown(ref msg) => msg,
 		}
 	}
@@ -104,14 +119,15 @@ impl IncomingMsg {
 	pub fn unwrap(self) -> IrcMsg {
 		match self {
 			IncomingMsg::Join(msg) => msg.unwrap(),
+			IncomingMsg::Kick(msg) => msg.unwrap(),
+			IncomingMsg::Mode(msg) => msg.unwrap(),
+			IncomingMsg::Nick(msg) => msg.unwrap(),
+			IncomingMsg::Notice(msg) => msg.unwrap(),
+			IncomingMsg::Part(msg) => msg.unwrap(),
 			IncomingMsg::Ping(msg) => msg.unwrap(),
 			IncomingMsg::Privmsg(msg) => msg.unwrap(),
 			IncomingMsg::Quit(msg) => msg.unwrap(),
 			IncomingMsg::Topic(msg) => msg.unwrap(),
-			IncomingMsg::Kick(msg) => msg.unwrap(),
-			IncomingMsg::Nick(msg) => msg.unwrap(),
-			IncomingMsg::Mode(msg) => msg.unwrap(),
-			IncomingMsg::Part(msg) => msg.unwrap(),
 			IncomingMsg::Numeric(_, msg) => msg.unwrap(),
 			IncomingMsg::Unknown(msg) => msg,
 		}
@@ -136,7 +152,7 @@ fn test_incoming() {
 
 #[deriving(Clone, Show)]
 pub struct Join(IrcMsg);
-incoming_msg_common!(Join)
+msg_wrapper_common!(Join)
 impl_into_incoming_msg!(Join)
 
 impl Join {
@@ -194,94 +210,248 @@ fn test_join_basics() {
 
 
 #[deriving(Clone, Show)]
-pub struct Numeric(IrcMsg);
-incoming_msg_common!(Numeric)
+pub struct Kick(IrcMsg);
+impl_into_incoming_msg!(Kick)
+msg_wrapper_common!(Kick)
 
-impl Numeric {
-	pub fn get_code(&self) -> u16 {
-		let Numeric(ref msg) = *self;
-		from_str::<u16>(msg.get_command()).unwrap()
+impl Kick {
+	pub fn get_channel(&self) -> &str {
+		let Kick(ref msg) = *self;
+		unsafe { str::from_utf8_unchecked(&msg[0]) }
+	}
+
+	/// nick of the user being kicked
+	pub fn get_kicked_nick<'a>(&'a self) -> &'a str {
+		let Kick(ref msg) = *self;
+		unsafe { str::from_utf8_unchecked(&msg[1]) }
+	}
+
+	/// nick of the user doing the kicking
+	pub fn get_nick<'a>(&'a self) -> &'a str {
+		let Kick(ref msg) = *self;
+		let prefix = msg.get_prefix_str();
+		prefix[..prefix.find('!').unwrap()]
+	}
+
+	pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {
+		let Kick(ref msg) = *self;
+		&msg[1]
 	}
 }
 
-impl IntoIncomingMsg for Numeric {
-	fn into_incoming_msg(self) -> IncomingMsg {
-		let numeric_num = self.get_code();
-		IncomingMsg::Numeric(numeric_num, self)	
-	}
-}
-
-impl FromIrcMsg for Numeric {
-	fn from_irc_msg(msg: IrcMsg) -> Result<Numeric, IrcMsg>  {
-		match from_str::<u16>(msg.get_command()) {
-			Some(_) => Ok(Numeric(msg)),
-			None => Err(msg)
+impl FromIrcMsg for Kick {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Kick, IrcMsg> {
+		if !msg.get_command().eq_ignore_irc_case("KICK") {
+			return Err(msg);
 		}
+		if msg.len() < 3 {
+			warn!("Invalid KICK: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !is_full_prefix(msg.get_prefix_str()) {
+			warn!("Invalid KICK: Insufficient prefix `{}`", msg.get_prefix_str());
+			return Err(msg);
+		}
+		// msg[0] is channel, msg[1] is kicked nick
+		if !str::is_utf8(&msg[0]) || !str::is_utf8(&msg[1]) {
+			return Err(msg);
+		}
+		Ok(Kick(msg))
 	}
 }
 
 
 #[deriving(Clone, Show)]
-pub struct Quit(IrcMsg);
-impl_into_incoming_msg!(Quit)
-incoming_msg_common!(Quit)
+pub struct Mode(IrcMsg);
+impl_into_incoming_msg!(Mode)
+msg_wrapper_common!(Mode)
 
-impl Quit {
-	pub fn get_nick<'a>(&'a self) -> &'a str {
-		let Quit(ref msg) = *self;
-		let prefix = msg.get_prefix_str();
-		prefix[..prefix.find('!').unwrap()]
-	}
-
-	pub fn get_channel(&self) -> &str {
-		let Quit(ref msg) = *self;
+impl Mode {
+	/// Target of the MODE command, channel or user
+	pub fn get_target<'a>(&'a self) -> &'a str {
+		let Mode(ref msg) = *self;
 		unsafe { str::from_utf8_unchecked(&msg[0]) }
-	}
-
-	pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {
-		let Quit(ref msg) = *self;
-		&msg[1]
 	}
 }
 
-impl FromIrcMsg for Quit {
-	fn from_irc_msg(msg: IrcMsg) -> Result<Quit, IrcMsg> {
-		if !msg.get_command().eq_ignore_irc_case("QUIT") {
+impl FromIrcMsg for Mode {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Mode, IrcMsg> {
+		if !msg.get_command().eq_ignore_irc_case("MODE") {
 			return Err(msg);
 		}
-		if msg.len() < 1 {
-			warn!("Invalid QUIT: Not enough arguments {}", msg.len());
+		if msg.len() < 2 {
+			warn!("Invalid MODE: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !is_full_prefix(msg.get_prefix_str()) {
+			warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
 			return Err(msg);
 		}
 		if !str::is_utf8(&msg[0]) {
 			return Err(msg);
 		}
-		Ok(Quit(msg))
+		Ok(Mode(msg))
 	}
-}
-
-#[test]
-fn test_quit_basics() {
-	let msg = IrcMsg::new(b":person!user@host NOTQUIT :server2".to_vec()).unwrap();
-	let ping: Result<Ping, _> = FromIrcMsg::from_irc_msg(msg);
-	assert!(ping.is_err());
 }
 
 
 #[deriving(Clone, Show)]
+pub struct Nick(IrcMsg);
+impl_into_incoming_msg!(Nick)
+msg_wrapper_common!(Nick)
+
+impl Nick {
+	/// The previous nick of the user
+	pub fn get_nick<'a>(&'a self) -> &'a str {
+		let Nick(ref msg) = *self;
+		let prefix = msg.get_prefix_str();
+		prefix[..prefix.find('!').unwrap()]
+	}
+
+	/// The new nick of the user
+	pub fn get_new_nick<'a>(&'a self) -> &'a str {
+		let Nick(ref msg) = *self;
+		unsafe { str::from_utf8_unchecked(&msg[0]) }
+	}
+}
+
+impl FromIrcMsg for Nick {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Nick, IrcMsg> {
+		if !msg.get_command().eq_ignore_irc_case("NICK") {
+			return Err(msg);
+		}
+		if msg.len() < 1 {
+			warn!("Invalid NICK: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !is_full_prefix(msg.get_prefix_str()) {
+			warn!("Invalid NICK: Insufficient prefix `{}`", msg.get_prefix_str());
+			return Err(msg);
+		}
+		// msg[0] is channel, msg[1] is kicked nick
+		if !str::is_utf8(&msg[0]) || !str::is_utf8(&msg[1]) {
+			return Err(msg);
+		}
+		Ok(Nick(msg))
+	}
+}
+
+
+#[deriving(Clone, Show)]
+pub struct Notice(IrcMsg);
+impl_into_incoming_msg!(Notice)
+msg_wrapper_common!(Notice)
+
+impl Notice {
+	/// Target of the MODE command, channel or user
+	pub fn get_target<'a>(&'a self) -> &'a str {
+		let Notice(ref msg) = *self;
+		unsafe { str::from_utf8_unchecked(&msg[0]) }
+	}
+}
+
+impl FromIrcMsg for Notice {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Notice, IrcMsg> {
+		if !msg.get_command().eq_ignore_irc_case("MODE") {
+			return Err(msg);
+		}
+		if msg.len() < 2 {
+			warn!("Invalid MODE: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !is_full_prefix(msg.get_prefix_str()) {
+			warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
+			return Err(msg);
+		}
+		if !str::is_utf8(&msg[0]) {
+			return Err(msg);
+		}
+		Ok(Notice(msg))
+	}
+}
+
+#[cfg(test)]
+mod benchmarks {
+	use std::vec::as_vec;
+	use test::Bencher;
+	use parse::IrcMsg;
+	use super::{to_incoming, Kick};
+
+	#[bench]
+	fn bench_kick_parsing(b: &mut Bencher) {
+		b.iter(|| {
+			let vec = as_vec(b":aibi!q@172.17.42.1 KICK #test randomuser :reason");
+			let verified = to_incoming::<Kick>(IrcMsg::new(vec.deref().clone()).ok().unwrap());
+			assert_eq!(verified.borrow_inner().get_command(), "KICK")
+		});
+	}
+}
+
+
+#[deriving(Clone, Show)]
+pub struct Part(IrcMsg);
+impl_into_incoming_msg!(Part)
+msg_wrapper_common!(Part)
+
+impl Part {
+	pub fn get_nick<'a>(&'a self) -> &'a str {
+		let Part(ref msg) = *self;
+		let prefix = msg.get_prefix_str();
+		prefix[..prefix.find('!').unwrap()]
+	}
+
+	pub fn get_channel<'a>(&'a self) -> &'a str {
+		let Part(ref msg) = *self;
+		unsafe { str::from_utf8_unchecked(&msg[0]) }
+	}
+}
+
+impl FromIrcMsg for Part {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Part, IrcMsg> {
+		if !msg.get_command().eq_ignore_irc_case("PART") {
+			return Err(msg);
+		}
+		if msg.len() < 1 {
+			warn!("Invalid PART: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !is_full_prefix(msg.get_prefix_str()) {
+			warn!("Invalid PART: Insufficient prefix `{}`", msg.get_prefix_str());
+			return Err(msg);
+		}
+		if !str::is_utf8(&msg[0]) {
+			return Err(msg);
+		}
+		Ok(Part(msg))
+	}
+}
+
+#[deriving(Clone, Show)]
 pub struct Ping(IrcMsg);
 impl_into_incoming_msg!(Ping)
-incoming_msg_common!(Ping)
+msg_wrapper_common!(Ping)
 
 impl Ping {
-	pub fn get_response(&self) -> Vec<u8> {
+	pub fn get_server1(&self) -> &str {
 		let Ping(ref msg) = *self;
-		let mut response = Vec::new();
-		response.push_all(b"PONG ");
-		for args in msg.get_args().into_iter() {
-			response.push_all(args);
+		unsafe { str::from_utf8_unchecked(&msg[0]) }
+	}
+
+	pub fn get_server2(&self) -> Option<&str> {
+		let Ping(ref msg) = *self;
+		if msg.len() > 1 {
+			unsafe { Some(str::from_utf8_unchecked(&msg[1])) }
+		} else {
+			None
 		}
-		response
+	}
+
+	pub fn get_response(&self) -> Result<client::Pong, ()> {
+		let Ping(ref msg) = *self;
+		match msg.len() {
+			1 => Ok(client::Pong::new(self.get_server1())),
+			_ => Err(())
+		}
 	}
 }
 
@@ -293,6 +463,11 @@ impl FromIrcMsg for Ping {
 		if msg.len() < 1 {
 			warn!("Invalid PING: Not enough arguments {}", msg.len());
 			return Err(msg);
+		}
+		for idx in range(0, min(2, msg.len())) {
+			if !str::is_utf8(&msg[idx]) {
+				return Err(msg);
+			}
 		}
 		Ok(Ping(msg))
 	}
@@ -311,10 +486,10 @@ fn test_ping_basics() {
 #[deriving(Clone, Show)]
 pub struct Privmsg(IrcMsg);
 impl_into_incoming_msg!(Privmsg)
-incoming_msg_common!(Privmsg)
+msg_wrapper_common!(Privmsg)
 
 impl Privmsg {
-	pub fn get_channel(&self) -> &str {
+	pub fn get_target(&self) -> &str {
 		let Privmsg(ref msg) = *self;
 		unsafe { str::from_utf8_unchecked(&msg[0]) }
 	}
@@ -384,11 +559,56 @@ fn test_privmsg_basics() {
 	}
 }
 
+#[deriving(Clone, Show)]
+pub struct Quit(IrcMsg);
+impl_into_incoming_msg!(Quit)
+msg_wrapper_common!(Quit)
+
+impl Quit {
+	pub fn get_nick<'a>(&'a self) -> &'a str {
+		let Quit(ref msg) = *self;
+		let prefix = msg.get_prefix_str();
+		prefix[..prefix.find('!').unwrap()]
+	}
+
+	pub fn get_channel(&self) -> &str {
+		let Quit(ref msg) = *self;
+		unsafe { str::from_utf8_unchecked(&msg[0]) }
+	}
+
+	pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {
+		let Quit(ref msg) = *self;
+		&msg[1]
+	}
+}
+
+impl FromIrcMsg for Quit {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Quit, IrcMsg> {
+		if !msg.get_command().eq_ignore_irc_case("QUIT") {
+			return Err(msg);
+		}
+		if msg.len() < 1 {
+			warn!("Invalid QUIT: Not enough arguments {}", msg.len());
+			return Err(msg);
+		}
+		if !str::is_utf8(&msg[0]) {
+			return Err(msg);
+		}
+		Ok(Quit(msg))
+	}
+}
+
+#[test]
+fn test_quit_basics() {
+	let msg = IrcMsg::new(b":person!user@host NOTQUIT :server2".to_vec()).unwrap();
+	let ping: Result<Ping, _> = FromIrcMsg::from_irc_msg(msg);
+	assert!(ping.is_err());
+}
 
 #[deriving(Clone, Show)]
 pub struct Topic(IrcMsg);
 impl_into_incoming_msg!(Topic)
-incoming_msg_common!(Topic)
+msg_wrapper_common!(Topic)
 
 impl Topic {
 	pub fn get_channel(&self) -> &str {
@@ -428,187 +648,29 @@ impl FromIrcMsg for Topic {
 	}
 }
 
-
 #[deriving(Clone, Show)]
-pub struct Kick(IrcMsg);
-impl_into_incoming_msg!(Kick)
-incoming_msg_common!(Kick)
+pub struct Numeric(IrcMsg);
+msg_wrapper_common!(Numeric)
 
-
-impl Kick {
-	pub fn get_channel(&self) -> &str {
-		let Kick(ref msg) = *self;
-		unsafe { str::from_utf8_unchecked(&msg[0]) }
-	}
-
-	/// nick of the user being kicked
-	pub fn get_kicked_nick<'a>(&'a self) -> &'a str {
-		let Kick(ref msg) = *self;
-		unsafe { str::from_utf8_unchecked(&msg[1]) }
-	}
-
-	/// nick of the user doing the kicking
-	pub fn get_nick<'a>(&'a self) -> &'a str {
-		let Kick(ref msg) = *self;
-		let prefix = msg.get_prefix_str();
-		prefix[..prefix.find('!').unwrap()]
-	}
-
-	pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {
-		let Kick(ref msg) = *self;
-		&msg[1]
+impl Numeric {
+	pub fn get_code(&self) -> u16 {
+		let Numeric(ref msg) = *self;
+		from_str::<u16>(msg.get_command()).unwrap()
 	}
 }
 
-impl FromIrcMsg for Kick {
-	fn from_irc_msg(msg: IrcMsg) -> Result<Kick, IrcMsg> {
-		if !msg.get_command().eq_ignore_irc_case("KICK") {
-			return Err(msg);
-		}
-		if msg.len() < 3 {
-			warn!("Invalid KICK: Not enough arguments {}", msg.len());
-			return Err(msg);
-		}
-		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid KICK: Insufficient prefix `{}`", msg.get_prefix_str());
-			return Err(msg);
-		}
-		// msg[0] is channel, msg[1] is kicked nick
-		if !str::is_utf8(&msg[0]) || !str::is_utf8(&msg[1]) {
-			return Err(msg);
-		}
-		Ok(Kick(msg))
+impl IntoIncomingMsg for Numeric {
+	fn into_incoming_msg(self) -> IncomingMsg {
+		let numeric_num = self.get_code();
+		IncomingMsg::Numeric(numeric_num, self)	
 	}
 }
 
-#[cfg(test)]
-mod benchmarks {
-	use std::vec::as_vec;
-	use test::Bencher;
-	use parse::IrcMsg;
-	use super::{to_incoming, Kick};
-
-	#[bench]
-	fn bench_kick_parsing(b: &mut Bencher) {
-		b.iter(|| {
-			let vec = as_vec(b":aibi!q@172.17.42.1 KICK #test randomuser :reason");
-			let verified = to_incoming::<Kick>(IrcMsg::new(vec.deref().clone()).ok().unwrap());
-			assert_eq!(verified.borrow_inner().get_command(), "KICK")
-		});
-	}
-}
-
-
-#[deriving(Clone, Show)]
-pub struct Nick(IrcMsg);
-impl_into_incoming_msg!(Nick)
-incoming_msg_common!(Nick)
-
-impl Nick {
-	/// The previous nick of the user
-	pub fn get_nick<'a>(&'a self) -> &'a str {
-		let Nick(ref msg) = *self;
-		let prefix = msg.get_prefix_str();
-		prefix[..prefix.find('!').unwrap()]
-	}
-
-	/// The new nick of the user
-	pub fn get_new_nick<'a>(&'a self) -> &'a str {
-		let Nick(ref msg) = *self;
-		unsafe { str::from_utf8_unchecked(&msg[0]) }
-	}
-}
-
-impl FromIrcMsg for Nick {
-	fn from_irc_msg(msg: IrcMsg) -> Result<Nick, IrcMsg> {
-		if !msg.get_command().eq_ignore_irc_case("NICK") {
-			return Err(msg);
+impl FromIrcMsg for Numeric {
+	fn from_irc_msg(msg: IrcMsg) -> Result<Numeric, IrcMsg>  {
+		match from_str::<u16>(msg.get_command()) {
+			Some(_) => Ok(Numeric(msg)),
+			None => Err(msg)
 		}
-		if msg.len() < 1 {
-			warn!("Invalid NICK: Not enough arguments {}", msg.len());
-			return Err(msg);
-		}
-		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid NICK: Insufficient prefix `{}`", msg.get_prefix_str());
-			return Err(msg);
-		}
-		// msg[0] is channel, msg[1] is kicked nick
-		if !str::is_utf8(&msg[0]) || !str::is_utf8(&msg[1]) {
-			return Err(msg);
-		}
-		Ok(Nick(msg))
-	}
-}
-
-
-#[deriving(Clone, Show)]
-pub struct Part(IrcMsg);
-impl_into_incoming_msg!(Part)
-incoming_msg_common!(Part)
-
-impl Part {
-	pub fn get_nick<'a>(&'a self) -> &'a str {
-		let Part(ref msg) = *self;
-		let prefix = msg.get_prefix_str();
-		prefix[..prefix.find('!').unwrap()]
-	}
-
-	pub fn get_channel<'a>(&'a self) -> &'a str {
-		let Part(ref msg) = *self;
-		unsafe { str::from_utf8_unchecked(&msg[0]) }
-	}
-}
-
-impl FromIrcMsg for Part {
-	fn from_irc_msg(msg: IrcMsg) -> Result<Part, IrcMsg> {
-		if !msg.get_command().eq_ignore_irc_case("PART") {
-			return Err(msg);
-		}
-		if msg.len() < 1 {
-			warn!("Invalid PART: Not enough arguments {}", msg.len());
-			return Err(msg);
-		}
-		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid PART: Insufficient prefix `{}`", msg.get_prefix_str());
-			return Err(msg);
-		}
-		if !str::is_utf8(&msg[0]) {
-			return Err(msg);
-		}
-		Ok(Part(msg))
-	}
-}
-
-
-#[deriving(Clone, Show)]
-pub struct Mode(IrcMsg);
-impl_into_incoming_msg!(Mode)
-incoming_msg_common!(Mode)
-
-impl Mode {
-	/// Target of the MODE command, channel or user
-	pub fn get_target<'a>(&'a self) -> &'a str {
-		let Mode(ref msg) = *self;
-		unsafe { str::from_utf8_unchecked(&msg[0]) }
-	}
-}
-
-impl FromIrcMsg for Mode {
-	fn from_irc_msg(msg: IrcMsg) -> Result<Mode, IrcMsg> {
-		if !msg.get_command().eq_ignore_irc_case("MODE") {
-			return Err(msg);
-		}
-		if msg.len() < 2 {
-			warn!("Invalid MODE: Not enough arguments {}", msg.len());
-			return Err(msg);
-		}
-		if !is_full_prefix(msg.get_prefix_str()) {
-			warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
-			return Err(msg);
-		}
-		if !str::is_utf8(&msg[0]) {
-			return Err(msg);
-		}
-		Ok(Mode(msg))
 	}
 }

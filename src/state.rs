@@ -46,7 +46,7 @@ macro_rules! deref_opt_or_return(
     );
 )
 
-#[deriving(Clone, Show)]
+#[deriving(Clone, Show, PartialEq, Eq, Hash)]
 pub enum MessageEndpoint {
     KnownUser(UserId),
     KnownChannel(ChannelId),
@@ -61,11 +61,19 @@ pub struct UserId(u64);
 mod irc_identifier {
     use irccase::IrcAsciiExt;
 
+    fn channel_deprefix(target: &str) -> &str {
+        match target.find('#') {
+            Some(idx) => target[idx..],
+            None => target
+        }
+    }
+
     #[deriving(Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
     pub struct IrcIdentifier(String);
 
     impl IrcIdentifier {
-        pub fn from_str(val: &str) -> IrcIdentifier {
+        pub fn from_str(mut val: &str) -> IrcIdentifier {
+            val = channel_deprefix(val);
             IrcIdentifier(val.to_irc_lower())
         }
 

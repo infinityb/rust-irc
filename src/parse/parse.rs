@@ -323,14 +323,18 @@ impl IrcMsg {
 		self.arg_len as uint
 	}
 
-	pub fn unwrap(self) -> Vec<u8> {
+	pub fn into_bytes(self) -> Vec<u8> {
 		self.data
+	}
+
+	pub fn as_bytes(&self) -> &[u8] {
+		self.data.as_slice()
 	}
 }
 
-impl Index<u32, [u8]> for IrcMsg {
-	fn index<'a>(&'a self, index: &u32) -> &'a [u8] {
-		let (arg_start, arg_end) = self.args[*index as uint];
+impl Index<uint, [u8]> for IrcMsg {
+	fn index<'a>(&'a self, index: &uint) -> &'a [u8] {
+		let (arg_start, arg_end) = self.args[*index];
 		self.data[arg_start as uint..arg_end as uint]
 	}
 }

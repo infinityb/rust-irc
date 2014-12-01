@@ -73,7 +73,9 @@ impl IrcConnectionInternalState {
 
     fn dispatch(&mut self, message: IrcMessage, raw_sender: &SyncSender<Vec<u8>>) {
         if let server::IncomingMsg::Ping(ref msg) = *message.get_typed_message() {
-            raw_sender.send(msg.get_response());
+            if let Ok(response) = msg.get_response() {
+                raw_sender.send(response.into_bytes());
+            }
         }
 
         if message.command() == "001" {
@@ -121,8 +123,8 @@ pub enum IrcConnectionCommand {
 }
 
 impl IrcConnectionCommand {
-    pub fn raw_write(string: String) -> IrcConnectionCommand {
-        IrcConnectionCommand::RawWrite(string.into_bytes())
+    pub fn raw_write(message: Vec<u8>) -> IrcConnectionCommand {
+        IrcConnectionCommand::RawWrite(message)
     }
 }
 

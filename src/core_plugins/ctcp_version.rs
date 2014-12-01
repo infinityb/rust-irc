@@ -1,12 +1,11 @@
-use std::str::{MaybeOwned, IntoMaybeOwned};
+use std::str::CowString;
 
+use parse::IrcMsg;
 use message::IrcMessage;
 use core_plugins::traits::MessageResponder;
-
+use message_types::{client, server};
 
 static VERSION: &'static str = "rust-irc v0.1.0 https://github.com/infinityb/rust-irc";
-
-type OwnedOrStatic = MaybeOwned<'static>;
 
 
 /// Responds to CTCP Version requests
@@ -23,15 +22,23 @@ impl CtcpVersionResponder {
         }
     }
 
-    fn get_version(&self) -> OwnedOrStatic {
+    pub fn set_include_rust_irc(&mut self, value: bool) {
+        self.include_rust_irc = value;
+    }
+
+    pub fn set_version(&mut self, version: &str) {
+        self.customized = Some(version.to_string());
+    }
+
+    fn get_version(&self) -> CowString {
         match (self.include_rust_irc, &self.customized) {
-            (_, &None) => VERSION.into_maybe_owned(),
+            (_, &None) => VERSION.into_cow(),
             (true, &Some(ref customized)) => {
                 let string = format!("{} ({})", customized[], VERSION);
-                string.into_maybe_owned()
+                string.into_cow()
             },
             (false, &Some(ref customized)) => {
-               customized.clone().into_maybe_owned()
+               customized.clone().into_cow()
             }
         }
     }
@@ -39,18 +46,15 @@ impl CtcpVersionResponder {
 
 
 impl MessageResponder for CtcpVersionResponder {
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<String> {
+    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMsg> {
         let mut out = Vec::new();
-        let args = message.get_args();
-        if message.command() == "PRIVMSG" && args.len() >= 2 {
-            match (args[1], message.source_nick()) {
-                ("\x01VERSION\x01", Some(source_nick)) => {
-                    let body = format!(
-                        "\x01VERSION {}\x01",
-                        self.get_version().as_slice());
-                    out.push(format!("PRIVMSG {} :{}", source_nick[], body[]));
-                },
-                _ => ()
+        if let server::IncomingMsg::Privmsg(ref msg) = *message.get_typed_message() {
+            if msg.get_body_raw() == b"\x01VERSION\x01" {
+                let mut vec = Vec::new();
+                vec.push_all(b"VERSION ");
+                vec.push_all(self.get_version().as_bytes());
+                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), vec.as_slice());
+                out.push(privmsg.into_irc_msg());
             }
         }
         out
