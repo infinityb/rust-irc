@@ -47,11 +47,11 @@
 <span id='5'>5</span>
 <span id='6'>6</span>
 </pre><pre class='rust '>
-<span class='kw'>use</span> <span class='ident'>parse</span>::<span class='ident'>IrcMsgNew</span> <span class='kw'>as</span> <span class='ident'>IrcMsg</span>;
+<span class='kw'>use</span> <span class='ident'>parse</span>::<span class='ident'>IrcMsg</span>;
 
 
 <span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>FromIrcMsg</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>Self</span><span class='op'>&gt;</span>;
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Self</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span>;
 }
 </pre>
 </section>
