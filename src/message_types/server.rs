@@ -100,6 +100,22 @@ impl IncomingMsg {
 			IncomingMsg::Unknown(ref msg) => msg,
 		}
 	}
+
+	pub fn unwrap(self) -> IrcMsg {
+		match self {
+			IncomingMsg::Join(msg) => msg.unwrap(),
+			IncomingMsg::Ping(msg) => msg.unwrap(),
+			IncomingMsg::Privmsg(msg) => msg.unwrap(),
+			IncomingMsg::Quit(msg) => msg.unwrap(),
+			IncomingMsg::Topic(msg) => msg.unwrap(),
+			IncomingMsg::Kick(msg) => msg.unwrap(),
+			IncomingMsg::Nick(msg) => msg.unwrap(),
+			IncomingMsg::Mode(msg) => msg.unwrap(),
+			IncomingMsg::Part(msg) => msg.unwrap(),
+			IncomingMsg::Numeric(_, msg) => msg.unwrap(),
+			IncomingMsg::Unknown(msg) => msg,
+		}
+	}
 }
 
 #[test]
