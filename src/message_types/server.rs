@@ -554,7 +554,7 @@ fn test_privmsg_basics() {
 		let msg = IrcMsg::new(raw_owned).unwrap();
 		let priv_msg: Privmsg = FromIrcMsg::from_irc_msg(msg).ok().unwrap();
 		assert_eq!(priv_msg.get_nick(), nick);
-		assert_eq!(priv_msg.get_channel(), channel);
+		assert_eq!(priv_msg.get_target(), channel);
 		assert_eq!(priv_msg.get_body_raw(), body);
 	}
 }
