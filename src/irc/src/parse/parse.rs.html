@@ -542,6 +542,10 @@
 <span id='500'>500</span>
 <span id='501'>501</span>
 <span id='502'>502</span>
+<span id='503'>503</span>
+<span id='504'>504</span>
+<span id='505'>505</span>
+<span id='506'>506</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>str</span>::{<span class='kw'>mod</span>, <span class='ident'>MaybeOwned</span>, <span class='ident'>IntoMaybeOwned</span>};
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>fmt</span>;
@@ -868,14 +872,18 @@
 		<span class='self'>self</span>.<span class='ident'>arg_len</span> <span class='kw'>as</span> <span class='ident'>uint</span>
 	}
 
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>unwrap</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>into_bytes</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span> {
 		<span class='self'>self</span>.<span class='ident'>data</span>
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>as_bytes</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>] {
+		<span class='self'>self</span>.<span class='ident'>data</span>.<span class='ident'>as_slice</span>()
 	}
 }
 
-<span class='kw'>impl</span> <span class='ident'>Index</span><span class='op'>&lt;</span><span class='ident'>u32</span>, [<span class='ident'>u8</span>]<span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>IrcMsg</span> {
-	<span class='kw'>fn</span> <span class='ident'>index</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>, <span class='ident'>index</span>: <span class='kw-2'>&amp;</span><span class='ident'>u32</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> [<span class='ident'>u8</span>] {
-		<span class='kw'>let</span> (<span class='ident'>arg_start</span>, <span class='ident'>arg_end</span>) <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>args</span>[<span class='op'>*</span><span class='ident'>index</span> <span class='kw'>as</span> <span class='ident'>uint</span>];
+<span class='kw'>impl</span> <span class='ident'>Index</span><span class='op'>&lt;</span><span class='ident'>uint</span>, [<span class='ident'>u8</span>]<span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>IrcMsg</span> {
+	<span class='kw'>fn</span> <span class='ident'>index</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>, <span class='ident'>index</span>: <span class='kw-2'>&amp;</span><span class='ident'>uint</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> [<span class='ident'>u8</span>] {
+		<span class='kw'>let</span> (<span class='ident'>arg_start</span>, <span class='ident'>arg_end</span>) <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>args</span>[<span class='op'>*</span><span class='ident'>index</span>];
 		<span class='self'>self</span>.<span class='ident'>data</span>[<span class='ident'>arg_start</span> <span class='kw'>as</span> <span class='ident'>uint</span>..<span class='ident'>arg_end</span> <span class='kw'>as</span> <span class='ident'>uint</span>]
 	}
 }

@@ -621,13 +621,110 @@
 <span id='579'>579</span>
 <span id='580'>580</span>
 <span id='581'>581</span>
+<span id='582'>582</span>
+<span id='583'>583</span>
+<span id='584'>584</span>
+<span id='585'>585</span>
+<span id='586'>586</span>
+<span id='587'>587</span>
+<span id='588'>588</span>
+<span id='589'>589</span>
+<span id='590'>590</span>
+<span id='591'>591</span>
+<span id='592'>592</span>
+<span id='593'>593</span>
+<span id='594'>594</span>
+<span id='595'>595</span>
+<span id='596'>596</span>
+<span id='597'>597</span>
+<span id='598'>598</span>
+<span id='599'>599</span>
+<span id='600'>600</span>
+<span id='601'>601</span>
+<span id='602'>602</span>
+<span id='603'>603</span>
+<span id='604'>604</span>
+<span id='605'>605</span>
+<span id='606'>606</span>
+<span id='607'>607</span>
+<span id='608'>608</span>
+<span id='609'>609</span>
+<span id='610'>610</span>
+<span id='611'>611</span>
+<span id='612'>612</span>
+<span id='613'>613</span>
+<span id='614'>614</span>
+<span id='615'>615</span>
+<span id='616'>616</span>
+<span id='617'>617</span>
+<span id='618'>618</span>
+<span id='619'>619</span>
+<span id='620'>620</span>
+<span id='621'>621</span>
+<span id='622'>622</span>
+<span id='623'>623</span>
+<span id='624'>624</span>
+<span id='625'>625</span>
+<span id='626'>626</span>
+<span id='627'>627</span>
+<span id='628'>628</span>
+<span id='629'>629</span>
+<span id='630'>630</span>
+<span id='631'>631</span>
+<span id='632'>632</span>
+<span id='633'>633</span>
+<span id='634'>634</span>
+<span id='635'>635</span>
+<span id='636'>636</span>
+<span id='637'>637</span>
+<span id='638'>638</span>
+<span id='639'>639</span>
+<span id='640'>640</span>
+<span id='641'>641</span>
+<span id='642'>642</span>
+<span id='643'>643</span>
+<span id='644'>644</span>
+<span id='645'>645</span>
+<span id='646'>646</span>
+<span id='647'>647</span>
+<span id='648'>648</span>
+<span id='649'>649</span>
+<span id='650'>650</span>
+<span id='651'>651</span>
+<span id='652'>652</span>
+<span id='653'>653</span>
+<span id='654'>654</span>
+<span id='655'>655</span>
+<span id='656'>656</span>
+<span id='657'>657</span>
+<span id='658'>658</span>
+<span id='659'>659</span>
+<span id='660'>660</span>
+<span id='661'>661</span>
+<span id='662'>662</span>
+<span id='663'>663</span>
+<span id='664'>664</span>
+<span id='665'>665</span>
+<span id='666'>666</span>
+<span id='667'>667</span>
+<span id='668'>668</span>
+<span id='669'>669</span>
+<span id='670'>670</span>
+<span id='671'>671</span>
+<span id='672'>672</span>
+<span id='673'>673</span>
+<span id='674'>674</span>
+<span id='675'>675</span>
+<span id='676'>676</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>str</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>cmp</span>::<span class='ident'>min</span>;
 
 <span class='kw'>use</span> <span class='ident'>parse</span>::<span class='ident'>is_full_prefix</span>;
 <span class='kw'>use</span> <span class='ident'>parse</span>::<span class='ident'>IrcMsg</span>;
 <span class='kw'>use</span> <span class='ident'>irccase</span>::<span class='ident'>IrcAsciiExt</span>;
 <span class='kw'>use</span> <span class='ident'>message_types</span>::<span class='ident'>traits</span>::<span class='ident'>FromIrcMsg</span>;
+<span class='kw'>use</span> <span class='ident'>message_types</span>::<span class='ident'>client</span>;
 
 
 <span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>IntoIncomingMsg</span> {
@@ -652,7 +749,7 @@
     }
 }
 
-<span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>incoming_msg_common</span> {
+<span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>msg_wrapper_common</span> {
 	(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>t</span>:<span class='ident'>ident</span>) <span class='op'>=&gt;</span> {
 		<span class='kw'>impl</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>t</span> {
 			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>unwrap</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IrcMsg</span> {
@@ -660,7 +757,11 @@
 				<span class='ident'>msg</span>
 			}
 
-			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>borrow_inner</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>IrcMsg</span> {
+			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>borrow_inner</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>IrcMsg</span> {
+				<span class='self'>self</span>.<span class='ident'>to_irc_msg</span>()
+			}
+
+			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>to_irc_msg</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>IrcMsg</span> {
 				<span class='kw'>let</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>t</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
 				<span class='ident'>msg</span>
 			}
@@ -671,14 +772,17 @@
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>IncomingMsg</span> {
 	<span class='ident'>Join</span>(<span class='ident'>Join</span>),
+	<span class='ident'>Kick</span>(<span class='ident'>Kick</span>),
+	<span class='ident'>Mode</span>(<span class='ident'>Mode</span>),
+	<span class='ident'>Nick</span>(<span class='ident'>Nick</span>),
+	<span class='ident'>Notice</span>(<span class='ident'>Notice</span>),
+	<span class='ident'>Part</span>(<span class='ident'>Part</span>),
 	<span class='ident'>Ping</span>(<span class='ident'>Ping</span>),
 	<span class='ident'>Privmsg</span>(<span class='ident'>Privmsg</span>),
 	<span class='ident'>Quit</span>(<span class='ident'>Quit</span>),
 	<span class='ident'>Topic</span>(<span class='ident'>Topic</span>),
-	<span class='ident'>Kick</span>(<span class='ident'>Kick</span>),
-	<span class='ident'>Nick</span>(<span class='ident'>Nick</span>),
-	<span class='ident'>Mode</span>(<span class='ident'>Mode</span>),
-	<span class='ident'>Part</span>(<span class='ident'>Part</span>),
+	
+	<span class='comment'>// Others</span>
 	<span class='ident'>Numeric</span>(<span class='ident'>u16</span>, <span class='ident'>Numeric</span>),
 	<span class='ident'>Unknown</span>(<span class='ident'>IrcMsg</span>),
 }
@@ -687,14 +791,15 @@
 	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>from_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='ident'>IncomingMsg</span> {
 		<span class='kw'>match</span> <span class='ident'>msg</span>.<span class='ident'>get_command</span>() {
 			<span class='string'>&quot;JOIN&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Join</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
+			<span class='string'>&quot;KICK&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Kick</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
+			<span class='string'>&quot;MODE&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Mode</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
+			<span class='string'>&quot;NICK&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Nick</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
+			<span class='string'>&quot;NOTICE&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Notice</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
+			<span class='string'>&quot;PART&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Part</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
 			<span class='string'>&quot;PING&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Ping</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
 			<span class='string'>&quot;PRIVMSG&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Privmsg</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
 			<span class='string'>&quot;QUIT&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Quit</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
 			<span class='string'>&quot;TOPIC&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Topic</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
-			<span class='string'>&quot;KICK&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Kick</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
-			<span class='string'>&quot;NICK&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Nick</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
-			<span class='string'>&quot;MODE&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Mode</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
-			<span class='string'>&quot;PART&quot;</span> <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Part</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
 			_ <span class='op'>=&gt;</span> <span class='kw'>match</span> <span class='ident'>str</span>::<span class='ident'>from_str</span>::<span class='op'>&lt;</span><span class='ident'>u16</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>.<span class='ident'>get_command</span>()) {
 				<span class='prelude-val'>Some</span>(_) <span class='op'>=&gt;</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Numeric</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>),
 				<span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='ident'>IncomingMsg</span>::<span class='ident'>Unknown</span>(<span class='ident'>msg</span>)
@@ -709,19 +814,41 @@
 		}
 	}
 
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>borrow_inner</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>IrcMsg</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>borrow_inner</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>IrcMsg</span> {
+		<span class='self'>self</span>.<span class='ident'>to_irc_msg</span>()
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>to_irc_msg</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>IrcMsg</span> {
 		<span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Join</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Ping</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Privmsg</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Topic</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Nick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Mode</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Part</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(_, <span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>borrow_inner</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Join</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Mode</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Nick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Notice</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Part</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Ping</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Privmsg</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Topic</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(_, <span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
 			<span class='ident'>IncomingMsg</span>::<span class='ident'>Unknown</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>,
+		}
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>unwrap</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IrcMsg</span> {
+		<span class='kw'>match</span> <span class='self'>self</span> {
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Join</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Kick</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Mode</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Nick</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Notice</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Part</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Ping</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Privmsg</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Quit</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Topic</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(_, <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Unknown</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>,
 		}
 	}
 }
@@ -744,7 +871,7 @@
 
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Join</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Join</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Join</span>)
 <span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Join</span>)
 
 <span class='kw'>impl</span> <span class='ident'>Join</span> {
@@ -773,6 +900,9 @@
 			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid JOIN: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
 			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
 		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
 		<span class='prelude-val'>Ok</span>(<span class='ident'>Join</span>(<span class='ident'>msg</span>))
 	}
 }
@@ -799,91 +929,248 @@
 
 
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Numeric</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Numeric</span>)
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Kick</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Kick</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Kick</span>)
 
-<span class='kw'>impl</span> <span class='ident'>Numeric</span> {
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_code</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>u16</span> {
-		<span class='kw'>let</span> <span class='ident'>Numeric</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='ident'>from_str</span>::<span class='op'>&lt;</span><span class='ident'>u16</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>.<span class='ident'>get_command</span>()).<span class='ident'>unwrap</span>()
+<span class='kw'>impl</span> <span class='ident'>Kick</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
 	}
-}
 
-<span class='kw'>impl</span> <span class='ident'>IntoIncomingMsg</span> <span class='kw'>for</span> <span class='ident'>Numeric</span> {
-	<span class='kw'>fn</span> <span class='ident'>into_incoming_msg</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IncomingMsg</span> {
-		<span class='kw'>let</span> <span class='ident'>numeric_num</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>get_code</span>();
-		<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(<span class='ident'>numeric_num</span>, <span class='self'>self</span>)	
+	<span class='doccomment'>/// nick of the user being kicked</span>
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_kicked_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]) }
 	}
-}
 
-<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Numeric</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Numeric</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span>  {
-		<span class='kw'>match</span> <span class='ident'>from_str</span>::<span class='op'>&lt;</span><span class='ident'>u16</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>.<span class='ident'>get_command</span>()) {
-			<span class='prelude-val'>Some</span>(_) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>Numeric</span>(<span class='ident'>msg</span>)),
-			<span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>)
-		}
-	}
-}
-
-
-<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Quit</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Quit</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Quit</span>)
-
-<span class='kw'>impl</span> <span class='ident'>Quit</span> {
+	<span class='doccomment'>/// nick of the user doing the kicking</span>
 	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
 		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
 		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
 	}
 
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
-	}
-
 	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_body_raw</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> [<span class='ident'>u8</span>] {
-		<span class='kw'>let</span> <span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
 		<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]
 	}
 }
 
-<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Quit</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Quit</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;QUIT&quot;</span>) {
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Kick</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Kick</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;KICK&quot;</span>) {
 			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
 		}
-		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid QUIT: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>3</span> {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid KICK: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
 			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
 		}
-		<span class='prelude-val'>Ok</span>(<span class='ident'>Quit</span>(<span class='ident'>msg</span>))
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid KICK: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='comment'>// msg[0] is channel, msg[1] is kicked nick</span>
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) <span class='op'>||</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='prelude-val'>Ok</span>(<span class='ident'>Kick</span>(<span class='ident'>msg</span>))
 	}
-}
-
-<span class='attribute'>#[<span class='ident'>test</span>]</span>
-<span class='kw'>fn</span> <span class='ident'>test_quit_basics</span>() {
-	<span class='kw'>let</span> <span class='ident'>msg</span> <span class='op'>=</span> <span class='ident'>IrcMsg</span>::<span class='ident'>new</span>(<span class='string'>b&quot;:person!user@host NOTQUIT :server2&quot;</span>.<span class='ident'>to_vec</span>()).<span class='ident'>unwrap</span>();
-	<span class='kw'>let</span> <span class='ident'>ping</span>: <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Ping</span>, _<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>FromIrcMsg</span>::<span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>);
-	<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>ping</span>.<span class='ident'>is_err</span>());
 }
 
 
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Mode</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Mode</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Mode</span>)
+
+<span class='kw'>impl</span> <span class='ident'>Mode</span> {
+	<span class='doccomment'>/// Target of the MODE command, channel or user</span>
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_target</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Mode</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
+	}
+}
+
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Mode</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Mode</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;MODE&quot;</span>) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>2</span> {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid MODE: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid MODE: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='prelude-val'>Ok</span>(<span class='ident'>Mode</span>(<span class='ident'>msg</span>))
+	}
+}
+
+
+<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Nick</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Nick</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Nick</span>)
+
+<span class='kw'>impl</span> <span class='ident'>Nick</span> {
+	<span class='doccomment'>/// The previous nick of the user</span>
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Nick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
+		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
+	}
+
+	<span class='doccomment'>/// The new nick of the user</span>
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_new_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Nick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
+	}
+}
+
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Nick</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Nick</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;NICK&quot;</span>) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid NICK: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid NICK: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='comment'>// msg[0] is channel, msg[1] is kicked nick</span>
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) <span class='op'>||</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='prelude-val'>Ok</span>(<span class='ident'>Nick</span>(<span class='ident'>msg</span>))
+	}
+}
+
+
+<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Notice</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Notice</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Notice</span>)
+
+<span class='kw'>impl</span> <span class='ident'>Notice</span> {
+	<span class='doccomment'>/// Target of the MODE command, channel or user</span>
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_target</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Notice</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
+	}
+}
+
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Notice</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Notice</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;MODE&quot;</span>) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>2</span> {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid MODE: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid MODE: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='prelude-val'>Ok</span>(<span class='ident'>Notice</span>(<span class='ident'>msg</span>))
+	}
+}
+
+<span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
+<span class='kw'>mod</span> <span class='ident'>benchmarks</span> {
+	<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>vec</span>::<span class='ident'>as_vec</span>;
+	<span class='kw'>use</span> <span class='ident'>test</span>::<span class='ident'>Bencher</span>;
+	<span class='kw'>use</span> <span class='ident'>parse</span>::<span class='ident'>IrcMsg</span>;
+	<span class='kw'>use</span> <span class='ident'>super</span>::{<span class='ident'>to_incoming</span>, <span class='ident'>Kick</span>};
+
+	<span class='attribute'>#[<span class='ident'>bench</span>]</span>
+	<span class='kw'>fn</span> <span class='ident'>bench_kick_parsing</span>(<span class='ident'>b</span>: <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>Bencher</span>) {
+		<span class='ident'>b</span>.<span class='ident'>iter</span>(<span class='op'>||</span> {
+			<span class='kw'>let</span> <span class='ident'>vec</span> <span class='op'>=</span> <span class='ident'>as_vec</span>(<span class='string'>b&quot;:aibi!q@172.17.42.1 KICK #test randomuser :reason&quot;</span>);
+			<span class='kw'>let</span> <span class='ident'>verified</span> <span class='op'>=</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Kick</span><span class='op'>&gt;</span>(<span class='ident'>IrcMsg</span>::<span class='ident'>new</span>(<span class='ident'>vec</span>.<span class='ident'>deref</span>().<span class='ident'>clone</span>()).<span class='ident'>ok</span>().<span class='ident'>unwrap</span>());
+			<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>verified</span>.<span class='ident'>borrow_inner</span>().<span class='ident'>get_command</span>(), <span class='string'>&quot;KICK&quot;</span>)
+		});
+	}
+}
+
+
+<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Part</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Part</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Part</span>)
+
+<span class='kw'>impl</span> <span class='ident'>Part</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Part</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
+		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Part</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
+	}
+}
+
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Part</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Part</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;PART&quot;</span>) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid PART: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid PART: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='prelude-val'>Ok</span>(<span class='ident'>Part</span>(<span class='ident'>msg</span>))
+	}
+}
+
+<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Ping</span>(<span class='ident'>IrcMsg</span>);
 <span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Ping</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Ping</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Ping</span>)
 
 <span class='kw'>impl</span> <span class='ident'>Ping</span> {
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_response</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_server1</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
 		<span class='kw'>let</span> <span class='ident'>Ping</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>response</span> <span class='op'>=</span> <span class='ident'>Vec</span>::<span class='ident'>new</span>();
-		<span class='ident'>response</span>.<span class='ident'>push_all</span>(<span class='string'>b&quot;PONG &quot;</span>);
-		<span class='kw'>for</span> <span class='ident'>args</span> <span class='kw'>in</span> <span class='ident'>msg</span>.<span class='ident'>get_args</span>().<span class='ident'>into_iter</span>() {
-			<span class='ident'>response</span>.<span class='ident'>push_all</span>(<span class='ident'>args</span>);
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_server2</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
+		<span class='kw'>let</span> <span class='ident'>Ping</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&gt;</span> <span class='number'>1</span> {
+			<span class='kw'>unsafe</span> { <span class='prelude-val'>Some</span>(<span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>])) }
+		} <span class='kw'>else</span> {
+			<span class='prelude-val'>None</span>
 		}
-		<span class='ident'>response</span>
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_response</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>client</span>::<span class='ident'>Pong</span>, ()<span class='op'>&gt;</span> {
+		<span class='kw'>let</span> <span class='ident'>Ping</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>match</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() {
+			<span class='number'>1</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>client</span>::<span class='ident'>Pong</span>::<span class='ident'>new</span>(<span class='self'>self</span>.<span class='ident'>get_server1</span>())),
+			_ <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(())
+		}
 	}
 }
 
@@ -895,6 +1182,11 @@
 		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
 			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid PING: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
 			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>for</span> <span class='ident'>idx</span> <span class='kw'>in</span> <span class='ident'>range</span>(<span class='number'>0</span>, <span class='ident'>min</span>(<span class='number'>2</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>())) {
+			<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='ident'>idx</span>]) {
+				<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+			}
 		}
 		<span class='prelude-val'>Ok</span>(<span class='ident'>Ping</span>(<span class='ident'>msg</span>))
 	}
@@ -913,10 +1205,10 @@
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Privmsg</span>(<span class='ident'>IrcMsg</span>);
 <span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Privmsg</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Privmsg</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Privmsg</span>)
 
 <span class='kw'>impl</span> <span class='ident'>Privmsg</span> {
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_target</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
 		<span class='kw'>let</span> <span class='ident'>Privmsg</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
 		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
 	}
@@ -986,11 +1278,56 @@
 	}
 }
 
+<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Quit</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Quit</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Quit</span>)
+
+<span class='kw'>impl</span> <span class='ident'>Quit</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
+		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
+		<span class='kw'>let</span> <span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
+	}
+
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_body_raw</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> [<span class='ident'>u8</span>] {
+		<span class='kw'>let</span> <span class='ident'>Quit</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]
+	}
+}
+
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Quit</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Quit</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;QUIT&quot;</span>) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
+			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid QUIT: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) {
+			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+		}
+		<span class='prelude-val'>Ok</span>(<span class='ident'>Quit</span>(<span class='ident'>msg</span>))
+	}
+}
+
+<span class='attribute'>#[<span class='ident'>test</span>]</span>
+<span class='kw'>fn</span> <span class='ident'>test_quit_basics</span>() {
+	<span class='kw'>let</span> <span class='ident'>msg</span> <span class='op'>=</span> <span class='ident'>IrcMsg</span>::<span class='ident'>new</span>(<span class='string'>b&quot;:person!user@host NOTQUIT :server2&quot;</span>.<span class='ident'>to_vec</span>()).<span class='ident'>unwrap</span>();
+	<span class='kw'>let</span> <span class='ident'>ping</span>: <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Ping</span>, _<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>FromIrcMsg</span>::<span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>);
+	<span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>ping</span>.<span class='ident'>is_err</span>());
+}
 
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
 <span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Topic</span>(<span class='ident'>IrcMsg</span>);
 <span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Topic</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Topic</span>)
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Topic</span>)
 
 <span class='kw'>impl</span> <span class='ident'>Topic</span> {
 	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
@@ -1030,177 +1367,30 @@
 	}
 }
 
-
 <span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Kick</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Kick</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Kick</span>)
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Numeric</span>(<span class='ident'>IrcMsg</span>);
+<span class='macro'>msg_wrapper_common</span><span class='macro'>!</span>(<span class='ident'>Numeric</span>)
 
-
-<span class='kw'>impl</span> <span class='ident'>Kick</span> {
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
-	}
-
-	<span class='doccomment'>/// nick of the user being kicked</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nicked_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]) }
-	}
-
-	<span class='doccomment'>/// nick of the user doing the kicking</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
-		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
-	}
-
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_body_raw</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> [<span class='ident'>u8</span>] {
-		<span class='kw'>let</span> <span class='ident'>Kick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]
+<span class='kw'>impl</span> <span class='ident'>Numeric</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_code</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>u16</span> {
+		<span class='kw'>let</span> <span class='ident'>Numeric</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
+		<span class='ident'>from_str</span>::<span class='op'>&lt;</span><span class='ident'>u16</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>.<span class='ident'>get_command</span>()).<span class='ident'>unwrap</span>()
 	}
 }
 
-<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Kick</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Kick</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;KICK&quot;</span>) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>3</span> {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid KICK: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid KICK: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='comment'>// msg[0] is channel, msg[1] is kicked nick</span>
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) <span class='op'>||</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='prelude-val'>Ok</span>(<span class='ident'>Kick</span>(<span class='ident'>msg</span>))
+<span class='kw'>impl</span> <span class='ident'>IntoIncomingMsg</span> <span class='kw'>for</span> <span class='ident'>Numeric</span> {
+	<span class='kw'>fn</span> <span class='ident'>into_incoming_msg</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IncomingMsg</span> {
+		<span class='kw'>let</span> <span class='ident'>numeric_num</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>get_code</span>();
+		<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(<span class='ident'>numeric_num</span>, <span class='self'>self</span>)	
 	}
 }
 
-
-<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Nick</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Nick</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Nick</span>)
-
-<span class='kw'>impl</span> <span class='ident'>Nick</span> {
-	<span class='doccomment'>/// The previous nick of the user</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Nick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
-		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
-	}
-
-	<span class='doccomment'>/// The new nick of the user</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_new_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Nick</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
-	}
-}
-
-<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Nick</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Nick</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;NICK&quot;</span>) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
+<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Numeric</span> {
+	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Numeric</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span>  {
+		<span class='kw'>match</span> <span class='ident'>from_str</span>::<span class='op'>&lt;</span><span class='ident'>u16</span><span class='op'>&gt;</span>(<span class='ident'>msg</span>.<span class='ident'>get_command</span>()) {
+			<span class='prelude-val'>Some</span>(_) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>Numeric</span>(<span class='ident'>msg</span>)),
+			<span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>)
 		}
-		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid NICK: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid NICK: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='comment'>// msg[0] is channel, msg[1] is kicked nick</span>
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) <span class='op'>||</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>1</span>]) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='prelude-val'>Ok</span>(<span class='ident'>Nick</span>(<span class='ident'>msg</span>))
-	}
-}
-
-
-<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Part</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Part</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Part</span>)
-
-<span class='kw'>impl</span> <span class='ident'>Part</span> {
-	<span class='doccomment'>/// The previous nick of the user</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Part</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
-		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
-	}
-
-	<span class='doccomment'>/// The new nick of the user</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Part</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
-	}
-}
-
-<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Part</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Part</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;PART&quot;</span>) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid PART: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid PART: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>str</span>::<span class='ident'>is_utf8</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='prelude-val'>Ok</span>(<span class='ident'>Part</span>(<span class='ident'>msg</span>))
-	}
-}
-
-
-<span class='attribute'>#[<span class='ident'>deriving</span>(<span class='ident'>Clone</span>, <span class='ident'>Show</span>)]</span>
-<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>Mode</span>(<span class='ident'>IrcMsg</span>);
-<span class='macro'>impl_into_incoming_msg</span><span class='macro'>!</span>(<span class='ident'>Mode</span>)
-<span class='macro'>incoming_msg_common</span><span class='macro'>!</span>(<span class='ident'>Mode</span>)
-
-<span class='kw'>impl</span> <span class='ident'>Mode</span> {
-	<span class='doccomment'>/// The previous nick of the user</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_nick</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Mode</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>let</span> <span class='ident'>prefix</span> <span class='op'>=</span> <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>();
-		<span class='ident'>prefix</span>[..<span class='ident'>prefix</span>.<span class='ident'>find</span>(<span class='string'>&#39;!&#39;</span>).<span class='ident'>unwrap</span>()]
-	}
-
-	<span class='doccomment'>/// The new nick of the user</span>
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>get_channel</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>str</span> {
-		<span class='kw'>let</span> <span class='ident'>Mode</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=</span> <span class='op'>*</span><span class='self'>self</span>;
-		<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='kw-2'>&amp;</span><span class='ident'>msg</span>[<span class='number'>0</span>]) }
-	}
-}
-
-<span class='kw'>impl</span> <span class='ident'>FromIrcMsg</span> <span class='kw'>for</span> <span class='ident'>Mode</span> {
-	<span class='kw'>fn</span> <span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>: <span class='ident'>IrcMsg</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Result</span><span class='op'>&lt;</span><span class='ident'>Mode</span>, <span class='ident'>IrcMsg</span><span class='op'>&gt;</span> {
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>msg</span>.<span class='ident'>get_command</span>().<span class='ident'>eq_ignore_irc_case</span>(<span class='string'>&quot;MODE&quot;</span>) {
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='ident'>msg</span>.<span class='ident'>len</span>() <span class='op'>&lt;</span> <span class='number'>1</span> {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid MODE: Not enough arguments {}&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>len</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='kw'>if</span> <span class='op'>!</span><span class='ident'>is_full_prefix</span>(<span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>()) {
-			<span class='macro'>warn</span><span class='macro'>!</span>(<span class='string'>&quot;Invalid MODE: Insufficient prefix `{}`&quot;</span>, <span class='ident'>msg</span>.<span class='ident'>get_prefix_str</span>());
-			<span class='kw'>return</span> <span class='prelude-val'>Err</span>(<span class='ident'>msg</span>);
-		}
-		<span class='macro'>unimplemented</span><span class='macro'>!</span>();
 	}
 }
 </pre>
