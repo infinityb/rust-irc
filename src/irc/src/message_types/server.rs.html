@@ -708,14 +708,6 @@
 <span id='666'>666</span>
 <span id='667'>667</span>
 <span id='668'>668</span>
-<span id='669'>669</span>
-<span id='670'>670</span>
-<span id='671'>671</span>
-<span id='672'>672</span>
-<span id='673'>673</span>
-<span id='674'>674</span>
-<span id='675'>675</span>
-<span id='676'>676</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>str</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>cmp</span>::<span class='ident'>min</span>;
@@ -752,13 +744,9 @@
 <span class='macro'>macro_rules</span><span class='macro'>!</span> <span class='ident'>msg_wrapper_common</span> {
 	(<span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>t</span>:<span class='ident'>ident</span>) <span class='op'>=&gt;</span> {
 		<span class='kw'>impl</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>t</span> {
-			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>unwrap</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IrcMsg</span> {
+			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>into_irc_msg</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IrcMsg</span> {
 				<span class='kw'>let</span> <span class='macro-nonterminal'>$</span><span class='macro-nonterminal'>t</span>(<span class='ident'>msg</span>) <span class='op'>=</span> <span class='self'>self</span>;
 				<span class='ident'>msg</span>
-			}
-
-			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>borrow_inner</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>IrcMsg</span> {
-				<span class='self'>self</span>.<span class='ident'>to_irc_msg</span>()
 			}
 
 			<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>to_irc_msg</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>IrcMsg</span> {
@@ -814,10 +802,6 @@
 		}
 	}
 
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>borrow_inner</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='ident'>IrcMsg</span> {
-		<span class='self'>self</span>.<span class='ident'>to_irc_msg</span>()
-	}
-
 	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>to_irc_msg</span><span class='op'>&lt;</span><span class='lifetime'>&#39;a</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;a</span> <span class='ident'>IrcMsg</span> {
 		<span class='kw'>match</span> <span class='op'>*</span><span class='self'>self</span> {
 			<span class='ident'>IncomingMsg</span>::<span class='ident'>Join</span>(<span class='kw-2'>ref</span> <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>to_irc_msg</span>(),
@@ -835,19 +819,19 @@
 		}
 	}
 
-	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>unwrap</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IrcMsg</span> {
+	<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>into_irc_msg</span>(<span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>IrcMsg</span> {
 		<span class='kw'>match</span> <span class='self'>self</span> {
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Join</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Kick</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Mode</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Nick</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Notice</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Part</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Ping</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Privmsg</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Quit</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Topic</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
-			<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(_, <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>unwrap</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Join</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Kick</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Mode</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Nick</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Notice</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Part</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Ping</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Privmsg</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Quit</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Topic</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
+			<span class='ident'>IncomingMsg</span>::<span class='ident'>Numeric</span>(_, <span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>.<span class='ident'>into_irc_msg</span>(),
 			<span class='ident'>IncomingMsg</span>::<span class='ident'>Unknown</span>(<span class='ident'>msg</span>) <span class='op'>=&gt;</span> <span class='ident'>msg</span>,
 		}
 	}
@@ -1101,7 +1085,7 @@
 		<span class='ident'>b</span>.<span class='ident'>iter</span>(<span class='op'>||</span> {
 			<span class='kw'>let</span> <span class='ident'>vec</span> <span class='op'>=</span> <span class='ident'>as_vec</span>(<span class='string'>b&quot;:aibi!q@172.17.42.1 KICK #test randomuser :reason&quot;</span>);
 			<span class='kw'>let</span> <span class='ident'>verified</span> <span class='op'>=</span> <span class='ident'>to_incoming</span>::<span class='op'>&lt;</span><span class='ident'>Kick</span><span class='op'>&gt;</span>(<span class='ident'>IrcMsg</span>::<span class='ident'>new</span>(<span class='ident'>vec</span>.<span class='ident'>deref</span>().<span class='ident'>clone</span>()).<span class='ident'>ok</span>().<span class='ident'>unwrap</span>());
-			<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>verified</span>.<span class='ident'>borrow_inner</span>().<span class='ident'>get_command</span>(), <span class='string'>&quot;KICK&quot;</span>)
+			<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>verified</span>.<span class='ident'>to_irc_msg</span>().<span class='ident'>get_command</span>(), <span class='string'>&quot;KICK&quot;</span>)
 		});
 	}
 }
@@ -1273,7 +1257,7 @@
 		<span class='kw'>let</span> <span class='ident'>msg</span> <span class='op'>=</span> <span class='ident'>IrcMsg</span>::<span class='ident'>new</span>(<span class='ident'>raw_owned</span>).<span class='ident'>unwrap</span>();
 		<span class='kw'>let</span> <span class='ident'>priv_msg</span>: <span class='ident'>Privmsg</span> <span class='op'>=</span> <span class='ident'>FromIrcMsg</span>::<span class='ident'>from_irc_msg</span>(<span class='ident'>msg</span>).<span class='ident'>ok</span>().<span class='ident'>unwrap</span>();
 		<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>priv_msg</span>.<span class='ident'>get_nick</span>(), <span class='ident'>nick</span>);
-		<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>priv_msg</span>.<span class='ident'>get_channel</span>(), <span class='ident'>channel</span>);
+		<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>priv_msg</span>.<span class='ident'>get_target</span>(), <span class='ident'>channel</span>);
 		<span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>priv_msg</span>.<span class='ident'>get_body_raw</span>(), <span class='ident'>body</span>);
 	}
 }
