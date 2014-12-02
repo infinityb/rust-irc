@@ -127,7 +127,7 @@ impl IrcMessage {
     }
 
     pub fn get_prefix<'a>(&'a self) -> Option<IrcMsgPrefix<'a>> {
-        let msg = self.get_typed_message().borrow_inner();
+        let msg = self.get_typed_message().to_irc_msg();
         match msg.has_prefix() {    
             true => Some(msg.get_prefix()),
             false => None
@@ -135,7 +135,7 @@ impl IrcMessage {
     }
 
     pub fn get_prefix_raw<'a>(&'a self) -> Option<&'a str> {
-        let msg = self.get_typed_message().borrow_inner();
+        let msg = self.get_typed_message().to_irc_msg();
         match msg.has_prefix() {
             true => Some(msg.get_prefix_str()),
             false => None
@@ -144,13 +144,13 @@ impl IrcMessage {
 
     #[inline]
     pub fn command<'a>(&'a self) -> &'a str {
-        self.get_typed_message().borrow_inner().get_command()
+        self.get_typed_message().to_irc_msg().get_command()
     }
 
     #[inline]
     #[deprecated]
     pub fn get_args<'a>(&'a self) -> Vec<&'a str> {
-        let irc_msg = self.get_typed_message().borrow_inner();
+        let irc_msg = self.get_typed_message().to_irc_msg();
 
         let mut vecout = Vec::new();
         for arg in irc_msg.get_args().into_iter() {
@@ -165,7 +165,7 @@ impl IrcMessage {
     #[inline]
     #[unstable]
     pub fn get_args_checked<'a>(&'a self) -> Option<Vec<&'a str>> {
-        let irc_msg = self.get_typed_message().borrow_inner();
+        let irc_msg = self.get_typed_message().to_irc_msg();
 
         let mut vecout = Vec::new();
         for arg in irc_msg.get_args().into_iter() {

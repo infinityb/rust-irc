@@ -79,7 +79,7 @@ impl IrcConnectionInternalState {
         }
 
         if message.command() == "001" {
-            let msg = message.get_typed_message().borrow_inner();
+            let msg = message.get_typed_message().to_irc_msg();
             self.current_nick = Some(String::from_utf8_lossy(&msg[0]).into_owned());
         }
 

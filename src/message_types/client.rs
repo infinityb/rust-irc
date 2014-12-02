@@ -13,7 +13,7 @@ macro_rules! msg_wrapper_common {
 				msg
 			}
 
-			pub fn borrow_inner<'a>(&'a self) -> &'a IrcMsg {
+			pub fn to_irc_msg<'a>(&'a self) -> &'a IrcMsg {
 				let $t(ref msg) = *self;
 				msg
 			}

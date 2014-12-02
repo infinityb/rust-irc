@@ -33,13 +33,9 @@ macro_rules! impl_into_incoming_msg {
 macro_rules! msg_wrapper_common {
 	($t:ident) => {
 		impl $t {
-			pub fn unwrap(self) -> IrcMsg {
+			pub fn into_irc_msg(self) -> IrcMsg {
 				let $t(msg) = self;
 				msg
-			}
-
-			pub fn borrow_inner(&self) -> &IrcMsg {
-				self.to_irc_msg()
 			}
 
 			pub fn to_irc_msg<'a>(&'a self) -> &'a IrcMsg {
@@ -95,10 +91,6 @@ impl IncomingMsg {
 		}
 	}
 
-	pub fn borrow_inner(&self) -> &IrcMsg {
-		self.to_irc_msg()
-	}
-
 	pub fn to_irc_msg<'a>(&'a self) -> &'a IrcMsg {
 		match *self {
 			IncomingMsg::Join(ref msg) => msg.to_irc_msg(),
@@ -116,19 +108,19 @@ impl IncomingMsg {
 		}
 	}
 
-	pub fn unwrap(self) -> IrcMsg {
+	pub fn into_irc_msg(self) -> IrcMsg {
 		match self {
-			IncomingMsg::Join(msg) => msg.unwrap(),
-			IncomingMsg::Kick(msg) => msg.unwrap(),
-			IncomingMsg::Mode(msg) => msg.unwrap(),
-			IncomingMsg::Nick(msg) => msg.unwrap(),
-			IncomingMsg::Notice(msg) => msg.unwrap(),
-			IncomingMsg::Part(msg) => msg.unwrap(),
-			IncomingMsg::Ping(msg) => msg.unwrap(),
-			IncomingMsg::Privmsg(msg) => msg.unwrap(),
-			IncomingMsg::Quit(msg) => msg.unwrap(),
-			IncomingMsg::Topic(msg) => msg.unwrap(),
-			IncomingMsg::Numeric(_, msg) => msg.unwrap(),
+			IncomingMsg::Join(msg) => msg.into_irc_msg(),
+			IncomingMsg::Kick(msg) => msg.into_irc_msg(),
+			IncomingMsg::Mode(msg) => msg.into_irc_msg(),
+			IncomingMsg::Nick(msg) => msg.into_irc_msg(),
+			IncomingMsg::Notice(msg) => msg.into_irc_msg(),
+			IncomingMsg::Part(msg) => msg.into_irc_msg(),
+			IncomingMsg::Ping(msg) => msg.into_irc_msg(),
+			IncomingMsg::Privmsg(msg) => msg.into_irc_msg(),
+			IncomingMsg::Quit(msg) => msg.into_irc_msg(),
+			IncomingMsg::Topic(msg) => msg.into_irc_msg(),
+			IncomingMsg::Numeric(_, msg) => msg.into_irc_msg(),
 			IncomingMsg::Unknown(msg) => msg,
 		}
 	}
@@ -382,7 +374,7 @@ mod benchmarks {
 		b.iter(|| {
 			let vec = as_vec(b":aibi!q@172.17.42.1 KICK #test randomuser :reason");
 			let verified = to_incoming::<Kick>(IrcMsg::new(vec.deref().clone()).ok().unwrap());
-			assert_eq!(verified.borrow_inner().get_command(), "KICK")
+			assert_eq!(verified.to_irc_msg().get_command(), "KICK")
 		});
 	}
 }

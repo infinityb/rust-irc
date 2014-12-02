@@ -168,7 +168,7 @@ impl Bundler for WhoBundler {
         
         match *message.get_typed_message() {
             IncomingMsg::Numeric(352, ref message2) => {
-                self.add_record(message2.borrow_inner().get_args().as_slice());
+                self.add_record(message2.to_irc_msg().get_args().as_slice());
                 Vec::new()
             },
             IncomingMsg::Numeric(315, ref _message) => {

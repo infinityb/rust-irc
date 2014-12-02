@@ -401,7 +401,7 @@ impl State {
         if is_create {
             let user = User {
                 id: user_id,
-                prefix: join.borrow_inner().get_prefix().to_owned(),
+                prefix: join.to_irc_msg().get_prefix().to_owned(),
                 channels: HashSet::new(),
             };
             self.users.insert(user_id, user);
