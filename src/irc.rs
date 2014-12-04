@@ -1,6 +1,5 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![license = "MIT/ASL2"]
 #![feature(if_let, slicing_syntax, globs, phase, macro_rules)]
 
 #![allow(dead_code, deprecated)]
