@@ -1,8 +1,8 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(if_let, slicing_syntax, globs, phase, macro_rules)]
+#![feature(slicing_syntax, globs, phase, macro_rules)]
 
-#![allow(dead_code, deprecated)]
+#![allow(dead_code, deprecated, missing_copy_implementations)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
 #[cfg(test)] extern crate test;

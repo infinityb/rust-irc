@@ -69,8 +69,7 @@ pub fn is_full_prefix(prefix: &str) -> bool {
     }
 }
 
-
-
+#[deriving(Copy)]
 enum IrcParserState {
     Initial,
     Prefix,

@@ -56,6 +56,7 @@ pub struct JoinError {
     pub message: String
 }
 
+#[deriving(Copy)]
 enum JoinBundlerTriggerState {
     Unregistered,
     Running

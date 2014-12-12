@@ -54,7 +54,7 @@ pub enum MessageEndpoint {
     AnonymousUser,
 }
 
-#[deriving(Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Copy, Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UserId(u64);
 
 
@@ -165,7 +165,7 @@ impl Patch<Vec<UserDiffCmd>> for User {
     }
 }
 
-#[deriving(Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Copy, Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChannelId(u64);
 
 
