@@ -409,7 +409,7 @@ impl State {
         }
         self.users.get_mut(&user_id).expect("user not found").channels.insert(chan_id);
 
-        assert!(self.update_channel_by_name(channel_name.as_slice(), proc(channel) {
+        assert!(self.update_channel_by_name(channel_name.as_slice(), |: channel| {
             channel.users.insert(user_id);
         }), "Got message for channel {} without knowing about it.");
     }
@@ -519,7 +519,7 @@ impl State {
         }
 
         let tmp_chan_name = chan_name.clone();
-        assert!(self.update_channel_by_name(chan_name.as_slice(), proc(channel) {
+        assert!(self.update_channel_by_name(chan_name.as_slice(), move |: channel| {
             let added = user_ids.len() - channel.users.len();
             info!("Added {} users for channel {}", added, tmp_chan_name);
             channel.users.extend(user_ids.into_iter());
@@ -527,14 +527,14 @@ impl State {
     }
 
     fn on_topic(&mut self, topic: &server::Topic) {
-        assert!(self.update_channel_by_name(topic.get_channel(), proc(channel) {
+        assert!(self.update_channel_by_name(topic.get_channel(), |: channel| {
             let topic = String::from_utf8_lossy(topic.get_body_raw()).into_owned();
             channel.set_topic(topic[]);
         }));
     }
 
     fn on_nick(&mut self, nick: &server::Nick) {
-        assert!(self.update_user_by_nick(nick.get_nick(), proc(user) {
+        assert!(self.update_user_by_nick(nick.get_nick(), |: user| {
             user.set_nick(nick.get_new_nick());
         }))
     }
@@ -759,8 +759,9 @@ impl State {
             self.remove_channel_by_id(chid);
         }
     }
-
-    fn update_channel(&mut self, id: ChannelId, modfunc: proc(&mut Channel)) -> bool {
+    fn update_channel<F>(&mut self, id: ChannelId, modfunc: F) -> bool where 
+        F: FnOnce(&mut Channel) -> ()
+    {
         match self.channels.entry(id) {
             Occupied(mut entry) => {
                 // Channel currently has no indexed mutable state
@@ -771,7 +772,9 @@ impl State {
         }
     }
 
-    fn update_channel_by_name(&mut self, name: &str, modfunc: proc(&mut Channel)) -> bool {
+    fn update_channel_by_name<F>(&mut self, name: &str, modfunc: F) -> bool where
+        F: FnOnce(&mut Channel) -> ()
+    {
         let chan_id = deref_opt_or_return!(
             self.channel_map.get(&IrcIdentifier::from_str(name)),
             "Unknown channel name", false);
@@ -827,7 +830,9 @@ impl State {
         self.validate_state_internal_panic();
     }
 
-    fn update_user_by_nick(&mut self, nick: &str, modfunc: proc(&mut User)) -> bool {
+    fn update_user_by_nick<F>(&mut self, nick: &str, modfunc: F) -> bool where 
+        F: FnOnce(&mut User) -> ()
+    {
         let nick = IrcIdentifier::from_str(nick);
         let user_id = deref_opt_or_return!(self.user_map.get(&nick),
             "Couldn't find user by nick", false);
@@ -837,7 +842,9 @@ impl State {
         result
     }
 
-    fn update_user(&mut self, id: UserId, modfunc: proc(&mut User)) -> bool {
+    fn update_user<F>(&mut self, id: UserId, modfunc: F) -> bool where 
+        F: FnOnce(&mut User) -> ()
+    {
         match self.users.entry(id) {
             Occupied(mut entry) => {
                 let prev_nick = IrcIdentifier::from_str(entry.get().prefix.nick().unwrap());

@@ -148,7 +148,7 @@ impl IrcConnection {
         let (raw_writer_tx, raw_writer_rx) = sync_channel::<Vec<u8>>(20);
         let (raw_reader_tx, raw_reader_rx) = sync_channel::<String>(20);
 
-        TaskBuilder::new().named("core-writer").spawn(proc() {
+        TaskBuilder::new().named("core-writer").spawn(move |:| {
             let mut writer = LineBufferedWriter::new(writer);
             for message in raw_writer_rx.iter() {
                 let mut message = message.clone();
@@ -158,7 +158,7 @@ impl IrcConnection {
             warn!("--!-- core-writer is ending! --!--");
         });
 
-        TaskBuilder::new().named("core-reader").spawn(proc() {
+        TaskBuilder::new().named("core-reader").spawn(move |:| {
             let trim_these: &[char] = &['\r', '\n'];
             let mut reader = BufferedReader::new(reader);
             loop {
@@ -174,7 +174,7 @@ impl IrcConnection {
             warn!("--!-- core-reader is ending! --!--");
         });
 
-        TaskBuilder::new().named("core-dispatch").spawn(proc() {
+        TaskBuilder::new().named("core-dispatch").spawn(move |:| {
             let mut state = IrcConnectionInternalState::new(event_queue_tx);
             state.bundler_man.add_bundler_trigger(box JoinBundlerTrigger::new());
             state.bundler_man.add_bundler_trigger(box WhoBundlerTrigger::new());
