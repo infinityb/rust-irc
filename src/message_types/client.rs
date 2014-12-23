@@ -30,7 +30,7 @@ pub enum OutgoingMsg {
 
 #[deriving(Clone, Show)]
 pub struct Pong(IrcMsg);
-msg_wrapper_common!(Pong)
+msg_wrapper_common!(Pong);
 
 impl Pong {
 	pub fn new(argument: &str) -> Pong {
@@ -44,7 +44,7 @@ impl Pong {
 
 #[deriving(Clone, Show)]
 pub struct Privmsg(IrcMsg);
-msg_wrapper_common!(Privmsg)
+msg_wrapper_common!(Privmsg);
 
 impl Privmsg {
 	pub fn new(target: &str, argument: &[u8]) -> Privmsg {

@@ -144,8 +144,8 @@ fn test_incoming() {
 
 #[deriving(Clone, Show)]
 pub struct Join(IrcMsg);
-msg_wrapper_common!(Join)
-impl_into_incoming_msg!(Join)
+msg_wrapper_common!(Join);
+impl_into_incoming_msg!(Join);
 
 impl Join {
     pub fn get_channel(&self) -> &str {
@@ -203,8 +203,8 @@ fn test_join_basics() {
 
 #[deriving(Clone, Show)]
 pub struct Kick(IrcMsg);
-impl_into_incoming_msg!(Kick)
-msg_wrapper_common!(Kick)
+impl_into_incoming_msg!(Kick);
+msg_wrapper_common!(Kick);
 
 impl Kick {
     pub fn get_channel(&self) -> &str {
@@ -255,8 +255,8 @@ impl FromIrcMsg for Kick {
 
 #[deriving(Clone, Show)]
 pub struct Mode(IrcMsg);
-impl_into_incoming_msg!(Mode)
-msg_wrapper_common!(Mode)
+impl_into_incoming_msg!(Mode);
+msg_wrapper_common!(Mode);
 
 impl Mode {
     /// Target of the MODE command, channel or user
@@ -289,8 +289,8 @@ impl FromIrcMsg for Mode {
 
 #[deriving(Clone, Show)]
 pub struct Nick(IrcMsg);
-impl_into_incoming_msg!(Nick)
-msg_wrapper_common!(Nick)
+impl_into_incoming_msg!(Nick);
+msg_wrapper_common!(Nick);
 
 impl Nick {
     /// The previous nick of the user
@@ -331,8 +331,8 @@ impl FromIrcMsg for Nick {
 
 #[deriving(Clone, Show)]
 pub struct Notice(IrcMsg);
-impl_into_incoming_msg!(Notice)
-msg_wrapper_common!(Notice)
+impl_into_incoming_msg!(Notice);
+msg_wrapper_common!(Notice);
 
 impl Notice {
     /// Target of the MODE command, channel or user
@@ -382,8 +382,8 @@ mod benchmarks {
 
 #[deriving(Clone, Show)]
 pub struct Part(IrcMsg);
-impl_into_incoming_msg!(Part)
-msg_wrapper_common!(Part)
+impl_into_incoming_msg!(Part);
+msg_wrapper_common!(Part);
 
 impl Part {
     pub fn get_nick<'a>(&'a self) -> &'a str {
@@ -420,8 +420,8 @@ impl FromIrcMsg for Part {
 
 #[deriving(Clone, Show)]
 pub struct Ping(IrcMsg);
-impl_into_incoming_msg!(Ping)
-msg_wrapper_common!(Ping)
+impl_into_incoming_msg!(Ping);
+msg_wrapper_common!(Ping);
 
 impl Ping {
     pub fn get_server1(&self) -> &str {
@@ -477,8 +477,8 @@ fn test_ping_basics() {
 
 #[deriving(Clone, Show)]
 pub struct Privmsg(IrcMsg);
-impl_into_incoming_msg!(Privmsg)
-msg_wrapper_common!(Privmsg)
+impl_into_incoming_msg!(Privmsg);
+msg_wrapper_common!(Privmsg);
 
 impl Privmsg {
     pub fn get_target(&self) -> &str {
@@ -553,8 +553,8 @@ fn test_privmsg_basics() {
 
 #[deriving(Clone, Show)]
 pub struct Quit(IrcMsg);
-impl_into_incoming_msg!(Quit)
-msg_wrapper_common!(Quit)
+impl_into_incoming_msg!(Quit);
+msg_wrapper_common!(Quit);
 
 impl Quit {
     pub fn get_nick<'a>(&'a self) -> &'a str {
@@ -599,8 +599,8 @@ fn test_quit_basics() {
 
 #[deriving(Clone, Show)]
 pub struct Topic(IrcMsg);
-impl_into_incoming_msg!(Topic)
-msg_wrapper_common!(Topic)
+impl_into_incoming_msg!(Topic);
+msg_wrapper_common!(Topic);
 
 impl Topic {
     pub fn get_channel(&self) -> &str {
@@ -642,7 +642,7 @@ impl FromIrcMsg for Topic {
 
 #[deriving(Clone, Show)]
 pub struct Numeric(IrcMsg);
-msg_wrapper_common!(Numeric)
+msg_wrapper_common!(Numeric);
 
 impl Numeric {
     pub fn get_code(&self) -> u16 {

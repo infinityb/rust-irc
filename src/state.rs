@@ -44,7 +44,7 @@ macro_rules! deref_opt_or_return(
             }
         }
     );
-)
+);
 
 #[deriving(Clone, Show, PartialEq, Eq, Hash)]
 pub enum MessageEndpoint {
