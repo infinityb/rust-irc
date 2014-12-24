@@ -5,12 +5,9 @@ use std::cmp::max;
 use std::str::IntoMaybeOwned;
 use std::default::Default;
 use std::collections::{
+    hash_map,
     HashMap,
     HashSet,
-};
-use std::collections::hash_map::{
-    Occupied,
-    Vacant,
 };
 
 use message_types::server;
@@ -655,11 +652,11 @@ impl State {
 
     fn apply_update_chan(&mut self, id: ChannelId, diff: &Vec<ChannelDiffCmd>) {
         match self.channels.entry(id) {
-            Occupied(mut entry) => {
+            hash_map::Entry::Occupied(mut entry) => {
                 let new_thing = entry.get().patch(diff);
                 entry.set(new_thing);
             }
-            Vacant(_) => warn!("Unknown channel {}", id)
+            hash_map::Entry::Vacant(_) => warn!("Unknown channel {}", id)
         };
     }
 
@@ -674,7 +671,7 @@ impl State {
 
     fn apply_update_user(&mut self, id: UserId, diff: &Vec<UserDiffCmd>) {
         match self.users.entry(id) {
-            Occupied(mut entry) => {
+            hash_map::Entry::Occupied(mut entry) => {
      
                 let old_nick = IrcIdentifier::from_str(entry.get().get_nick());
                 let new_user = entry.get().patch(diff);
@@ -686,7 +683,7 @@ impl State {
                 }
                 entry.set(new_user);
             }
-            Vacant(_) => warn!("Unknown channel {}", id)
+            hash_map::Entry::Vacant(_) => warn!("Unknown channel {}", id)
         };
     }
 
@@ -728,7 +725,7 @@ impl State {
 
     fn unlink_user_channel(&mut self, uid: UserId, chid: ChannelId) {
         let should_remove = match self.users.entry(uid) {
-            Occupied(mut entry) => {
+            hash_map::Entry::Occupied(mut entry) => {
                 if entry.get().channels.len() == 1 && entry.get().channels.contains(&chid) {
                     true
                 } else {
@@ -736,7 +733,7 @@ impl State {
                     false
                 }
             }
-            Vacant(_) => panic!("Inconsistent state")
+            hash_map::Entry::Vacant(_) => panic!("Inconsistent state")
         };
         if should_remove {
             warn!("removing {}", uid);
@@ -744,7 +741,7 @@ impl State {
         }
 
         let should_remove = match self.channels.entry(chid) {
-            Occupied(mut entry) => {
+            hash_map::Entry::Occupied(mut entry) => {
                 if entry.get().users.len() == 1 && entry.get().users.contains(&uid) {
                     true
                 } else {
@@ -752,7 +749,7 @@ impl State {
                     false
                 }
             },
-            Vacant(_) => panic!("Inconsistent state")
+            hash_map::Entry::Vacant(_) => panic!("Inconsistent state")
         };
         if should_remove {
             warn!("removing {}", chid);
@@ -763,12 +760,12 @@ impl State {
         F: FnOnce(&mut Channel) -> ()
     {
         match self.channels.entry(id) {
-            Occupied(mut entry) => {
+            hash_map::Entry::Occupied(mut entry) => {
                 // Channel currently has no indexed mutable state
                 modfunc(entry.get_mut());
                 true
             }
-            Vacant(_) => false
+            hash_map::Entry::Vacant(_) => false
         }
     }
 
@@ -846,7 +843,7 @@ impl State {
         F: FnOnce(&mut User) -> ()
     {
         match self.users.entry(id) {
-            Occupied(mut entry) => {
+            hash_map::Entry::Occupied(mut entry) => {
                 let prev_nick = IrcIdentifier::from_str(entry.get().prefix.nick().unwrap());
                 modfunc(entry.get_mut());
                 let new_nick = IrcIdentifier::from_str(entry.get().prefix.nick().unwrap());
@@ -858,7 +855,7 @@ impl State {
                 }
                 true
             }
-            Vacant(_) => false
+            hash_map::Entry::Vacant(_) => false
         }
     }
 

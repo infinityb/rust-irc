@@ -155,8 +155,8 @@ impl IrcMessage {
         let mut vecout = Vec::new();
         for arg in irc_msg.get_args().into_iter() {
             match str::from_utf8(arg) {
-                Some(slice) => vecout.push(slice),
-                None => panic!("Bad message")
+                Ok(slice) => vecout.push(slice),
+                Err(_) => panic!("Bad message")
             }
         }
         vecout
@@ -170,8 +170,8 @@ impl IrcMessage {
         let mut vecout = Vec::new();
         for arg in irc_msg.get_args().into_iter() {
             match str::from_utf8(arg) {
-                Some(slice) => vecout.push(slice),
-                None => return None
+                Ok(slice) => vecout.push(slice),
+                Err(_) => return None
             }
         }
         Some(vecout)

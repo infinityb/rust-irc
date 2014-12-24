@@ -8,13 +8,11 @@
 #[cfg(test)] extern crate test;
 #[phase(plugin, link)] extern crate log;
 extern crate time;
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 
 pub use self::message::IrcMessage;
-
 pub use self::connection::IrcConnection;
 pub use self::connection::IrcConnectionCommand;
-
 pub use self::event::IrcEvent;
 
 pub use self::watchers::{   
