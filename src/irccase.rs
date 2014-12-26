@@ -13,8 +13,46 @@
 
 use std::string::String;
 
+static ASCII_LOWER_MAP: [u8, ..256] = [
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+    b' ', b'!', b'"', b'#', b'$', b'%', b'&', b'\'',
+    b'(', b')', b'*', b'+', b',', b'-', b'.', b'/',
+    b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7',
+    b'8', b'9', b':', b';', b'<', b'=', b'>', b'?',
+    b'@',
 
-pub static IRC_ASCII_LOWER_MAP: [u8, ..256] = [
+          b'a', b'b', b'c', b'd', b'e', b'f', b'g',
+    b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
+    b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
+    b'x', b'y', b'z',
+
+                      b'[', b'\\', b']', b'^', b'_',
+    b'`', b'a', b'b', b'c', b'd', b'e', b'f', b'g',
+    b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
+    b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
+    b'x', b'y', b'z', b'{', b'|', b'}', b'~', 0x7f,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+    0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+    0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+    0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+    0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+    0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+    0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+    0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+    0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+    0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+    0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+    0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+    0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+    0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+];
+
+pub static RFC1459_LOWER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -34,7 +72,46 @@ pub static IRC_ASCII_LOWER_MAP: [u8, ..256] = [
     b'`', b'a', b'b', b'c', b'd', b'e', b'f', b'g',
     b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
     b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
-    b'x', b'y', b'z', b'{', b'|', b'}', b'^', 0x7f,
+    b'x', b'y', b'z', b'{', b'|', b'}', b'~', 0x7f,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+    0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
+    0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
+    0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f,
+    0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+    0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf,
+    0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+    0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf,
+    0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+    0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf,
+    0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+    0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
+    0xe0, 0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7,
+    0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 0xee, 0xef,
+    0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
+];
+
+pub static STRICT_RFC1459_LOWER_MAP: [u8, ..256] = [
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+    0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+    b' ', b'!', b'"', b'#', b'$', b'%', b'&', b'\'',
+    b'(', b')', b'*', b'+', b',', b'-', b'.', b'/',
+    b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7',
+    b'8', b'9', b':', b';', b'<', b'=', b'>', b'?',
+    b'@',
+
+          b'a', b'b', b'c', b'd', b'e', b'f', b'g',
+    b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
+    b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
+    b'x', b'y', b'z',
+
+                      b'{', b'|', b'}', b'^', b'_',
+    b'`', b'a', b'b', b'c', b'd', b'e', b'f', b'g',
+    b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
+    b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
+    b'x', b'y', b'z', b'{', b'|', b'}', b'~', 0x7f,
     0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
     0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
     0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97,
@@ -74,16 +151,18 @@ pub trait OwnedIrcAsciiExt {
 impl IrcAsciiExt<Vec<u8>> for [u8] {
     #[inline]
     fn to_irc_lower(&self) -> Vec<u8> {
-        self.iter().map(|&byte| IRC_ASCII_LOWER_MAP[byte as uint]).collect()
+        let lower_map = RFC1459_LOWER_MAP;
+        self.iter().map(|&byte| lower_map[byte as uint]).collect()
     }
 
     #[inline]
     fn eq_ignore_irc_case(&self, other: &[u8]) -> bool {
+        let lower_map = RFC1459_LOWER_MAP;
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(
             |(byte_self, byte_other)| {
-                IRC_ASCII_LOWER_MAP[*byte_self as uint] ==
-                    IRC_ASCII_LOWER_MAP[*byte_other as uint]
+                lower_map[*byte_self as uint] ==
+                    lower_map[*byte_other as uint]
             })
     }
 }
@@ -91,8 +170,9 @@ impl IrcAsciiExt<Vec<u8>> for [u8] {
 impl OwnedIrcAsciiExt for Vec<u8> {
     #[inline]
     fn into_irc_lower(mut self) -> Vec<u8> {
+        let lower_map = RFC1459_LOWER_MAP;
         for byte in self.iter_mut() {
-            *byte = IRC_ASCII_LOWER_MAP[*byte as uint];
+            *byte = lower_map[*byte as uint];
         }
         self
     }
@@ -119,8 +199,61 @@ impl OwnedIrcAsciiExt for String {
     }
 }
 
+enum CaseMapping {
+    Ascii,
+    Rfc1459,
+    StrictRfc1459,
+}
+
+impl CaseMapping {
+    pub fn get_lower_map(&self) -> &[u8] {
+        match *self {
+            CaseMapping::Ascii => ASCII_LOWER_MAP.as_slice(),
+            CaseMapping::Rfc1459 => RFC1459_LOWER_MAP.as_slice(),
+            CaseMapping::StrictRfc1459 => STRICT_RFC1459_LOWER_MAP.as_slice(),
+        }
+    }
+
+    pub fn to_irc_lower<Sized? T>(&self, left: &T) -> Vec<u8>
+        where T: ToByteSlice
+    {
+        let lower_map = self.get_lower_map();
+        left.to_byte_slice().iter().map(|&byte| lower_map[byte as uint]).collect()
+    }
+
+    pub fn eq_ignore_case<Sized? T>(&self, left: &T, right: &T) -> bool
+        where T: ToByteSlice
+    {
+        let lower_map = self.get_lower_map();
+        let left = left.to_byte_slice();
+        let right = right.to_byte_slice();
+
+        left.len() == right.len() && left.iter().zip(right.iter()).all(
+            |(byte_self, byte_other)| {
+                lower_map[*byte_self as uint] ==
+                    lower_map[*byte_other as uint]
+            })
+    }
+}
+
+trait ToByteSlice for Sized? {
+    fn to_byte_slice<'a>(&'a self) -> &'a [u8];
+}
+
+impl ToByteSlice for str {
+    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
+        self.as_bytes()
+    }
+}
+
+impl ToByteSlice for [u8] {
+    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
+        self
+    }
+}
+
 #[test]
-fn test_basics() {
+fn test_old_basics() {
     assert!("[".eq_ignore_irc_case("{"));
     assert!("]".eq_ignore_irc_case("}"));
     assert!("\\".eq_ignore_irc_case("|"));
@@ -132,4 +265,37 @@ fn test_basics() {
     assert_eq!("~".to_irc_lower()[], "^");
 
     assert_eq!("~".to_string().into_irc_lower()[], "^");
+}
+
+#[test]
+fn test_basics() {
+    assert!(CaseMapping::Ascii.eq_ignore_case("A", "a"));
+    assert!(!CaseMapping::Ascii.eq_ignore_case("[", "{"));
+    assert!(!CaseMapping::Ascii.eq_ignore_case("\\", "|"));
+    assert!(!CaseMapping::Ascii.eq_ignore_case("]", "}"));
+    assert!(!CaseMapping::Ascii.eq_ignore_case("^", "~"));
+
+    assert!(CaseMapping::Rfc1459.eq_ignore_case("A", "a"));
+    assert!(CaseMapping::Rfc1459.eq_ignore_case("[", "{"));
+    assert!(CaseMapping::Rfc1459.eq_ignore_case("\\", "|"));
+    assert!(CaseMapping::Rfc1459.eq_ignore_case("]", "}"));
+    assert!(CaseMapping::Rfc1459.eq_ignore_case("^", "~"));
+
+    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("A", "a"));
+    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("[", "{"));
+    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("\\", "|"));
+    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("]", "}"));
+    assert!(!CaseMapping::StrictRfc1459.eq_ignore_case("^", "~"));
+
+    assert_eq!(
+        CaseMapping::Ascii.to_irc_lower("A[]\\^Z"),
+        b"a[]\\^z".to_vec());
+
+    assert_eq!(
+        CaseMapping::Rfc1459.to_irc_lower("A[]\\^Z"),
+        b"a{}|~z".to_vec());
+
+    assert_eq!(
+        CaseMapping::StrictRfc1459.to_irc_lower("A[]\\^Z"),
+        b"a{}|^z".to_vec());
 }
