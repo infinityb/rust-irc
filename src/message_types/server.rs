@@ -1,4 +1,5 @@
 use std::str;
+use std::str::Utf8Error;
 use std::cmp::min;
 
 use parse::is_full_prefix;
@@ -490,6 +491,10 @@ impl Privmsg {
         let Privmsg(ref msg) = *self;
         let prefix = msg.get_prefix_str();
         prefix[..prefix.find('!').unwrap()]
+    }
+
+    pub fn get_body_unicode<'a>(&'a self) -> Result<&'a str, Utf8Error> {
+        ::std::str::from_utf8(self.get_body_raw())
     }
 
     pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {
