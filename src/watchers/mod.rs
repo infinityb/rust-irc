@@ -17,6 +17,7 @@ pub use self::register::{
     RegisterError,
     RegisterErrorType,
     RegisterEventWatcher,
+    RegisterResult,
 };
 pub use self::who::{
     WhoResult,

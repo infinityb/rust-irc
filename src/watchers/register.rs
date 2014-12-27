@@ -1,3 +1,4 @@
+use std::sync::Future;
 use std::fmt;
 
 use numerics;
@@ -6,6 +7,7 @@ use message_types::server;
 use watchers::base::EventWatcher;
 use event::IrcEvent;
 
+pub type RegisterResult = Result<(), RegisterError>;
 
 #[deriving(Clone, Send, Show)]
 pub struct RegisterError {
@@ -100,10 +102,14 @@ impl RegisterEventWatcher {
         };
     }
 
-    pub fn get_monitor(&mut self) -> Receiver<Result<(), RegisterError>> {
+    pub fn get_monitor(&mut self) -> Receiver<RegisterResult> {
         let (tx, rx) = sync_channel(1);
         self.add_monitor(tx);
         rx
+    }
+
+    pub fn get_future(&mut self) -> Future<RegisterResult> {
+        Future::from_receiver(self.get_monitor())
     }
 
     fn accept_ircmessage(&mut self, msg: &IrcMsg) {
