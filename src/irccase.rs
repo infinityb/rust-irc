@@ -12,6 +12,7 @@
 // except according to those terms.
 
 use std::string::String;
+use std::default::Default;
 
 static ASCII_LOWER_MAP: [u8, ..256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -68,7 +69,7 @@ pub static RFC1459_LOWER_MAP: [u8, ..256] = [
     b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
     b'x', b'y', b'z',
 
-                      b'{', b'|', b'}', b'^', b'_',
+                      b'{', b'|', b'}', b'~', b'_',
     b'`', b'a', b'b', b'c', b'd', b'e', b'f', b'g',
     b'h', b'i', b'j', b'k', b'l', b'm', b'n', b'o',
     b'p', b'q', b'r', b's', b't', b'u', b'v', b'w',
@@ -199,29 +200,86 @@ impl OwnedIrcAsciiExt for String {
     }
 }
 
-enum CaseMapping {
-    Ascii,
-    Rfc1459,
-    StrictRfc1459,
+#[test]
+fn test_old_basics() {
+    // lower("[]\\^") == "{}|~"
+    assert!("[".eq_ignore_irc_case("{"));
+    assert!("]".eq_ignore_irc_case("}"));
+    assert!("\\".eq_ignore_irc_case("|"));
+    assert!("^".eq_ignore_irc_case("~"));
+
+    assert_eq!("[".to_irc_lower()[], "{");
+    assert_eq!("]".to_irc_lower()[], "}");
+    assert_eq!("\\".to_irc_lower()[], "|");
+    assert_eq!("^".to_irc_lower()[], "~");
+
+    assert_eq!("^".to_string().into_irc_lower()[], "~");
 }
 
-impl CaseMapping {
-    pub fn get_lower_map(&self) -> &[u8] {
-        match *self {
-            CaseMapping::Ascii => ASCII_LOWER_MAP.as_slice(),
-            CaseMapping::Rfc1459 => RFC1459_LOWER_MAP.as_slice(),
-            CaseMapping::StrictRfc1459 => STRICT_RFC1459_LOWER_MAP.as_slice(),
-        }
-    }
+#[deriving(PartialEq, Eq, Show)]
+pub struct AsciiCaseMapping;
 
-    pub fn to_irc_lower<Sized? T>(&self, left: &T) -> Vec<u8>
-        where T: ToByteSlice
-    {
+impl Default for AsciiCaseMapping {
+    fn default() -> AsciiCaseMapping { AsciiCaseMapping }
+}
+
+impl CaseMapping for AsciiCaseMapping {
+    #[inline]
+    fn get_lower_map(&self) -> &[u8] {
+        ASCII_LOWER_MAP.as_slice()
+    }
+}
+
+
+#[deriving(PartialEq, Eq, Show)]
+pub struct Rfc1459CaseMapping;
+
+impl Default for Rfc1459CaseMapping {
+    fn default() -> Rfc1459CaseMapping { Rfc1459CaseMapping }
+}
+
+impl CaseMapping for Rfc1459CaseMapping {
+    #[inline]
+    fn get_lower_map(&self) -> &[u8] {
+        RFC1459_LOWER_MAP.as_slice()
+    }
+}
+
+#[deriving(PartialEq, Eq, Show)]
+pub struct StrictRfc1459CaseMapping;
+
+impl Default for StrictRfc1459CaseMapping {
+    fn default() -> StrictRfc1459CaseMapping { StrictRfc1459CaseMapping }
+}
+
+impl CaseMapping for StrictRfc1459CaseMapping {
+    #[inline]
+    fn get_lower_map(&self) -> &[u8] {
+        STRICT_RFC1459_LOWER_MAP.as_slice()
+    }
+}
+
+pub trait CaseMapping: Default+PartialEq+Eq {
+    fn get_lower_map(&self) -> &[u8];
+
+    fn to_irc_lower<Sized? T>(&self, left: &T) -> Vec<u8> where T: ToByteSlice {
+        // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();
         left.to_byte_slice().iter().map(|&byte| lower_map[byte as uint]).collect()
     }
 
-    pub fn eq_ignore_case<Sized? T>(&self, left: &T, right: &T) -> bool
+    #[inline]
+    fn hash_ignore_case<Sized? T>(&self, left: &T, state: &mut ::std::hash::sip::SipState)
+        where T: ToByteSlice+::std::hash::Hash
+    {
+        let lower_map = self.get_lower_map();
+        for byte in left.to_byte_slice().iter() {
+            ::std::hash::Hash::hash(&lower_map[*byte as uint], state);
+        }
+    }
+
+    #[inline]
+    fn eq_ignore_case<Sized? T>(&self, left: &T, right: &T) -> bool
         where T: ToByteSlice
     {
         let lower_map = self.get_lower_map();
@@ -246,56 +304,54 @@ impl ToByteSlice for str {
     }
 }
 
+impl ToByteSlice for String {
+    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
+        self.as_slice().as_bytes()
+    }
+}
+
 impl ToByteSlice for [u8] {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self
     }
 }
 
-#[test]
-fn test_old_basics() {
-    assert!("[".eq_ignore_irc_case("{"));
-    assert!("]".eq_ignore_irc_case("}"));
-    assert!("\\".eq_ignore_irc_case("|"));
-    assert!("~".eq_ignore_irc_case("^"));
-
-    assert_eq!("[".to_irc_lower()[], "{");
-    assert_eq!("]".to_irc_lower()[], "}");
-    assert_eq!("\\".to_irc_lower()[], "|");
-    assert_eq!("~".to_irc_lower()[], "^");
-
-    assert_eq!("~".to_string().into_irc_lower()[], "^");
+impl ToByteSlice for Vec<u8> {
+    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
+        self.as_slice()
+    }
 }
 
 #[test]
 fn test_basics() {
-    assert!(CaseMapping::Ascii.eq_ignore_case("A", "a"));
-    assert!(!CaseMapping::Ascii.eq_ignore_case("[", "{"));
-    assert!(!CaseMapping::Ascii.eq_ignore_case("\\", "|"));
-    assert!(!CaseMapping::Ascii.eq_ignore_case("]", "}"));
-    assert!(!CaseMapping::Ascii.eq_ignore_case("^", "~"));
+    assert!(AsciiCaseMapping.eq_ignore_case("A", "a"));
+    assert!(!AsciiCaseMapping.eq_ignore_case("[", "{"));
+    assert!(!AsciiCaseMapping.eq_ignore_case("\\", "|"));
+    assert!(!AsciiCaseMapping.eq_ignore_case("]", "}"));
+    assert!(!AsciiCaseMapping.eq_ignore_case("^", "~"));
 
-    assert!(CaseMapping::Rfc1459.eq_ignore_case("A", "a"));
-    assert!(CaseMapping::Rfc1459.eq_ignore_case("[", "{"));
-    assert!(CaseMapping::Rfc1459.eq_ignore_case("\\", "|"));
-    assert!(CaseMapping::Rfc1459.eq_ignore_case("]", "}"));
-    assert!(CaseMapping::Rfc1459.eq_ignore_case("^", "~"));
+    assert!(Rfc1459CaseMapping.eq_ignore_case("A", "a"));
+    assert!(Rfc1459CaseMapping.eq_ignore_case("[", "{"));
+    assert!(Rfc1459CaseMapping.eq_ignore_case("\\", "|"));
+    assert!(Rfc1459CaseMapping.eq_ignore_case("]", "}"));
+    assert!(Rfc1459CaseMapping.eq_ignore_case("^", "~"));
 
-    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("A", "a"));
-    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("[", "{"));
-    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("\\", "|"));
-    assert!(CaseMapping::StrictRfc1459.eq_ignore_case("]", "}"));
-    assert!(!CaseMapping::StrictRfc1459.eq_ignore_case("^", "~"));
+    assert!(StrictRfc1459CaseMapping.eq_ignore_case("A", "a"));
+    assert!(StrictRfc1459CaseMapping.eq_ignore_case("[", "{"));
+    assert!(StrictRfc1459CaseMapping.eq_ignore_case("\\", "|"));
+    assert!(StrictRfc1459CaseMapping.eq_ignore_case("]", "}"));
+    assert!(!StrictRfc1459CaseMapping.eq_ignore_case("^", "~"));
 
     assert_eq!(
-        CaseMapping::Ascii.to_irc_lower("A[]\\^Z"),
+        AsciiCaseMapping.to_irc_lower("A[]\\^Z"),
         b"a[]\\^z".to_vec());
 
     assert_eq!(
-        CaseMapping::Rfc1459.to_irc_lower("A[]\\^Z"),
+        Rfc1459CaseMapping.to_irc_lower("A[]\\^Z"),
         b"a{}|~z".to_vec());
 
     assert_eq!(
-        CaseMapping::StrictRfc1459.to_irc_lower("A[]\\^Z"),
+        StrictRfc1459CaseMapping.to_irc_lower("A[]\\^Z"),
         b"a{}|^z".to_vec());
 }
+
