@@ -67,6 +67,9 @@ pub mod util;
 /// Experimental parsing code
 pub mod parse;
 
+#[experimental = "Subject to all types of change"]
+pub mod identifier;
+
 /// Event types
 mod event;
 
