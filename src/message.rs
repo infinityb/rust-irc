@@ -8,12 +8,11 @@ use parse::{
     is_channel,
     can_target_channel,
 };
-use message_types::server::IncomingMsg;
-
+use message_types::server;
 
 #[deriving(Clone)]
 pub struct IrcMessage {
-    msg2: IncomingMsg,
+    msg2: server::IncomingMsg,
     args: Vec<String>
 }
 
@@ -78,7 +77,7 @@ impl IrcMessage {
         };
 
         let msg2 = match IrcMsg::new(text.to_string().into_bytes()) {
-            Ok(msg) => IncomingMsg::from_msg(msg),
+            Ok(msg) => server::IncomingMsg::from_msg(msg),
             Err(ParseError::InvalidMessage(desc)) => return Err(desc.to_string()),
             Err(ParseError::EncodingError) => return Err("bad encoding".to_string())
         };
@@ -89,8 +88,12 @@ impl IrcMessage {
         })
     }
 
-    pub fn get_typed_message(&self) -> &IncomingMsg {
+    pub fn get_typed_message(&self) -> &server::IncomingMsg {
         &self.msg2
+    }
+
+    pub fn as_irc_msg(&self) -> &IrcMsg {
+        self.msg2.to_irc_msg()
     }
 
     #[inline]

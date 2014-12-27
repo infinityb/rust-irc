@@ -4,19 +4,18 @@ use std::fmt;
 use irccase::IrcAsciiExt;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::IrcEvent;
-use message::IrcMessage;
-use parse::IrcMsgPrefix;
+use parse::{IrcMsg, IrcMsgPrefix};
 use util::{StringSlicer, OptionalStringSlicer};
-use message_types::server::IncomingMsg;
+use message_types::server;
 
 pub type WhoResult = Result<WhoSuccess, WhoError>;
 
 trait ChannelTargeted {
-    fn get_channel(&self) -> &str;
+    fn get_channel(&self) -> &[u8];
 }
 
 impl ChannelTargeted for WhoResult {
-    fn get_channel(&self) -> &str {
+    fn get_channel(&self) -> &[u8] {
         match *self {
             Ok(ref join_succ) => join_succ.channel.as_slice(),
             Err(ref join_err) => join_err.channel.as_slice()
@@ -26,7 +25,7 @@ impl ChannelTargeted for WhoResult {
 
 #[deriving(Clone, Show)]
 pub struct WhoSuccess {
-    pub channel: String,
+    pub channel: Vec<u8>,
     pub who_records: Vec<WhoRecord>,
 }
 
@@ -44,7 +43,7 @@ impl WhoSuccess {
 #[deriving(Clone, Show)]
 #[experimental = "Public fields definitely going away"]
 pub struct WhoError {
-    pub channel: String
+    pub channel: Vec<u8>,
 }
 
 
@@ -108,18 +107,17 @@ impl WhoBundlerTrigger {
 
 
 impl BundlerTrigger for WhoBundlerTrigger {
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
+    fn on_irc_msg(&mut self, msg: &IrcMsg) -> Vec<Box<Bundler+Send>> {
         let mut out = Vec::new();
-        if message.command() == "315" && self.suppress {
+        if msg.get_command() == "315" && self.suppress {
             self.suppress = false;
         }
-        if message.command() == "352" && !self.suppress {
-            let args = message.get_args();
-            if args.len() <= 2 {
+        if msg.get_command() == "352" && !self.suppress {
+            if msg.len() <= 2 {
                 return out;
             }
             self.suppress = true;
-            let bundler: WhoBundler = WhoBundler::new(args[1]);
+            let bundler: WhoBundler = WhoBundler::new(&msg[1]);
             let boxed_bundler: Box<Bundler+Send> = box bundler;
             out.push(boxed_bundler);
         }
@@ -130,16 +128,16 @@ impl BundlerTrigger for WhoBundlerTrigger {
 
 #[deriving(Clone, Show)]
 pub struct WhoBundler {
-    target_channel: String,
+    target_channel: Vec<u8>,
     who_records: Vec<WhoRecord>,
     finished: bool
 }
 
 
 impl WhoBundler {
-    pub fn new(channel: &str) -> WhoBundler {
+    pub fn new(channel: &[u8]) -> WhoBundler {
         WhoBundler {
-            target_channel: String::from_str(channel),
+            target_channel: channel.to_vec(),
             who_records: vec![],
             finished: false
         }
@@ -157,8 +155,8 @@ impl WhoBundler {
 
 
 impl Bundler for WhoBundler {
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
-        let args = message.get_args();
+    fn on_irc_msg(&mut self, msg: &IrcMsg) -> Vec<IrcEvent> {
+        let args = msg.get_args();
         if args.len() < 2 {
             return Vec::new();
         }
@@ -167,12 +165,12 @@ impl Bundler for WhoBundler {
             return Vec::new();
         }
         
-        match *message.get_typed_message() {
-            IncomingMsg::Numeric(352, ref message2) => {
+        match server::IncomingMsg::from_msg(msg.clone()) {
+            server::IncomingMsg::Numeric(352, ref message2) => {
                 self.add_record(message2.to_irc_msg().get_args().as_slice());
                 Vec::new()
             },
-            IncomingMsg::Numeric(315, ref _message) => {
+            server::IncomingMsg::Numeric(315, ref _message) => {
                 self.finished = true;
                 let mut out = Vec::new();
                 out.push(IrcEvent::WhoBundle(Ok(WhoSuccess::from_bundler(self.clone()))));
@@ -194,7 +192,7 @@ impl Bundler for WhoBundler {
 
 /// Waits for target WhoBundleEvent and clones it down the monitor
 pub struct WhoEventWatcher {
-    channel: String,
+    channel: Vec<u8>,
     result: Option<WhoResult>,
     monitors: Vec<SyncSender<WhoResult>>,
     finished: bool
@@ -202,9 +200,9 @@ pub struct WhoEventWatcher {
 
 
 impl WhoEventWatcher {
-    pub fn new(channel: &str) -> WhoEventWatcher {
+    pub fn new(channel: &[u8]) -> WhoEventWatcher {
         WhoEventWatcher {
-            channel: String::from_str(channel),
+            channel: channel.to_vec(),
             monitors: Vec::new(),
             result: None,
             finished: false
@@ -245,8 +243,8 @@ impl fmt::Show for WhoEventWatcher {
 }
 
 impl EventWatcher for WhoEventWatcher {
-    fn on_event(&mut self, message: &IrcEvent) {
-        match message {
+    fn on_event(&mut self, event: &IrcEvent) {
+        match event {
             &IrcEvent::WhoBundle(ref result) => {
                 if result.get_channel().eq_ignore_irc_case(self.channel.as_slice()) {
                     self.result = Some(result.clone());

@@ -230,7 +230,7 @@ impl IrcConnection {
     }
 
     pub fn join(&mut self, channel: &str) -> JoinResult {
-        let mut join_watcher = JoinEventWatcher::new(channel);
+        let mut join_watcher = JoinEventWatcher::new(channel.as_bytes());
         let result_rx = join_watcher.get_monitor();
         let watcher: Box<EventWatcher+Send> = box join_watcher;
         self.command_queue.send(IrcConnectionCommand::AddWatcher(watcher));
@@ -244,7 +244,7 @@ impl IrcConnection {
     }
 
     pub fn who(&mut self, target: &str) -> WhoResult {
-        let mut who_watcher = WhoEventWatcher::new(target);
+        let mut who_watcher = WhoEventWatcher::new(target.as_bytes());
         let result_rx = who_watcher.get_monitor();
         let watcher: Box<EventWatcher+Send> = box who_watcher;
         self.command_queue.send(AddWatcher(watcher));

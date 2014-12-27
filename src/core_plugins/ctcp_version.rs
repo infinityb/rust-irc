@@ -1,7 +1,6 @@
 use std::str::CowString;
 
 use parse::IrcMsg;
-use message::IrcMessage;
 use core_plugins::traits::MessageResponder;
 use message_types::{client, server};
 
@@ -46,9 +45,11 @@ impl CtcpVersionResponder {
 
 
 impl MessageResponder for CtcpVersionResponder {
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcMsg> {
+    fn on_irc_msg(&mut self, msg: &IrcMsg) -> Vec<IrcMsg> {
+        let ty_msg = server::IncomingMsg::from_msg(msg.clone());
+
         let mut out = Vec::new();
-        if let server::IncomingMsg::Privmsg(ref msg) = *message.get_typed_message() {
+        if let server::IncomingMsg::Privmsg(ref msg) = ty_msg {
             if msg.get_body_raw() == b"\x01VERSION\x01" {
                 let mut vec = Vec::new();
                 vec.push_all(b"VERSION ");

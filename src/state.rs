@@ -267,14 +267,17 @@ impl ChannelInfo {
     }
 
     fn from_join(id: ChannelId, join: &JoinSuccess) -> ChannelInfo {
-        let topic = match join.topic {
+        let topic = String::from_utf8(match join.topic {
             Some(ref topic) => topic.text.clone(),
-            None => String::new()
-        };
+            None => Vec::new()
+        }).ok().expect("non-string");
+
+        let channel_name = ::std::str::from_utf8(join.channel.as_slice())
+            .ok().expect("bad chan").to_string();
 
         ChannelInfo {
             id: id,
-            name: join.channel.to_string(),
+            name: channel_name,
             topic: topic
         }
     }
@@ -412,7 +415,9 @@ impl State {
     }
 
     fn on_self_join(&mut self, join: &JoinSuccess) {
-        let channel_name = IrcIdentifier::from_str(join.channel[]);
+        let channel_name = ::std::str::from_utf8(join.channel[]).ok().unwrap();
+        let channel_name = IrcIdentifier::from_str(channel_name);
+
         if let Some(_) = self.channel_map.get(&channel_name) {
             warn!("Joining already joined channel {}; skipped", join.channel);
             return;
@@ -427,9 +432,10 @@ impl State {
     }
 
     fn validate_state_with_who(&self, who: &WhoSuccess) {
-        let chan_name = IrcIdentifier::from_str(who.channel[]);
+        let channel_name = ::std::str::from_utf8(who.channel[]).ok().unwrap();
+        let channel_name = IrcIdentifier::from_str(channel_name);
 
-        let (_, channel) = match self.get_channel_by_name(chan_name.as_slice()) {
+        let (_, channel) = match self.get_channel_by_name(channel_name.as_slice()) {
             Some(chan_pair) => chan_pair,
             None => return
         };
@@ -471,9 +477,10 @@ impl State {
     fn on_who(&mut self, who: &WhoSuccess) {
         // If we WHO a channel that we aren't in, we aren't changing any
         // state.
-        let chan_name = IrcIdentifier::from_str(who.channel[]);
+        let channel_name = ::std::str::from_utf8(who.channel[]).ok().unwrap();
+        let channel_name = IrcIdentifier::from_str(channel_name);
 
-        let chan_id = match self.get_channel_by_name(chan_name.as_slice()) {
+        let chan_id = match self.get_channel_by_name(channel_name.as_slice()) {
             Some((chan_id, channel)) => {
                 if !channel.users.is_empty() {
                     self.validate_state_with_who(who);
@@ -515,8 +522,8 @@ impl State {
             };
         }
 
-        let tmp_chan_name = chan_name.clone();
-        assert!(self.update_channel_by_name(chan_name.as_slice(), move |: channel| {
+        let tmp_chan_name = channel_name.clone();
+        assert!(self.update_channel_by_name(channel_name.as_slice(), move |: channel| {
             let added = user_ids.len() - channel.users.len();
             info!("Added {} users for channel {}", added, tmp_chan_name);
             channel.users.extend(user_ids.into_iter());
