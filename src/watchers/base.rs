@@ -88,18 +88,18 @@ impl BundlerManager {
         self.bundler_triggers.push(bundler);
     }
 
-    pub fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
+    pub fn on_irc_msg(&mut self, msg: &IrcMsg) -> Vec<IrcEvent> {
         let mut outgoing_events: Vec<IrcEvent> = Vec::new();
 
-        for new_bundler in bundler_trigger_impl(&mut self.bundler_triggers, message).into_iter() {
+        for new_bundler in bundler_trigger_impl(&mut self.bundler_triggers, msg).into_iter() {
             self.event_bundlers.push_back(new_bundler);
         }
 
-        for event in bundler_accept_impl(&mut self.event_bundlers, message).into_iter() {
+        for event in bundler_accept_impl(&mut self.event_bundlers, msg).into_iter() {
             outgoing_events.push(event);
         }
 
-        outgoing_events.push(IrcEvent::Message(message.clone()));
+        outgoing_events.push(IrcEvent::IrcMsg(msg.clone()));
 
         for event in outgoing_events.iter() {
             for watcher in watcher_accept_impl(&mut self.event_watchers, event).into_iter() {
@@ -112,12 +112,12 @@ impl BundlerManager {
 }
 
 fn bundler_trigger_impl(triggers: &mut Vec<Box<BundlerTrigger+Send>>,
-                       message: &IrcMessage
-                      ) -> Vec<Box<Bundler+Send>> {
+                        msg: &IrcMsg
+                       ) -> Vec<Box<Bundler+Send>> {
 
     let mut activating: Vec<Box<Bundler+Send>> = Vec::new();
     for trigger in triggers.iter_mut() {
-        let new_bundlers = trigger.on_message(message);
+        let new_bundlers = trigger.on_irc_msg(msg);
         activating.reserve(new_bundlers.len());
         for bundler in new_bundlers.into_iter() {
             activating.push(bundler);
@@ -157,7 +157,7 @@ fn watcher_accept_impl(buf: &mut RingBuf<Box<EventWatcher+Send>>,
 
 
 fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
-                       message: &IrcMessage
+                       msg: &IrcMsg
                       ) -> Vec<IrcEvent> {
 
     let mut keep_bundlers: RingBuf<Box<Bundler+Send>> = RingBuf::new();
@@ -166,7 +166,7 @@ fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
     loop {
         match buf.pop_front() {
             Some(mut bundler) => {
-                for event in bundler.on_message(message).into_iter() {
+                for event in bundler.on_irc_msg(msg).into_iter() {
                     emit_events.push(event);
                 }
                 if !bundler.is_finished() {
@@ -192,7 +192,7 @@ mod tests {
     use super::*;
     use std::io::{IoResult, BufReader};
 
-    use message::IrcMessage;
+    use parse::IrcMsg;
     use watchers::{
         WhoBundlerTrigger,
         JoinBundlerTrigger,
@@ -204,13 +204,13 @@ mod tests {
 
     const TEST_DATA: &'static [u8] = include_bytes!("../../testdata/watcher.txt");
 
-    fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMessage {
+    fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMsg {
         let line = match line_res {
             Ok(line) => line,
             Err(err) => panic!("err: {}", err)
         };
         let totrim: &[_] = &['\n', '\r'];
-        match IrcMessage::from_str(line.as_slice().trim_right_chars(totrim)) {
+        match IrcMsg::new(line.as_slice().trim_right_chars(totrim).to_string().into_bytes()) {
             Ok(message) => message,
             Err(err) => panic!("err: {}", err)
         }
@@ -225,7 +225,7 @@ mod tests {
         let mut events = Vec::new();
 
         for msg in reader.lines().map(unsafe_to_irc_message) {
-            events.extend(bunman.on_message(&msg).into_iter());
+            events.extend(bunman.on_irc_msg(&msg).into_iter());
         }
 
         let mut join_bundles = 0u;

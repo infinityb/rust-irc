@@ -90,11 +90,12 @@ impl IrcConnectionInternalState {
             }
         }
 
+        let irc_msg = message.as_irc_msg();
         // XXX //
-        let outgoing_events = self.bundler_man.on_message(&message);
+        let outgoing_events = self.bundler_man.on_irc_msg(irc_msg);
 
         for responder in self.responders.iter_mut() {
-            for message in responder.on_message(&message).into_iter() {
+            for message in responder.on_irc_msg(irc_msg).into_iter() {
                 raw_sender.send(message.into_bytes());
             }
         }

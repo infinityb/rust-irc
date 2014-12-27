@@ -1,8 +1,8 @@
 use std::fmt;
 
 use numerics;
-use message::IrcMessage;
-use message_types::server::IncomingMsg;
+use parse::IrcMsg;
+use message_types::server;
 use watchers::base::EventWatcher;
 use event::IrcEvent;
 
@@ -10,13 +10,13 @@ use event::IrcEvent;
 #[deriving(Clone, Send, Show)]
 pub struct RegisterError {
     pub errtype: RegisterErrorType,
-    pub message: IrcMessage
+    pub message: IrcMsg,
 }
 
 impl RegisterError {
     pub fn should_pick_new_nickname(&self) -> bool {
-        match *self.message.get_typed_message() {
-            IncomingMsg::Numeric(num, _) => {
+        match server::IncomingMsg::from_msg(self.message.clone()) {
+            server::IncomingMsg::Numeric(num, _) => {
                 numerics::ERR_NICKNAMEINUSE == (num as i32)
             },
             _ => false
@@ -106,13 +106,14 @@ impl RegisterEventWatcher {
         rx
     }
 
-    fn accept_ircmessage(&mut self, message: &IrcMessage) {
-        println!("RegisterEventWatcher: RX {}", message);
-        let (interested, err) = match *message.get_typed_message() {
-            IncomingMsg::Numeric(1, _) => {
+    fn accept_ircmessage(&mut self, msg: &IrcMsg) {
+        println!("RegisterEventWatcher: RX {}", msg);
+
+        let (interested, err) = match server::IncomingMsg::from_msg(msg.clone()) {
+            server::IncomingMsg::Numeric(1, _) => {
                 (true, None)
             },
-            IncomingMsg::Numeric(other, _) => {
+            server::IncomingMsg::Numeric(other, _) => {
                 let res = RegisterErrorType::from_ord_known(other as i32);
                 (res.is_some(), res)
             },
@@ -125,7 +126,7 @@ impl RegisterEventWatcher {
                 None => Ok(()),
                 Some(err) => Err(RegisterError {
                     errtype: err,
-                    message: message.clone()
+                    message: msg.clone()
                 })
             });
             self.dispatch_monitors();
@@ -137,8 +138,8 @@ impl RegisterEventWatcher {
 impl EventWatcher for RegisterEventWatcher {
     fn on_event(&mut self, event: &IrcEvent) {
         match *event {
-            IrcEvent::Message(ref message) => {
-                self.accept_ircmessage(message);
+            IrcEvent::IrcMsg(ref msg) => {
+                self.accept_ircmessage(msg);
             },
             _ => ()
         }

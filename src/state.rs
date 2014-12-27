@@ -11,10 +11,7 @@ use std::collections::{
 };
 
 use message_types::server;
-use message::{
-    IrcMessage,
-};
-use parse::IrcMsgPrefix;
+use parse::{IrcMsg, IrcMsgPrefix};
 use watchers::{
     JoinSuccess,
     WhoRecord,
@@ -569,15 +566,15 @@ impl State {
         self.unlink_user_channel(user_id, chan_id);
     }
 
-    fn from_message(&mut self, msg: &IrcMessage) {
+    fn from_message(&mut self, msg: &IrcMsg) {
         use message_types::server::IncomingMsg::{Part, Quit, Join, Topic, Kick, Nick};
 
-        let is_self = match msg.source_nick() {
-            Some(ref heaped) => heaped[] == self.self_nick.as_slice(),
-            None => false
-        };
-
-        match (msg.get_typed_message(), is_self) {
+        let ty_msg = server::IncomingMsg::from_msg(msg.clone());
+        let is_self = msg.get_prefix().nick().and_then(|: nick| {
+            Some(nick[] == self.self_nick.as_slice())
+        }).unwrap_or(false);
+        
+        match (&ty_msg, is_self) {
             (&Part(ref part), true) => return self.on_self_part(part),
             (&Part(ref part), false) => return self.on_other_part(part),
             (&Quit(ref quit), false) => return self.on_other_quit(quit),
@@ -589,15 +586,15 @@ impl State {
             (_, _) => ()
         }
 
-        let () = match (msg.command(), is_self, msg.get_prefix().is_some()) {
-            ("001", _, _) => self.initialize_self_nick(msg.get_args()[0]),
-            _ => ()
-        };
+        if msg.get_command() == "001" {
+            let channel_name = ::std::str::from_utf8(&msg[0]).ok().unwrap();
+            self.initialize_self_nick(channel_name);
+        }
     }
 
     pub fn on_event(&mut self, event: &IrcEvent) {
         let () = match *event {
-            IrcEvent::Message(ref message) => self.from_message(message),
+            IrcEvent::IrcMsg(ref message) => self.from_message(message),
             IrcEvent::JoinBundle(Ok(ref join_bun)) => self.on_self_join(join_bun),
             IrcEvent::JoinBundle(Err(_)) => (),
             IrcEvent::WhoBundle(Ok(ref who_bun)) => self.on_who(who_bun),
@@ -1129,7 +1126,7 @@ mod tests {
     use super::{State, UserId};
     use super::irc_identifier::IrcIdentifier;
     use std::io::{IoResult, BufReader};
-    use message::IrcMessage;
+    use parse::IrcMsg;
     use watchers::{
         BundlerManager,
         JoinBundlerTrigger,
@@ -1141,7 +1138,7 @@ mod tests {
 
     #[deriving(Show)]
     enum SessionRecord {
-        Content(IrcMessage),
+        Content(IrcMsg),
         Comment(String),
     }
 
@@ -1155,7 +1152,7 @@ mod tests {
         let slice = line.as_slice().trim_right_chars(trim_these);
 
         if slice.starts_with(">> ") {
-            return match IrcMessage::from_str(slice[3..]) {
+            return match IrcMsg::new(slice[3..].to_string().into_bytes()) {
                 Ok(irc_msg) => Some(SessionRecord::Content(irc_msg)),
                 Err(_) => None
             }
@@ -1191,7 +1188,7 @@ mod tests {
                         break;
                     }
                     if let SessionRecord::Content(ref content) = rec {
-                        for event in bundler.on_message(content).iter() {
+                        for event in bundler.on_irc_msg(content).iter() {
                             state.on_event(event);
                             state.validate_state_internal_panic();
                         }
