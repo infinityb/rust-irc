@@ -1130,7 +1130,7 @@ mod tests {
     };
 
     const TEST_SESSION_STATETRACKER: &'static [u8] =
-        include_bin!("../testdata/statetracker.txt");
+        include_bytes!("../testdata/statetracker.txt");
 
     #[deriving(Show)]
     enum SessionRecord {

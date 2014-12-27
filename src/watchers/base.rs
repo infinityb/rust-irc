@@ -186,7 +186,7 @@ mod tests {
         WhoBundle,
     };
 
-    const TEST_DATA: &'static [u8] = include_bin!("../../testdata/watcher.txt");
+    const TEST_DATA: &'static [u8] = include_bytes!("../../testdata/watcher.txt");
 
     fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMessage {
         let line = match line_res {
