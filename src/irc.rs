@@ -8,7 +8,7 @@
 #[cfg(test)] extern crate test;
 #[phase(plugin, link)] extern crate log;
 
-pub use self::message::IrcMessage;
+// pub use self::message::IrcMessage;
 pub use self::connection::IrcConnectionBuf;
 pub use self::connection::IrcConnectionCommand;
 pub use self::event::IrcEvent;
@@ -50,7 +50,7 @@ pub use self::state::{
 #[cfg(test)] pub mod testinfra;
 mod numerics;
 mod connection;
-mod message;
+// mod message;
 mod watchers;
 mod core_plugins;
 

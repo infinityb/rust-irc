@@ -1,15 +1,9 @@
 use std::collections::RingBuf;
 
 use parse::IrcMsg;
-use message::IrcMessage;
 use event::IrcEvent;
 
 pub trait MessageWatcher {
-    #[deprecated="use on_irc_msg"]
-    fn on_message(&mut self, message: &IrcMessage) {
-        self.on_irc_msg(message.as_irc_msg())
-    }
-
     fn on_irc_msg(&mut self, message: &IrcMsg);
 
     /// If true, the `MessageWatcher` should be removed from the watcher set
@@ -31,11 +25,6 @@ pub trait EventWatcher {
 
 /// Emits IrcEvents when certain messages are detected 
 pub trait Bundler {
-    #[deprecated="use on_irc_msg"]
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<IrcEvent> {
-        self.on_irc_msg(message.as_irc_msg())
-    }
-
     fn on_irc_msg(&mut self, message: &IrcMsg) -> Vec<IrcEvent>;
 
     /// If true, the `Bundler` should be removed from the bundler set
@@ -46,11 +35,6 @@ pub trait Bundler {
 
 /// Emits Bundlers when certain messages are detected
 pub trait BundlerTrigger {
-    #[deprecated="use on_irc_msg"]
-    fn on_message(&mut self, message: &IrcMessage) -> Vec<Box<Bundler+Send>> {
-        self.on_irc_msg(message.as_irc_msg())
-    }
-
     fn on_irc_msg(&mut self, message: &IrcMsg) -> Vec<Box<Bundler+Send>>;
 }
 
