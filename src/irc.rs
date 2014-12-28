@@ -9,7 +9,7 @@
 #[phase(plugin, link)] extern crate log;
 
 pub use self::message::IrcMessage;
-pub use self::connection::{IrcConnection, IrcConnectionBuf};
+pub use self::connection::IrcConnectionBuf;
 pub use self::connection::IrcConnectionCommand;
 pub use self::event::IrcEvent;
 
