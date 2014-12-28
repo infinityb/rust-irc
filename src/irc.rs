@@ -7,7 +7,6 @@
 
 #[cfg(test)] extern crate test;
 #[phase(plugin, link)] extern crate log;
-extern crate time;
 
 pub use self::message::IrcMessage;
 pub use self::connection::IrcConnection;
