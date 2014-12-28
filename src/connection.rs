@@ -455,3 +455,21 @@ impl IrcConnectionBuf {
         result_future
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::IrcConnectionBuf;
+    static TEST_PINGPONG: &'static [u8] = b"<< \r\n";
+
+    #[test]
+    fn test_pingpong() {
+        let mut conn = IrcConnectionBuf::new();
+
+        assert_eq!(conn.pop_line(), None);
+        conn.push_line(b"PING pretend-server\r\n".to_vec());
+        assert_eq!(conn.pop_line(), None);
+
+        assert_eq!(conn.dispatch().len(), 1);
+        assert_eq!(conn.pop_line(), Some(b"PONG pretend-server\r\n".to_vec()));
+    }
+}

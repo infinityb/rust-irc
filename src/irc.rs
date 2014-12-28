@@ -9,7 +9,7 @@
 #[phase(plugin, link)] extern crate log;
 
 pub use self::message::IrcMessage;
-pub use self::connection::IrcConnection;
+pub use self::connection::{IrcConnection, IrcConnectionBuf};
 pub use self::connection::IrcConnectionCommand;
 pub use self::event::IrcEvent;
 
@@ -47,6 +47,7 @@ pub use self::state::{
     MessageEndpoint,
 };
 
+#[cfg(test)] pub mod testinfra;
 mod numerics;
 mod connection;
 mod message;

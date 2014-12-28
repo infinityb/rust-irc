@@ -17,9 +17,7 @@ use watchers::{
     WhoRecord,
     WhoSuccess,
 };
-use event::{
-    IrcEvent,
-};
+use event::IrcEvent;
 
 use self::irc_identifier::IrcIdentifier;
 pub use self::MessageEndpoint::{
@@ -1123,61 +1121,27 @@ impl Patch<StateDiff> for State {
 
 #[cfg(test)]
 mod tests {
+    use std::io::BufReader;
+
     use super::{State, UserId};
     use super::irc_identifier::IrcIdentifier;
-    use std::io::{IoResult, BufReader};
-    use parse::IrcMsg;
-    use watchers::{
-        BundlerManager,
-        JoinBundlerTrigger,
-        WhoBundlerTrigger,
-    };
 
+    use connection::IrcConnectionBuf;
+    use testinfra::transcript::{
+        SessionRecord,
+        decode_line,
+        marker_match,
+    };
+    
     const TEST_SESSION_STATETRACKER: &'static [u8] =
         include_bytes!("../testdata/statetracker.txt");
-
-    #[deriving(Show)]
-    enum SessionRecord {
-        Content(IrcMsg),
-        Comment(String),
-    }
-
-    fn decode_line(line_res: IoResult<String>) -> Option<SessionRecord> {
-        let line = match line_res {
-            Ok(ok) => ok,
-            Err(err) => panic!("error reading: {}", err)
-        };
-
-        let trim_these: &[_] = &['\r', '\n'];
-        let slice = line.as_slice().trim_right_chars(trim_these);
-
-        if slice.starts_with(">> ") {
-            return match IrcMsg::new(slice[3..].to_string().into_bytes()) {
-                Ok(irc_msg) => Some(SessionRecord::Content(irc_msg)),
-                Err(_) => None
-            }
-        }
-        if slice.starts_with("## ") {
-            return Some(SessionRecord::Comment(slice[3..].to_string()));
-        }
-        None
-    }
-
-    fn marker_match(rec: &SessionRecord, target: &str) -> bool {
-        match *rec {
-            SessionRecord::Comment(ref comm) => comm.as_slice() == target,
-            _ => false
-        }
-    }
 
     #[test]
     fn test_state_tracking() {
         let mut reader = BufReader::new(TEST_SESSION_STATETRACKER);
         let mut iterator = reader.lines().filter_map(decode_line);
-        let mut bundler = BundlerManager::new();
-        bundler.add_bundler_trigger(box JoinBundlerTrigger::new());
-        bundler.add_bundler_trigger(box WhoBundlerTrigger::new());
 
+        let mut connection = IrcConnectionBuf::new();
         let mut state = State::new();
         
         let it = |target: &str, statefunc: |&mut State|| {
@@ -1188,8 +1152,10 @@ mod tests {
                         break;
                     }
                     if let SessionRecord::Content(ref content) = rec {
-                        for event in bundler.on_irc_msg(content).iter() {
-                            state.on_event(event);
+                        connection.push_line(content.as_bytes().to_vec());
+                        for event in connection.dispatch().into_iter() {
+                            println!("event: {}", event);
+                            state.on_event(&event);
                             state.validate_state_internal_panic();
                         }
                     }
