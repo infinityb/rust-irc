@@ -7,4 +7,3 @@ pub mod client;
 
 
 mod traits;
-mod util;

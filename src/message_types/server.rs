@@ -78,7 +78,7 @@ impl IncomingMsg {
             "PRIVMSG" => to_incoming::<Privmsg>(msg),
             "QUIT" => to_incoming::<Quit>(msg),
             "TOPIC" => to_incoming::<Topic>(msg),
-            _ => match str::from_str::<u16>(msg.get_command()) {
+            _ => match msg.get_command().parse::<u16>() {
                 Some(_) => to_incoming::<Numeric>(msg),
                 None => IncomingMsg::Unknown(msg)
             }
@@ -174,7 +174,7 @@ impl FromIrcMsg for Join {
             warn!("Invalid JOIN: Insufficient prefix `{}`", msg.get_prefix_str());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Join(msg))
@@ -246,7 +246,7 @@ impl FromIrcMsg for Kick {
             return Err(msg);
         }
         // msg[0] is channel, msg[1] is kicked nick
-        if !str::is_utf8(&msg[0]) || !str::is_utf8(&msg[1]) {
+        if !str::from_utf8(&msg[0]).is_ok() || !str::from_utf8(&msg[1]).is_ok() {
             return Err(msg);
         }
         Ok(Kick(msg))
@@ -280,7 +280,7 @@ impl FromIrcMsg for Mode {
             warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Mode(msg))
@@ -322,7 +322,7 @@ impl FromIrcMsg for Nick {
             return Err(msg);
         }
         // msg[0] is channel, msg[1] is kicked nick
-        if !str::is_utf8(&msg[0]) || !str::is_utf8(&msg[1]) {
+        if !str::from_utf8(&msg[0]).is_ok() || !str::from_utf8(&msg[1]).is_ok() {
             return Err(msg);
         }
         Ok(Nick(msg))
@@ -356,7 +356,7 @@ impl FromIrcMsg for Notice {
             warn!("Invalid MODE: Insufficient prefix `{}`", msg.get_prefix_str());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Notice(msg))
@@ -412,7 +412,7 @@ impl FromIrcMsg for Part {
             warn!("Invalid PART: Insufficient prefix `{}`", msg.get_prefix_str());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Part(msg))
@@ -458,7 +458,7 @@ impl FromIrcMsg for Ping {
             return Err(msg);
         }
         for idx in range(0, min(2, msg.len())) {
-            if !str::is_utf8(&msg[idx]) {
+            if !str::from_utf8(&msg[idx]).is_ok() {
                 return Err(msg);
             }
         }
@@ -516,7 +516,7 @@ impl FromIrcMsg for Privmsg {
             warn!("Invalid PRIVMSG: Insufficient prefix `{}`", msg.get_prefix_str());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Privmsg(msg))
@@ -588,7 +588,7 @@ impl FromIrcMsg for Quit {
             warn!("Invalid QUIT: Not enough arguments {}", msg.len());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Quit(msg))
@@ -638,7 +638,7 @@ impl FromIrcMsg for Topic {
             warn!("Invalid TOPIC: Insufficient prefix `{}`", msg.get_prefix_str());
             return Err(msg);
         }
-        if !str::is_utf8(&msg[0]) {
+        if !str::from_utf8(&msg[0]).is_ok() {
             return Err(msg);
         }
         Ok(Topic(msg))
@@ -652,7 +652,7 @@ msg_wrapper_common!(Numeric);
 impl Numeric {
     pub fn get_code(&self) -> u16 {
         let Numeric(ref msg) = *self;
-        from_str::<u16>(msg.get_command()).unwrap()
+        msg.get_command().parse::<u16>().unwrap()
     }
 }
 
@@ -665,7 +665,7 @@ impl IntoIncomingMsg for Numeric {
 
 impl FromIrcMsg for Numeric {
     fn from_irc_msg(msg: IrcMsg) -> Result<Numeric, IrcMsg>  {
-        match from_str::<u16>(msg.get_command()) {
+        match msg.get_command().parse::<u16>() {
             Some(_) => Ok(Numeric(msg)),
             None => Err(msg)
         }

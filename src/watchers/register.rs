@@ -26,7 +26,7 @@ impl RegisterError {
     }
 }
 
-#[deriving(Clone, Send, Show)]
+#[deriving(Clone, Send, Show, Copy)]
 pub enum RegisterErrorType {
     NoNicknameGiven,
     NicknameInUse,
@@ -169,10 +169,4 @@ impl fmt::Show for RegisterEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RegisterEventWatcher()")
     }
-}
-
-
-pub enum IrcStateError {
-    NotConnected,
-    InvalidPhase(String),
 }

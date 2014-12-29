@@ -1,13 +1,10 @@
-use std::str::IntoMaybeOwned;
 use std::fmt;
 use std::sync::Future;
-
 
 use irccase::IrcAsciiExt;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
 use event::IrcEvent;
 use parse::{IrcMsg, IrcMsgPrefix};
-use util::{StringSlicer, OptionalStringSlicer};
 use message_types::server;
 
 pub type WhoResult = Result<WhoSuccess, WhoError>;
@@ -89,7 +86,7 @@ impl WhoRecord {
     #[stable]
     pub fn get_prefix(&self) -> IrcMsgPrefix {
         let prefix_str = format!("{}!{}@{}", self.nick, self.username, self.hostname);
-        IrcMsgPrefix::new(prefix_str.into_maybe_owned())
+        IrcMsgPrefix::new(prefix_str.into_cow())
     }
 }
 
@@ -273,69 +270,4 @@ impl EventWatcher for WhoEventWatcher {
     fn display(&self) -> String {
         format!("{}", self)
     }
-}
-
-
-pub struct IrcUser {
-    hostmask: String,
-    nick_idx_pair: StringSlicer,
-    username_idx_pair: OptionalStringSlicer,
-    hostname_idx_pair: OptionalStringSlicer,
-}
-
-impl IrcUser {
-    #[inline]
-    pub fn new(hostmask: &str) -> Option<IrcUser> {
-        let idx_pair = match hostmask.find('!') {
-            Some(exc_idx) => match hostmask[exc_idx+1..].find('@') {
-                Some(at_idx) => Some((exc_idx, exc_idx + at_idx + 1)),
-                None => None
-            },
-            None => None
-        };
-
-        let hostmask_str = hostmask.to_string();
-        Some(match idx_pair {
-            Some((exc_idx, at_idx)) => IrcUser {
-                hostmask: hostmask_str,
-                nick_idx_pair: StringSlicer::new(0, exc_idx),
-                username_idx_pair: OptionalStringSlicer::new_some(exc_idx + 1, at_idx),
-                hostname_idx_pair: OptionalStringSlicer::new_some(at_idx + 1, hostmask.len())
-            },
-            None => IrcUser {
-                hostmask: hostmask_str,
-                nick_idx_pair: StringSlicer::new(0, hostmask.len()),
-                username_idx_pair: OptionalStringSlicer::new_none(),
-                hostname_idx_pair: OptionalStringSlicer::new_none()
-            }
-        })
-    }
-
-    #[inline]
-    pub fn nick<'a>(&'a self) -> &'a str {
-        self.nick_idx_pair.slice_on(self.hostmask[])
-    }
-
-    #[inline]
-    pub fn username<'a>(&'a self) -> Option<&'a str> {
-        self.username_idx_pair.slice_on(self.hostmask[])
-    }
-
-    #[inline]
-    pub fn hostname<'a>(&'a self) -> Option<&'a str> {
-        self.hostname_idx_pair.slice_on(self.hostmask[])
-    }
-}
-
-#[test]
-fn test_irc_user() {
-    let user = IrcUser::new("sell!q@127.0.0.1").unwrap();
-    assert_eq!(user.nick(), "sell");
-    assert_eq!(user.username(), Some("q"));
-    assert_eq!(user.hostname(), Some("127.0.0.1"));
-
-    let user = IrcUser::new("sell").unwrap();
-    assert_eq!(user.nick(), "sell");
-    assert_eq!(user.username(), None);
-    assert_eq!(user.hostname(), None);
 }

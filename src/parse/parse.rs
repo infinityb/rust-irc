@@ -1,4 +1,5 @@
-use std::str::{mod, MaybeOwned, IntoMaybeOwned};
+// use std::str;
+use std::string::CowString;
 use std::fmt;
 
 use util::{StringSlicer, OptionalStringSlicer};
@@ -31,7 +32,7 @@ pub fn can_target_channel(identifier: &str) -> bool {
 /// Determines whether or not an identifier is a channel, by checking
 /// the first character.
 pub fn is_channel(identifier: &str) -> bool {
-    if identifier.char_len() == 0 {
+    if identifier.chars().count() == 0 {
         return false;
     }
     for character in CHANNEL_PREFIX_CHARS.iter() {
@@ -273,10 +274,10 @@ impl IrcMsg {
             Ok(parsed) => parsed,
             Err(err) => return Err(err)
         };
-        if !str::is_utf8(parsed.get_prefix_raw()) {
+        if !::std::str::from_utf8(parsed.get_prefix_raw()).is_ok() {
             return Err(ParseError::EncodingError)
         }
-        if !str::is_utf8(parsed.get_command_raw()) {
+        if !::std::str::from_utf8(parsed.get_command_raw()).is_ok() {
             return Err(ParseError::EncodingError)
         }
         Ok(parsed)
@@ -293,11 +294,11 @@ impl IrcMsg {
     }
 
     pub fn get_prefix_str(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(self.get_prefix_raw()) }
+        unsafe { ::std::str::from_utf8_unchecked(self.get_prefix_raw()) }
     }
 
     pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
-        IrcMsgPrefix::new(self.get_prefix_str().into_maybe_owned())
+        IrcMsgPrefix::new(self.get_prefix_str().into_cow())
     }
 
     fn get_command_raw<'a>(&'a self) -> &[u8] {
@@ -306,7 +307,7 @@ impl IrcMsg {
     }
 
     pub fn get_command(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(self.get_command_raw()) }
+        unsafe { ::std::str::from_utf8_unchecked(self.get_command_raw()) }
     }
 
     pub fn get_args(&self) -> Vec<&[u8]> {
@@ -425,7 +426,8 @@ impl PrefixSlicer {
         }
     }
 
-    pub fn apply<'a>(&self, prefix: MaybeOwned<'a>) -> IrcMsgPrefix<'a> {
+    #[allow(dead_code)]
+    pub fn apply<'a>(&self, prefix: CowString<'a>) -> IrcMsgPrefix<'a> {
         IrcMsgPrefix {
             data: prefix,
             slicer: self.clone()
@@ -436,13 +438,13 @@ impl PrefixSlicer {
 /// An IRC prefix, which identifies the source of a message.
 #[deriving(Clone)]
 pub struct IrcMsgPrefix<'a> {
-    data: MaybeOwned<'a>,
+    data: CowString<'a>,
     slicer: PrefixSlicer
 }
 
 impl<'a> IrcMsgPrefix<'a> {
-    /// Parse a MaybeOwned into a IrcMsgPrefix
-    pub fn new(s: MaybeOwned<'a>) -> IrcMsgPrefix {
+    /// Parse a CowString into a IrcMsgPrefix
+    pub fn new(s: CowString<'a>) -> IrcMsgPrefix {
         let slicer = PrefixSlicer::new(s.as_slice());
         IrcMsgPrefix {
             data: s,
@@ -473,7 +475,7 @@ impl<'a> IrcMsgPrefix<'a> {
     /// Get an owned copy
     pub fn to_owned(&self) -> IrcMsgPrefix<'static> {
         IrcMsgPrefix {
-            data: self.data.to_string().into_maybe_owned(),
+            data: self.data.to_string().into_cow(),
             slicer: self.slicer.clone()
         }
     }
@@ -483,7 +485,7 @@ impl<'a> IrcMsgPrefix<'a> {
         match (self.nick(), self.username(), self.hostname()) {
             (Some(_), Some(username), hostname) => {
                 let prefix_data = format!("{}!{}@{}", nick, username, hostname);
-                Some(IrcMsgPrefix::new(prefix_data.into_maybe_owned()))
+                Some(IrcMsgPrefix::new(prefix_data.into_cow()))
             },
             _ => None
         }

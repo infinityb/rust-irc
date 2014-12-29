@@ -2,7 +2,6 @@
 #![deny(unused_variables, unused_mut)]
 
 use std::cmp::max;
-use std::str::IntoMaybeOwned;
 use std::default::Default;
 use std::collections::{
     hash_map,
@@ -143,7 +142,7 @@ impl Patch<Vec<UserDiffCmd>> for User {
         for cmd in diff.iter() {
             match *cmd {
                 UserDiffCmd::ChangePrefix(ref prefix_str) => {
-                    other.prefix = IrcMsgPrefix::new(prefix_str.clone().into_maybe_owned());
+                    other.prefix = IrcMsgPrefix::new(prefix_str.clone().into_cow());
                 },
                 UserDiffCmd::AddChannel(chan_id) => {
                     other.channels.insert(chan_id);
@@ -624,7 +623,7 @@ impl State {
         self.users.insert(self.self_id, User {
             id: self.self_id,
             // FIXME: hack
-            prefix: IrcMsgPrefix::new(format!("{}!someone@somewhere", new_nick_str).into_maybe_owned()),
+            prefix: IrcMsgPrefix::new(format!("{}!someone@somewhere", new_nick_str).into_cow()),
             channels: HashSet::new(),
         });
         self.set_self_nick(new_nick_str);
@@ -1132,7 +1131,7 @@ mod tests {
         decode_line,
         marker_match,
     };
-    
+
     const TEST_SESSION_STATETRACKER: &'static [u8] =
         include_bytes!("../testdata/statetracker.txt");
 
@@ -1147,7 +1146,7 @@ mod tests {
         let it = |target: &str, statefunc: |&mut State|| {
             if target != "" {
                 for rec in iterator {
-                    println!("Processing message: {}", rec);
+                    println!("Processing mesfsage: {}", rec);
                     if marker_match(&rec, target) {
                         break;
                     }

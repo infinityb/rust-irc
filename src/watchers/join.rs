@@ -148,7 +148,7 @@ impl BundlerTopicMeta {
             Ok(args3) => args3,
             Err(_) => return None,
         };
-        match from_str(args3) {
+        match args3.parse() {
             Some(set_at) => {
                 Some(BundlerTopicMeta {
                     set_by: args2.to_string(),
