@@ -214,7 +214,6 @@ impl IrcConnectionBuf {
 #[cfg(test)]
 mod tests {
     use super::IrcConnectionBuf;
-    static TEST_PINGPONG: &'static [u8] = b"<< \r\n";
 
     #[test]
     fn test_pingpong() {

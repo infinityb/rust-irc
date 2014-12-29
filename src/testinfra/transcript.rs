@@ -38,22 +38,3 @@ pub fn marker_match(rec: &SessionRecord, target: &str) -> bool {
         _ => false
     }
 }
-
-struct Transcript<'a> {
-    current_expection: Option<Vec<u8>>,
-    buffer: &'a mut (Buffer+'a),
-}
-
-impl<'a> Transcript<'a> {
-    pub fn read_record(&mut self) -> IoResult<SessionRecord> {
-        match self.buffer.read_line() {
-            Ok(line) => Ok(decode_line2(line)),
-            Err(err) => Err(err),
-        }
-    }
-
-    // FIXME: impl Writer?
-    pub fn write(&self, _buf: &[u8]) -> Result<(), ()> {
-        Err(())
-    }
-}
