@@ -9,7 +9,7 @@ use event::IrcEvent;
 
 pub type RegisterResult = Result<(), RegisterError>;
 
-#[deriving(Clone, Send, Show)]
+#[deriving(Clone, Show)]
 pub struct RegisterError {
     pub errtype: RegisterErrorType,
     pub message: IrcMsg,
@@ -26,7 +26,7 @@ impl RegisterError {
     }
 }
 
-#[deriving(Clone, Send, Show, Copy)]
+#[deriving(Clone, Show, Copy)]
 pub enum RegisterErrorType {
     NoNicknameGiven,
     NicknameInUse,
