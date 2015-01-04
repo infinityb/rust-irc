@@ -365,7 +365,6 @@ impl FromIrcMsg for Notice {
 
 #[cfg(test)]
 mod benchmarks {
-    use std::vec::as_vec;
     use test::Bencher;
     use parse::IrcMsg;
     use super::{to_incoming, Kick};
@@ -373,8 +372,8 @@ mod benchmarks {
     #[bench]
     fn bench_kick_parsing(b: &mut Bencher) {
         b.iter(|| {
-            let vec = as_vec(b":aibi!q@172.17.42.1 KICK #test randomuser :reason");
-            let verified = to_incoming::<Kick>(IrcMsg::new(vec.deref().clone()).ok().unwrap());
+            let vec = b":aibi!q@172.17.42.1 KICK #test randomuser :reason".to_vec();
+            let verified = to_incoming::<Kick>(IrcMsg::new(vec.clone()).ok().unwrap());
             assert_eq!(verified.to_irc_msg().get_command(), "KICK")
         });
     }

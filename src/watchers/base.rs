@@ -194,7 +194,7 @@ mod tests {
             Err(err) => panic!("err: {}", err)
         };
         let totrim: &[_] = &['\n', '\r'];
-        match IrcMsg::new(line.as_slice().trim_right_chars(totrim).to_string().into_bytes()) {
+        match IrcMsg::new(line.as_slice().trim_right_matches(totrim).to_string().into_bytes()) {
             Ok(message) => message,
             Err(err) => panic!("err: {}", err)
         }
