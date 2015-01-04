@@ -37,7 +37,7 @@ macro_rules! deref_opt_or_return(
     );
 );
 
-#[deriving(Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Clone, Show, PartialEq, Eq, Hash)]
 pub enum MessageEndpoint {
     KnownUser(UserId),
     KnownChannel(ChannelId),
@@ -45,7 +45,7 @@ pub enum MessageEndpoint {
     AnonymousUser,
 }
 
-#[deriving(Copy, Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UserId(u64);
 
 
@@ -59,7 +59,7 @@ mod irc_identifier {
         }
     }
 
-    #[deriving(Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
+    #[derive(Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
     pub struct IrcIdentifier(String);
 
     impl IrcIdentifier {
@@ -83,7 +83,7 @@ trait Patch<DiffType> {
     fn patch(&self, diff: &DiffType) -> Self;
 }
 
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Show)]
 pub struct User {
     id: UserId,
     prefix: IrcMsgPrefix<'static>,
@@ -156,11 +156,11 @@ impl Patch<Vec<UserDiffCmd>> for User {
     }
 }
 
-#[deriving(Copy, Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Show, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChannelId(u64);
 
 
-#[deriving(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Show)]
 pub struct Channel {
     id: ChannelId,
     name: String,
@@ -221,7 +221,7 @@ impl Patch<Vec<ChannelDiffCmd>> for Channel {
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct UserInfo {
     id: UserId,
     prefix: IrcMsgPrefix<'static>,
@@ -244,7 +244,7 @@ impl UserInfo {
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 struct ChannelInfo {
     id: ChannelId,
     name: String,
@@ -277,14 +277,14 @@ impl ChannelInfo {
     }
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum ChannelDiffCmd {
     ChangeTopic(String),
     AddUser(UserId),
     RemoveUser(UserId),
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum UserDiffCmd {
     ChangePrefix(String),
     AddChannel(ChannelId),
@@ -292,7 +292,7 @@ pub enum UserDiffCmd {
 }
 
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum StateCommand {
     CreateUser(UserInfo),
     UpdateUser(UserId, Vec<UserDiffCmd>),
@@ -306,14 +306,14 @@ pub enum StateCommand {
     SetGeneration(u64),
 }
 
-#[deriving(Show)]
+#[derive(Show)]
 pub struct StateDiff {
     from_generation: u64,
     to_generation: u64,
     commands: Vec<StateCommand>
 }
 
-#[deriving(Show, Clone)]
+#[derive(Show, Clone)]
 pub struct State {
     // Can this be made diffable by using sorted `users`, `channels`,
     // `users[].channels` and `channels[].users`?  TreeSet.

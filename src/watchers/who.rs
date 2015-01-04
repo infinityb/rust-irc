@@ -24,7 +24,7 @@ impl ChannelTargeted for WhoResult {
     }
 }
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct WhoSuccess {
     pub channel: Vec<u8>,
     pub who_records: Vec<WhoRecord>,
@@ -41,14 +41,14 @@ impl WhoSuccess {
 
 
 // Does /WHO even error? 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 #[experimental = "Public fields definitely going away"]
 pub struct WhoError {
     pub channel: Vec<u8>,
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 #[experimental = "Public fields definitely going away"]
 pub struct WhoRecord {
     pub hostname: String,
@@ -92,7 +92,7 @@ impl WhoRecord {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct WhoBundlerTrigger {
     suppress: bool
 }
@@ -127,7 +127,7 @@ impl BundlerTrigger for WhoBundlerTrigger {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct WhoBundler {
     target_channel: Vec<u8>,
     who_records: Vec<WhoRecord>,

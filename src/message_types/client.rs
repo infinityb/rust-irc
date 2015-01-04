@@ -27,7 +27,7 @@ macro_rules! msg_wrapper_common {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct Join(IrcMsg);
 msg_wrapper_common!(Join);
 
@@ -55,7 +55,7 @@ impl Join {
     }
 }
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct Nick(IrcMsg);
 msg_wrapper_common!(Nick);
 
@@ -69,7 +69,7 @@ impl Nick {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct Pong(IrcMsg);
 msg_wrapper_common!(Pong);
 
@@ -83,7 +83,7 @@ impl Pong {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct Privmsg(IrcMsg);
 msg_wrapper_common!(Privmsg);
 
@@ -110,7 +110,7 @@ impl Privmsg {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct User(IrcMsg);
 msg_wrapper_common!(User);
 
@@ -133,7 +133,7 @@ impl User {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct Who(IrcMsg);
 msg_wrapper_common!(Who);
 

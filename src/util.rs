@@ -1,4 +1,4 @@
-#[deriving(PartialEq, Copy, Clone, Show)]
+#[derive(PartialEq, Copy, Clone, Show)]
 pub struct StringSlicer {
     from_idx: uint,
     to_idx: uint
@@ -57,7 +57,7 @@ impl StringSlicer {
     }
 }
 
-#[deriving(PartialEq, Copy, Clone, Show)]
+#[derive(PartialEq, Copy, Clone, Show)]
 pub struct OptionalStringSlicer {
     exists: bool,
     from_idx: uint,

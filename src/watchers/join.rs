@@ -24,7 +24,7 @@ impl ChannelTargeted for JoinResult {
     }
 }
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct JoinSuccess {
     pub channel: Vec<u8>,
     pub nicks: Vec<String>,
@@ -32,7 +32,7 @@ pub struct JoinSuccess {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct TopicMeta {
     pub text: Vec<u8>,
     pub set_at: u64,
@@ -51,14 +51,14 @@ impl TopicMeta {
 }
 
 
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct JoinError {
     pub channel: Vec<u8>,
     pub errcode: i16,
     pub message: String
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum JoinBundlerTriggerState {
     Unregistered,
     Running

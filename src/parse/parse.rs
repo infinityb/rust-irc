@@ -71,7 +71,7 @@ pub fn is_full_prefix(prefix: &str) -> bool {
     }
 }
 
-#[deriving(Copy)]
+#[derive(Copy)]
 enum IrcParserState {
     Initial,
     Prefix,
@@ -97,7 +97,7 @@ struct IrcParser {
     state: IrcParserState
 }
 
-#[deriving(Show, PartialEq, Eq)]
+#[derive(Show, PartialEq, Eq)]
 pub enum ParseError {
     InvalidMessage(&'static str),
     EncodingError,
@@ -260,7 +260,7 @@ impl IrcParser {
 // more) ASCII space character(s) (0x20).
 
 #[experimental]
-#[deriving(Clone, Show)]
+#[derive(Clone, Show)]
 pub struct IrcMsg {
     data: Vec<u8>,
     prefix: (u32, u32),
@@ -398,7 +398,7 @@ mod tests {
 }
 
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct PrefixSlicer {
     pub nick_idx_pair: OptionalStringSlicer,
     username_idx_pair: OptionalStringSlicer,
@@ -439,7 +439,7 @@ impl PrefixSlicer {
 }
 
 /// An IRC prefix, which identifies the source of a message.
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct IrcMsgPrefix<'a> {
     data: CowString<'a>,
     slicer: PrefixSlicer
