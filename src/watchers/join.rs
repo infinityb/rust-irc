@@ -1,5 +1,6 @@
 use std::fmt;
 use std::sync::Future;
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use std::str::from_str;
 use irccase::IrcAsciiExt;
 
@@ -363,9 +364,9 @@ impl JoinEventWatcher {
         let result = self.result.clone();
 
         match result {
-            Some(result) => monitor.send(result.clone()),
+            Some(result) => monitor.send(result.clone()).ok().expect("send failure"),
             None => self.monitors.push(monitor)
-        }
+        };
     }
 
     pub fn get_monitor(&mut self) -> Receiver<JoinResult> {

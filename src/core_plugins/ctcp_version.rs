@@ -1,4 +1,5 @@
 use std::str::CowString;
+use std::borrow::IntoCow;
 
 use parse::IrcMsg;
 use core_plugins::traits::MessageResponder;

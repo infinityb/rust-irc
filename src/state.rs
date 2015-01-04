@@ -1,6 +1,5 @@
 #![warn(dead_code)]
 #![deny(unused_variables, unused_mut)]
-
 use std::cmp::max;
 use std::default::Default;
 use std::collections::{
@@ -8,6 +7,7 @@ use std::collections::{
     HashMap,
     HashSet,
 };
+use std::borrow::IntoCow;
 
 use message_types::server;
 use parse::{IrcMsg, IrcMsgPrefix};

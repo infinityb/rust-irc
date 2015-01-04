@@ -1,5 +1,7 @@
 use std::fmt;
 use std::sync::Future;
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+use std::borrow::IntoCow;
 
 use irccase::IrcAsciiExt;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
@@ -223,7 +225,7 @@ impl WhoEventWatcher {
         let result = self.result.clone();
 
         match result {
-            Some(result) => monitor.send(result.clone()),
+            Some(result) => monitor.send(result.clone()).ok().expect("send failure"),
             None => self.monitors.push(monitor)
         }
     }

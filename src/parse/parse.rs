@@ -1,15 +1,16 @@
-// use std::str;
 use std::string::CowString;
 use std::fmt;
+use std::ops::Index;
+use std::borrow::IntoCow;
 
 use util::{StringSlicer, OptionalStringSlicer};
 
 use irccase::IrcAsciiExt;
 
-static CHANNEL_PREFIX_CHARS: [char, ..4] = ['&', '#', '+', '!'];
+static CHANNEL_PREFIX_CHARS: [char; 4] = ['&', '#', '+', '!'];
 
 // Commands which target a msgtarget or channel
-static CHANNEL_TARGETED_COMMANDS: [&'static str, ..6] = [
+static CHANNEL_TARGETED_COMMANDS: [&'static str; 6] = [
     "KICK", 
     "PART",
     "MODE",
@@ -92,7 +93,7 @@ struct IrcParser {
     command_end: u32,
     arg_len: u32,
     arg_start: u32,
-    args: [(u32, u32), ..15],
+    args: [(u32, u32); 15],
     state: IrcParserState
 }
 
@@ -112,7 +113,7 @@ impl IrcParser {
             command_end: 0,
             arg_len: 0,
             arg_start: 0,
-            args: [(0, 0), ..15],
+            args: [(0, 0); 15],
             state: IrcParserState::Initial,
         }
     }
@@ -223,7 +224,7 @@ impl IrcParser {
             prefix: (parser.prefix_start, parser.prefix_end),
             command: (parser.command_start, parser.command_end),
             arg_len: 0,
-            args: [(0, 0), ..15]
+            args: [(0, 0); 15]
         };
 
         parsed.arg_len = parser.arg_len;
@@ -265,7 +266,7 @@ pub struct IrcMsg {
     prefix: (u32, u32),
     command: (u32, u32),
     arg_len: u32,
-    args: [(u32, u32), ..15],
+    args: [(u32, u32); 15],
 }
 
 impl IrcMsg {
@@ -332,7 +333,9 @@ impl IrcMsg {
     }
 }
 
-impl Index<uint, [u8]> for IrcMsg {
+impl Index<uint> for IrcMsg {
+    type Output = [u8];
+
     fn index<'a>(&'a self, index: &uint) -> &'a [u8] {
         let (arg_start, arg_end) = self.args[*index];
         self.data[arg_start as uint..arg_end as uint]

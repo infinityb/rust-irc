@@ -1,6 +1,6 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(slicing_syntax, globs, phase, macro_rules)]
+#![feature(slicing_syntax, globs, phase, macro_rules, associated_types)]
 
 #![allow(missing_copy_implementations)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]

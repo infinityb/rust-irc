@@ -206,7 +206,7 @@ impl<CM: CaseMapping> Nickname<CM> {
             Ok(string) => string,
             // Error condition should never happen. the UTF-8 invariant should
             // not be violated at any point.
-            Err((_, err)) => panic!("Illegal byte sequence in nickname: {}", err)
+            Err(err) => panic!("Illegal byte sequence in nickname: {}", err.into_bytes())
         }
     }
 }

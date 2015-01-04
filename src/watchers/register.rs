@@ -1,5 +1,6 @@
 use std::sync::Future;
 use std::fmt;
+use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 
 use numerics;
 use parse::IrcMsg;
@@ -88,7 +89,7 @@ impl RegisterEventWatcher {
 
         match (self.rx_connect, result) {
             (true, Some(result)) => {
-                monitor.send(result.clone());
+                monitor.send(result.clone()).ok().expect("send failure");
             },
             (true, None) => {
                 panic!("rx_connect without result");
