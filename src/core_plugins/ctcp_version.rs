@@ -1,4 +1,4 @@
-use std::str::CowString;
+use std::string::CowString;
 use std::borrow::IntoCow;
 
 use parse::IrcMsg;

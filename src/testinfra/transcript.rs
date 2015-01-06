@@ -2,7 +2,7 @@ use std::io::IoResult;
 
 use parse::IrcMsg;
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum SessionRecord {
     Content(IrcMsg),
     Expectation(String),

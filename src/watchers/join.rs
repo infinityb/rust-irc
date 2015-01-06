@@ -1,7 +1,6 @@
 use std::fmt;
 use std::sync::Future;
 use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
-use std::str::from_str;
 use irccase::IrcAsciiExt;
 
 use parse::IrcMsg;

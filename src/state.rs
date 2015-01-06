@@ -652,10 +652,10 @@ impl State {
     }
 
     fn apply_update_chan(&mut self, id: ChannelId, diff: &Vec<ChannelDiffCmd>) {
-        match self.channels.entry(id) {
+        match self.channels.entry(&id) {
             hash_map::Entry::Occupied(mut entry) => {
-                let new_thing = entry.get().patch(diff);
-                entry.set(new_thing);
+                let channel_state = entry.get().patch(diff);
+                entry.insert(channel_state);
             }
             hash_map::Entry::Vacant(_) => warn!("Unknown channel {}", id)
         };
@@ -671,7 +671,7 @@ impl State {
     }
 
     fn apply_update_user(&mut self, id: UserId, diff: &Vec<UserDiffCmd>) {
-        match self.users.entry(id) {
+        match self.users.entry(&id) {
             hash_map::Entry::Occupied(mut entry) => {
      
                 let old_nick = IrcIdentifier::from_str(entry.get().get_nick());
@@ -682,7 +682,7 @@ impl State {
                     assert_eq!(self.user_map.remove(&old_nick), Some(id));
                     self.user_map.insert(new_nick, id);
                 }
-                entry.set(new_user);
+                entry.insert(new_user);
             }
             hash_map::Entry::Vacant(_) => warn!("Unknown channel {}", id)
         };
@@ -725,7 +725,7 @@ impl State {
     }
 
     fn unlink_user_channel(&mut self, uid: UserId, chid: ChannelId) {
-        let should_remove = match self.users.entry(uid) {
+        let should_remove = match self.users.entry(&uid) {
             hash_map::Entry::Occupied(mut entry) => {
                 if entry.get().channels.len() == 1 && entry.get().channels.contains(&chid) {
                     true
@@ -741,7 +741,7 @@ impl State {
             self.remove_user_by_id(uid);
         }
 
-        let should_remove = match self.channels.entry(chid) {
+        let should_remove = match self.channels.entry(&chid) {
             hash_map::Entry::Occupied(mut entry) => {
                 if entry.get().users.len() == 1 && entry.get().users.contains(&uid) {
                     true
@@ -760,7 +760,7 @@ impl State {
     fn update_channel<F>(&mut self, id: ChannelId, modfunc: F) -> bool where 
         F: FnOnce(&mut Channel) -> ()
     {
-        match self.channels.entry(id) {
+        match self.channels.entry(&id) {
             hash_map::Entry::Occupied(mut entry) => {
                 // Channel currently has no indexed mutable state
                 modfunc(entry.get_mut());
@@ -843,7 +843,7 @@ impl State {
     fn update_user<F>(&mut self, id: UserId, modfunc: F) -> bool where 
         F: FnOnce(&mut User) -> ()
     {
-        match self.users.entry(id) {
+        match self.users.entry(&id) {
             hash_map::Entry::Occupied(mut entry) => {
                 let prev_nick = IrcIdentifier::from_str(entry.get().prefix.nick().unwrap());
                 modfunc(entry.get_mut());
@@ -1143,7 +1143,7 @@ mod tests {
         let mut connection = IrcConnectionBuf::new();
         let mut state = State::new();
         
-        let it = |target: &str, statefunc: |&mut State|| {
+        let mut it = |&mut: target: &str, statefunc: &mut FnMut(&mut State)| {
             if target != "" {
                 for rec in iterator {
                     println!("Processing mesfsage: {}", rec);
@@ -1166,7 +1166,7 @@ mod tests {
         let mut random_user_id_hist = Vec::new();
         let mut chan_test_id_hist = Vec::new();
 
-        it("should have a channel `#test` with 7 users", |state| {
+        it("should have a channel `#test` with 7 users", &mut |&mut: state| {
             let test_channel = IrcIdentifier::from_str("#test");
             let channel_id = match state.channel_map.get(&test_channel) {
                 Some(channel_id) => *channel_id,
@@ -1181,7 +1181,7 @@ mod tests {
             assert_eq!(channel_state.users.len(), 7);
         });
 
-        it("topic of `#test` should be `irc is bad.`", |state| {
+        it("topic of `#test` should be `irc is bad.`", &mut |&mut: state| {
             let msg = format!("state.identify_channel failed on line {}", 1 + line!());
             let chan_id = state.identify_channel("#test").expect(msg.as_slice());
             let msg = format!("state.channels.find failed on line {}", 1 + line!());
@@ -1189,7 +1189,7 @@ mod tests {
             assert_eq!(channel.topic.as_slice(), "irc is bad.");
         });
 
-        it("should have a user `randomuser` after JOIN", |state| {
+        it("should have a user `randomuser` after JOIN", &mut |&mut: state| {
             let msg = format!("state.identify_nick failed on line {}", 1 + line!());
             let randomuser_id = state.identify_nick("randomuser").expect(msg.as_slice());
             if random_user_id_hist.contains(&randomuser_id) {
@@ -1206,19 +1206,19 @@ mod tests {
             }
         });
 
-        it("should not have a user `randomuser` after PART", |state| {
+        it("should not have a user `randomuser` after PART", &mut |&mut: state| {
             assert_eq!(state.identify_nick("randomuser"), None);
         });
 
-        it("should not have a user `randomuser` after KICK", |state| {
+        it("should not have a user `randomuser` after KICK", &mut |&mut: state| {
             assert_eq!(state.identify_nick("randomuser"), None);
         });
 
-        it("should not have a user `randomuser` after QUIT", |state| {
+        it("should not have a user `randomuser` after QUIT", &mut |&mut: state| {
             assert_eq!(state.identify_nick("randomuser"), None);
         });
 
-        it("topic of `#test` should be `setting a cool topic`", |state| {
+        it("topic of `#test` should be `setting a cool topic`", &mut |&: state| {
             let msg = format!("state.identify_channel failed on line {}", 1 + line!());
             let chan_id = state.identify_channel("#test").expect(msg.as_slice());
             let msg = format!("state.channels.find failed on line {}", 1 + line!());
@@ -1227,22 +1227,22 @@ mod tests {
         });
 
         let mut randomuser_id: Option<UserId> = None;
-        it("store randomuser's UserID here", |state| {
+        it("store randomuser's UserID here", &mut |&mut: state| {
             randomuser_id = state.identify_nick("randomuser")
         });
         let randomuser_id = randomuser_id.expect("bad randomuser");
 
-        it("ensure randomuser's UserID has not changed after a nick change", |state| {
+        it("ensure randomuser's UserID has not changed after a nick change", &mut |&mut: state| {
             assert_eq!(state.identify_nick("resumodnar"), Some(randomuser_id));
         });
 
-        it("should not have a channel `#test` anymore", |state| {
+        it("should not have a channel `#test` anymore", &mut |&mut: state| {
             assert!(
                 state.identify_channel("#test").is_none(),
                 "#test was not cleaned up correctly");
         });
 
-        it("should have the channel `#test` once again", |state| {
+        it("should have the channel `#test` once again", &mut |&mut: state| {
             let test_id = state.identify_channel("#test").unwrap();
             if chan_test_id_hist.contains(&test_id) {
                 assert!(false, "channel `#test` ChannelId must change between losses in view");
@@ -1252,24 +1252,24 @@ mod tests {
 
         let mut randomuser_id: Option<UserId> = None;
 
-        it("should have a channel `#test2` with 2 users", |state| {
+        it("should have a channel `#test2` with 2 users", &mut |&mut: state| {
             assert!(state.identify_channel("#test2").is_some());
             randomuser_id = state.identify_nick("randomuser");
             assert!(randomuser_id.is_some(), "randomuser wasn't found!");
         });
 
-        it("randomuser should have the same ID as before", |state| {
+        it("randomuser should have the same ID as before", &mut |&mut: state| {
             assert!(state.identify_channel("#test2").is_some());
             assert_eq!(
                 state.identify_nick("randomuser").unwrap(),
                 randomuser_id.unwrap());
         });
 
-        it("randomuser should have been forgotten", |state| {
+        it("randomuser should have been forgotten", &mut |&mut: state| {
             assert_eq!(state.identify_nick("randomuser"), None);
         });
 
-        it("randomuser should not have the same ID as before", |state| {
+        it("randomuser should not have the same ID as before", &mut |&mut: state| {
             assert!(state.identify_channel("#test2").is_some());
             if state.identify_nick("randomuser") == randomuser_id {
                 assert!(false, "randomuser should be different now");

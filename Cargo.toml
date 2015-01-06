@@ -7,4 +7,4 @@ authors = [ "Stacey Ell <stacey.ell@gmail.com>" ]
 name = "irc"
 
 [dependencies]
-log = "~0.1.3"
+log = "~0.1.7"
