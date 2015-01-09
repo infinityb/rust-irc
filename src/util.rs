@@ -1,14 +1,14 @@
 #[derive(PartialEq, Copy, Clone, Show)]
 pub struct StringSlicer {
-    from_idx: uint,
-    to_idx: uint
+    from_idx: usize,
+    to_idx: usize
 }
 
 
 impl StringSlicer {
     /// Create a new StringSlicer
     #[inline]
-    pub fn new(from_idx: uint, to_idx: uint) -> StringSlicer {
+    pub fn new(from_idx: usize, to_idx: usize) -> StringSlicer {
         StringSlicer {
             from_idx: from_idx,
             to_idx: to_idx
@@ -18,7 +18,7 @@ impl StringSlicer {
     /// Apply the slice operation to a string
     #[inline]
     pub fn slice_on<'a>(&self, string: &'a str) -> &'a str {
-        string[self.from_idx..self.to_idx]
+        &string[self.from_idx..self.to_idx]
     }
 
 
@@ -60,13 +60,13 @@ impl StringSlicer {
 #[derive(PartialEq, Copy, Clone, Show)]
 pub struct OptionalStringSlicer {
     exists: bool,
-    from_idx: uint,
-    to_idx: uint
+    from_idx: usize,
+    to_idx: usize
 }
 
 impl OptionalStringSlicer {
     #[inline]
-    pub fn new_some(from_idx: uint, to_idx: uint) -> OptionalStringSlicer {
+    pub fn new_some(from_idx: usize, to_idx: usize) -> OptionalStringSlicer {
         OptionalStringSlicer {
             exists: true,
             from_idx: from_idx,
@@ -86,7 +86,7 @@ impl OptionalStringSlicer {
     #[inline]
     pub fn slice_on<'a>(&self, string: &'a str) -> Option<&'a str> {
         if self.exists {
-            Some(string[self.from_idx..self.to_idx])
+            Some(&string[self.from_idx..self.to_idx])
         } else {
             None
         }

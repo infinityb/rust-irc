@@ -1,7 +1,6 @@
-use std::hash::Hash;
 use std::cmp::PartialEq;
 use std::default::Default;
-use std::hash::sip::SipState;
+use std::hash::{Hash, Hasher, Writer};
 use std::str::{from_utf8, Utf8Error};
 
 use irccase::CaseMapping;
@@ -32,13 +31,13 @@ static DIGIT: &'static [u8] = &[b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', 
 pub struct Channel<CM: CaseMapping>(CM, Vec<u8>);
 
 pub enum ChannelError {
-    InvalidByte(uint),
+    InvalidByte(usize),
 }
 
 #[inline]
 fn channel_is_valid_byte(target: u8) -> bool {
     match target {
-        // NUL, BEL, LF, CR, space, comma, colon    
+        // NUL, BEL, LF, CR, space, comma, colon
         0x00 | 0x07 | 0x0A | 0x0D | 0x20 | 0x2C | 0x3A => false,
         _ => true
     }
@@ -68,7 +67,7 @@ impl<CM: CaseMapping> Channel<CM> {
     }
 
     #[inline]
-    pub fn from_bytes<Sized? Q: AsSlice<u8>>(name: &Q) -> Result<Channel<CM>, ChannelError> {
+    pub fn from_bytes<Q: AsSlice<u8>+?Sized>(name: &Q) -> Result<Channel<CM>, ChannelError> {
         match channel_validate_buf(name.as_slice()) {
             Ok(()) => Ok(Channel(Default::default(), name.as_slice().to_vec())),
             Err(err) => Err(err),
@@ -92,9 +91,9 @@ impl<CM: CaseMapping> PartialEq for Channel<CM> {
     }
 }
 
-impl<CM: CaseMapping> Hash for Channel<CM> {
+impl<CM: CaseMapping, H: Hasher+Writer+Default> Hash<H> for Channel<CM> {
     #[inline]
-    fn hash(&self, state: &mut SipState) {
+    fn hash(&self, state: &mut H) {
         let Channel(ref case_mapping, ref data) = *self;
         data.len().hash(state);
         case_mapping.hash_ignore_case(data, state);
@@ -106,7 +105,7 @@ impl<CM: CaseMapping> Hash for Channel<CM> {
 pub struct Nickname<CM: CaseMapping>(CM, Vec<u8>);
 
 pub enum NicknameError {
-    InvalidByte(uint),
+    InvalidByte(usize),
     Utf8Error(Utf8Error),
 }
 
@@ -178,7 +177,7 @@ impl<CM: CaseMapping> Nickname<CM> {
     }
 
     #[inline]
-    pub fn from_bytes<Sized? Q: AsSlice<u8>>(name: &Q) -> Result<Nickname<CM>, NicknameError> {
+    pub fn from_bytes<Q: AsSlice<u8>+?Sized>(name: &Q) -> Result<Nickname<CM>, NicknameError> {
         match nickname_validate_buf(name.as_slice()) {
             Ok(()) => Ok(Nickname(Default::default(), name.as_slice().to_vec())),
             Err(err) => Err(err),
@@ -191,7 +190,7 @@ impl<CM: CaseMapping> Nickname<CM> {
             Ok(str_ref) => str_ref,
             // Error condition should never happen. the UTF-8 invariant should
             // not be violated at any point.
-            Err(err) => panic!("Illegal byte sequence in nickname: {}", err)
+            Err(err) => panic!("Illegal byte sequence in nickname: {:?}", err)
         }
     }
 
@@ -206,7 +205,7 @@ impl<CM: CaseMapping> Nickname<CM> {
             Ok(string) => string,
             // Error condition should never happen. the UTF-8 invariant should
             // not be violated at any point.
-            Err(err) => panic!("Illegal byte sequence in nickname: {}", err.into_bytes())
+            Err(err) => panic!("Illegal byte sequence in nickname: {:?}", err.into_bytes())
         }
     }
 }
@@ -227,9 +226,9 @@ impl<CM: CaseMapping> PartialEq for Nickname<CM> {
     }
 }
 
-impl<CM: CaseMapping> Hash for Nickname<CM> {
+impl<CM: CaseMapping, H: Hasher+Writer+Default> Hash<H> for Nickname<CM> {
     #[inline]
-    fn hash(&self, state: &mut SipState) {
+    fn hash(&self, state: &mut H) {
         let Nickname(ref case_mapping, ref data) = *self;
         data.len().hash(state);
         case_mapping.hash_ignore_case(data, state);

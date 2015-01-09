@@ -38,7 +38,7 @@ pub enum RegisterErrorType {
 }
 
 impl RegisterErrorType {
-    
+
     pub fn is_known_error(result: i32) -> bool {
         RegisterErrorType::from_ord_known(result).is_some()
     }
@@ -114,7 +114,7 @@ impl RegisterEventWatcher {
     }
 
     fn accept_ircmessage(&mut self, msg: &IrcMsg) {
-        println!("RegisterEventWatcher: RX {}", msg);
+        println!("RegisterEventWatcher: RX {:?}", msg);
 
         let (interested, err) = match server::IncomingMsg::from_msg(msg.clone()) {
             server::IncomingMsg::Numeric(1, _) => {
@@ -159,9 +159,9 @@ impl EventWatcher for RegisterEventWatcher {
     fn get_name(&self) -> &'static str {
         "RegisterEventWatcher"
     }
-    
+
     fn display(&self) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }
 

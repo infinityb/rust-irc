@@ -40,7 +40,7 @@ impl WhoSuccess {
 }
 
 
-// Does /WHO even error? 
+// Does /WHO even error?
 #[derive(Clone, Show)]
 #[experimental = "Public fields definitely going away"]
 pub struct WhoError {
@@ -119,7 +119,7 @@ impl BundlerTrigger for WhoBundlerTrigger {
             }
             self.suppress = true;
             let bundler: WhoBundler = WhoBundler::new(&msg[1]);
-            let boxed_bundler: Box<Bundler+Send> = box bundler;
+            let boxed_bundler: Box<Bundler+Send> = Box::new(bundler);
             out.push(boxed_bundler);
         }
         out
@@ -165,7 +165,7 @@ impl Bundler for WhoBundler {
         if !args[1].eq_ignore_irc_case(self.target_channel.as_slice()) {
             return Vec::new();
         }
-        
+
         match server::IncomingMsg::from_msg(msg.clone()) {
             server::IncomingMsg::Numeric(352, ref message2) => {
                 self.add_record(message2.to_irc_msg().get_args().as_slice());
@@ -243,7 +243,7 @@ impl WhoEventWatcher {
 
 impl fmt::Show for WhoEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "WhoEventWatcher(channel={})", self.channel.as_slice())
+        write!(f, "WhoEventWatcher(channel={:?})", self.channel.as_slice())
     }
 }
 
@@ -270,6 +270,6 @@ impl EventWatcher for WhoEventWatcher {
     }
 
     fn display(&self) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }

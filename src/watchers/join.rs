@@ -84,7 +84,7 @@ impl JoinBundlerTrigger {
             .unwrap_or(false);
 
         if is_self_nick {
-            info!("{} detected nick change {} -> {}",
+            info!("{:?} detected nick change {:?} -> {:?}",
                 self, self.current_nick, &msg[0]);
             self.current_nick = msg[0].to_vec();
         }
@@ -111,7 +111,7 @@ impl BundlerTrigger for JoinBundlerTrigger {
                 let mut out = Vec::new();
                 if self.is_self_join(msg) {
                     let channel = &msg[0];
-                    let bundler: Box<Bundler+Send> = box JoinBundler::new(channel);
+                    let bundler: Box<Bundler+Send> = Box::new(JoinBundler::new(channel));
                     out.push(bundler);
                 }
                 out
@@ -128,7 +128,7 @@ impl BundlerTrigger for JoinBundlerTrigger {
 
 impl fmt::Show for JoinBundlerTrigger {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "JoinBundlerTrigger(current_nick={})", self.current_nick.as_slice())
+        write!(f, "JoinBundlerTrigger(current_nick={:?})", self.current_nick.as_slice())
     }
 }
 
@@ -326,7 +326,7 @@ impl Bundler for JoinBundler {
 
 impl fmt::Show for JoinBundler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "JoinBundler({})", self.channel.as_slice())
+        write!(f, "JoinBundler({:?})", self.channel.as_slice())
     }
 }
 
@@ -382,7 +382,7 @@ impl JoinEventWatcher {
 
 impl fmt::Show for JoinEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "JoinEventWatcher(channel={})", self.channel.as_slice())
+        write!(f, "JoinEventWatcher(channel={:?})", self.channel.as_slice())
     }
 }
 
@@ -410,6 +410,6 @@ impl EventWatcher for JoinEventWatcher {
     }
 
     fn display(&self) -> String {
-        format!("{}", self)
+        format!("{:?}", self)
     }
 }

@@ -23,7 +23,7 @@ pub trait EventWatcher {
 }
 
 
-/// Emits IrcEvents when certain messages are detected 
+/// Emits IrcEvents when certain messages are detected
 pub trait Bundler {
     fn on_irc_msg(&mut self, message: &IrcMsg) -> Vec<IrcEvent>;
 
@@ -58,7 +58,7 @@ impl BundlerManager {
             bundler_triggers: Vec::new(),
         }
     }
-    
+
     // Do we really need +Send here?
     pub fn add_watcher(&mut self, watcher: Box<EventWatcher+Send>) {
         self.event_watchers.push_back(watcher);
@@ -90,7 +90,7 @@ impl BundlerManager {
                 drop(watcher);
             }
         }
-        
+
         outgoing_events
     }
 }
@@ -191,12 +191,12 @@ mod tests {
     fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMsg {
         let line = match line_res {
             Ok(line) => line,
-            Err(err) => panic!("err: {}", err)
+            Err(err) => panic!("err: {:?}", err)
         };
         let totrim: &[_] = &['\n', '\r'];
         match IrcMsg::new(line.as_slice().trim_right_matches(totrim).to_string().into_bytes()) {
             Ok(message) => message,
-            Err(err) => panic!("err: {}", err)
+            Err(err) => panic!("err: {:?}", err)
         }
     }
 
@@ -204,16 +204,16 @@ mod tests {
     fn test_bundle_watcher() {
         let mut reader = BufReader::new(TEST_DATA);
         let mut bunman = BundlerManager::new();
-        bunman.add_bundler_trigger(box JoinBundlerTrigger::new());
-        bunman.add_bundler_trigger(box WhoBundlerTrigger::new());
+        bunman.add_bundler_trigger(Box::new(JoinBundlerTrigger::new()));
+        bunman.add_bundler_trigger(Box::new(WhoBundlerTrigger::new()));
         let mut events = Vec::new();
 
         for msg in reader.lines().map(unsafe_to_irc_message) {
             events.extend(bunman.on_irc_msg(&msg).into_iter());
         }
 
-        let mut join_bundles = 0u;
-        let mut who_bundles = 0u;
+        let mut join_bundles = 0us;
+        let mut who_bundles = 0us;
 
         for event in events.into_iter() {
             if let JoinBundle(_) = event {

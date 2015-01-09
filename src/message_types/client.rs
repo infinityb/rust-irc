@@ -1,7 +1,7 @@
 use parse::IrcMsg;
 
 
-fn byte_length_sum(items: &[&str]) -> uint {
+fn byte_length_sum(items: &[&str]) -> usize {
     use std::iter::AdditiveIterator;
     items.iter().map(|x| x.as_bytes().len()).sum()
 }

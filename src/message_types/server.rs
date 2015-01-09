@@ -133,12 +133,16 @@ fn test_incoming() {
     msg_raw.push_all(b":person!user@host JOIN #foo");
     let msg = IrcMsg::new(msg_raw).unwrap();
 
-    match IncomingMsg::from_msg(msg) {
+    match IncomingMsg::from_msg(msg.clone()) {
         IncomingMsg::Join(ref join) => {
             assert_eq!(join.get_nick(), "person");
             assert_eq!(join.get_channel(), "#foo");
         },
-        _ => panic!("Wrong IncomingMsg enum value")
+        _ => {
+            panic!("Wrong IncomingMsg enum value: expected JOIN, got {:?}",
+                IncomingMsg::from_msg(msg)
+            )
+        }
     }
 }
 
@@ -157,7 +161,7 @@ impl Join {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Join(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 }
 
@@ -223,7 +227,7 @@ impl Kick {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Kick(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 
     pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {
@@ -298,7 +302,7 @@ impl Nick {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Nick(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 
     /// The new nick of the user
@@ -389,7 +393,7 @@ impl Part {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Part(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 
     pub fn get_channel<'a>(&'a self) -> &'a str {
@@ -489,7 +493,7 @@ impl Privmsg {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Privmsg(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 
     pub fn get_body_unicode<'a>(&'a self) -> Result<&'a str, Utf8Error> {
@@ -564,7 +568,7 @@ impl Quit {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Quit(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 
     pub fn get_channel(&self) -> &str {
@@ -615,7 +619,7 @@ impl Topic {
     pub fn get_nick<'a>(&'a self) -> &'a str {
         let Topic(ref msg) = *self;
         let prefix = msg.get_prefix_str();
-        prefix[..prefix.find('!').unwrap()]
+        &prefix[..prefix.find('!').unwrap()]
     }
 
     pub fn get_body_raw<'a>(&'a self) -> &'a [u8] {

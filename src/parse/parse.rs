@@ -11,7 +11,7 @@ static CHANNEL_PREFIX_CHARS: [char; 4] = ['&', '#', '+', '!'];
 
 // Commands which target a msgtarget or channel
 static CHANNEL_TARGETED_COMMANDS: [&'static str; 6] = [
-    "KICK", 
+    "KICK",
     "PART",
     "MODE",
     "PRIVMSG",
@@ -160,7 +160,7 @@ impl IrcParser {
             }
 
             (IrcParserState::Arg, b' ') => {
-                self.args[self.arg_len as uint] = (self.arg_start, self.byte_idx);
+                self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
                 self.arg_len += 1;
                 self.arg_start = 0;
                 if self.arg_len == 15 {
@@ -172,7 +172,7 @@ impl IrcParser {
             (IrcParserState::Arg, _) => IrcParserState::Arg,
 
             (IrcParserState::RestArg, b'\n') => {
-                self.args[self.arg_len as uint] = (self.arg_start, self.byte_idx - 1);
+                self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx - 1);
                 self.arg_len += 1;
                 self.arg_start = 0;
                 if self.arg_len == 15 {
@@ -202,7 +202,7 @@ impl IrcParser {
             IrcParserState::ArgStart => Ok(()),
             IrcParserState::EndOfLine => Ok(()),
             IrcParserState::Arg | IrcParserState::RestArg => {
-                self.args[self.arg_len as uint] = (self.arg_start, self.byte_idx);
+                self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
                 self.arg_len += 1;
                 Ok(())
             }
@@ -218,7 +218,7 @@ impl IrcParser {
             Ok(()) => (),
             Err(err) => return Err(err)
         };
-        assert_eq!(parser.byte_idx as uint, message.len());
+        assert_eq!(parser.byte_idx as usize, message.len());
         let mut parsed = IrcMsg {
             data: message,
             prefix: (parser.prefix_start, parser.prefix_end),
@@ -229,34 +229,32 @@ impl IrcParser {
 
         parsed.arg_len = parser.arg_len;
         for i in range(0, parsed.arg_len) {
-            parsed.args[i as uint] = parser.args[i as uint];
+            parsed.args[i as usize] = parser.args[i as usize];
         }
 
         // Newline and Carriage return removal
-        let last_idx = (parsed.arg_len - 1) as uint;
+        let last_idx = (parsed.arg_len - 1) as usize;
 
         let (arg_start, arg_end) = parsed.args[last_idx];
-        if parsed.data[arg_end as uint - 1] == b'\n' {
+        if parsed.data[arg_end as usize - 1] == b'\n' {
             parsed.args[last_idx] = (arg_start, arg_end - 1);
 
             let (arg_start, arg_end) = parsed.args[last_idx];
-            if parsed.data[arg_end as uint - 1] == b'\r' {
+            if parsed.data[arg_end as usize - 1] == b'\r' {
                 parsed.args[last_idx] = (arg_start, arg_end - 1) ;
             }
         }
-
         
-
         Ok(parsed)
     }
 }
 
 // RFC 2812 2.3 Messages
-// 
+//
 // Each IRC message may consist of up to three main parts:
 // the prefix (optional), the command, and the command
 // parameters (of which there may be up to 15). The prefix,
-// command, and all parameters are separated by one (or 
+// command, and all parameters are separated by one (or
 // more) ASCII space character(s) (0x20).
 
 #[experimental]
@@ -291,7 +289,7 @@ impl IrcMsg {
 
     pub fn get_prefix_raw(&self) -> &[u8] {
         let (prefix_start, prefix_end) = self.prefix;
-        self.data[prefix_start as uint..prefix_end as uint]
+        &self.data[prefix_start as usize..prefix_end as usize]
     }
 
     pub fn get_prefix_str(&self) -> &str {
@@ -304,7 +302,7 @@ impl IrcMsg {
 
     fn get_command_raw<'a>(&'a self) -> &[u8] {
         let (command_start, command_end) = self.command;
-        self.data[command_start as uint..command_end as uint]
+        &self.data[command_start as usize..command_end as usize]
     }
 
     pub fn get_command(&self) -> &str {
@@ -312,16 +310,16 @@ impl IrcMsg {
     }
 
     pub fn get_args(&self) -> Vec<&[u8]> {
-        let mut out = Vec::with_capacity(self.arg_len as uint);
-        for i in range(0, self.arg_len as uint) {
+        let mut out = Vec::with_capacity(self.arg_len as usize);
+        for i in range(0, self.arg_len as usize) {
             let (arg_start, arg_end) = self.args[i];
-            out.push(self.data[arg_start as uint..arg_end as uint]);
+            out.push(&self.data[arg_start as usize..arg_end as usize]);
         }
         out
     }
 
-    pub fn len(&self) -> uint {
-        self.arg_len as uint
+    pub fn len(&self) -> usize {
+        self.arg_len as usize
     }
 
     pub fn into_bytes(self) -> Vec<u8> {
@@ -333,12 +331,12 @@ impl IrcMsg {
     }
 }
 
-impl Index<uint> for IrcMsg {
+impl Index<usize> for IrcMsg {
     type Output = [u8];
 
-    fn index<'a>(&'a self, index: &uint) -> &'a [u8] {
+    fn index<'a>(&'a self, index: &usize) -> &'a [u8] {
         let (arg_start, arg_end) = self.args[*index];
-        self.data[arg_start as uint..arg_end as uint]
+        &self.data[arg_start as usize..arg_end as usize]
     }
 }
 
@@ -355,7 +353,7 @@ mod tests {
 
             let parsed = match IrcParser::parse(example) {
                 Ok(parsed) => parsed,
-                Err(err) => panic!("err: {}", err)
+                Err(err) => panic!("err: {:?}", err)
             };
             assert!(parsed.has_prefix());
             assert_eq!(parsed.get_prefix_raw(), b"prefix");
@@ -374,7 +372,7 @@ mod tests {
 
             let parsed = match IrcParser::parse(example) {
                 Ok(parsed) => parsed,
-                Err(err) => panic!("err: {}", err)
+                Err(err) => panic!("err: {:?}", err)
             };
             assert!(parsed.has_prefix());
             assert_eq!(parsed.get_prefix_raw(), b"prefix");

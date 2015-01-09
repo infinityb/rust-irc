@@ -54,7 +54,7 @@ mod irc_identifier {
 
     fn channel_deprefix(target: &str) -> &str {
         match target.find('#') {
-            Some(idx) => target[idx..],
+            Some(idx) => &target[idx..],
             None => target
         }
     }
@@ -110,7 +110,7 @@ impl User {
     pub fn get_nick(&self) -> &str {
         let prefix = self.prefix.as_slice();
         match prefix.find('!') {
-            Some(idx) => prefix[0..idx],
+            Some(idx) => &prefix[0..idx],
             None => prefix
         }
     }
@@ -238,7 +238,7 @@ impl UserInfo {
     fn get_nick(&self) -> &str {
         let prefix = self.prefix.as_slice();
         match prefix.find('!') {
-            Some(idx) => prefix[0..idx],
+            Some(idx) => &prefix[0..idx],
             None => prefix
         }
     }
@@ -348,7 +348,7 @@ impl State {
     }
 
     fn on_other_part(&mut self, part: &server::Part) {
-        println!("part.channel = {}, part.nick = {}", 
+        println!("part.channel = {:?}, part.nick = {:?}",
             part.get_channel(), part.get_nick());
 
         let channel_name = IrcIdentifier::from_str(part.get_channel());
@@ -379,7 +379,7 @@ impl State {
 
         let chan_id = match self.channel_map.get(&channel_name) {
             Some(chan_id) => *chan_id,
-            None => panic!("Got message for channel {} without knowing about it.", channel_name)
+            None => panic!("Got message for channel {:?} without knowing about it.", channel_name)
         };
 
         let (is_create, user_id) = match self.user_map.get(&user_nick) {
@@ -405,18 +405,18 @@ impl State {
 
         assert!(self.update_channel_by_name(channel_name.as_slice(), |: channel| {
             channel.users.insert(user_id);
-        }), "Got message for channel {} without knowing about it.");
+        }), "Got message for channel {:?} without knowing about it.");
     }
 
     fn on_self_join(&mut self, join: &JoinSuccess) {
-        let channel_name = ::std::str::from_utf8(join.channel[]).ok().unwrap();
+        let channel_name = ::std::str::from_utf8(join.channel.as_slice()).ok().unwrap();
         let channel_name = IrcIdentifier::from_str(channel_name);
 
         if let Some(_) = self.channel_map.get(&channel_name) {
-            warn!("Joining already joined channel {}; skipped", join.channel);
+            warn!("Joining already joined channel {:?}; skipped", join.channel);
             return;
         }
-        warn!("users = {}", join.nicks);
+        warn!("users = {:?}", join.nicks);
         let new_chan_id = ChannelId(self.channel_seq);
         self.channel_seq += 1;
 
@@ -426,7 +426,7 @@ impl State {
     }
 
     fn validate_state_with_who(&self, who: &WhoSuccess) {
-        let channel_name = ::std::str::from_utf8(who.channel[]).ok().unwrap();
+        let channel_name = ::std::str::from_utf8(who.channel.as_slice()).ok().unwrap();
         let channel_name = IrcIdentifier::from_str(channel_name);
 
         let (_, channel) = match self.get_channel_by_name(channel_name.as_slice()) {
@@ -444,20 +444,20 @@ impl State {
                 None => panic!("Inconsistent state"),
             }
         }
-        
+
         let mut valid_users = HashSet::new();
         for rec in who.who_records.iter() {
             valid_users.insert(rec.nick.clone());
         }
-        
+
         let mut is_valid = true;
         for valid_unknowns in valid_users.difference(&known_users) {
-            warn!("Valid but unknown nick: {}", valid_unknowns);
+            warn!("Valid but unknown nick: {:?}", valid_unknowns);
             is_valid = false;
         }
 
         for invalid_knowns in known_users.difference(&valid_users) {
-            warn!("Known but invalid nick: {}", invalid_knowns);
+            warn!("Known but invalid nick: {:?}", invalid_knowns);
             is_valid = false;
         }
 
@@ -471,7 +471,7 @@ impl State {
     fn on_who(&mut self, who: &WhoSuccess) {
         // If we WHO a channel that we aren't in, we aren't changing any
         // state.
-        let channel_name = ::std::str::from_utf8(who.channel[]).ok().unwrap();
+        let channel_name = ::std::str::from_utf8(who.channel.as_slice()).ok().unwrap();
         let channel_name = IrcIdentifier::from_str(channel_name);
 
         let chan_id = match self.get_channel_by_name(channel_name.as_slice()) {
@@ -489,7 +489,7 @@ impl State {
         let mut user_ids = Vec::with_capacity(who.who_records.len());
 
         for rec in who.who_records.iter() {
-            let nick = IrcIdentifier::from_str(rec.nick[]);
+            let nick = IrcIdentifier::from_str(rec.nick.as_slice());
             user_ids.push(match self.user_map.get(&nick) {
                 Some(user_id) => *user_id,
                 None => {
@@ -510,7 +510,7 @@ impl State {
                 },
                 None => {
                     if *user_id != self.self_id {
-                        panic!("{}", user_id);
+                        panic!("{:?}", user_id);
                     }
                 }
             };
@@ -519,15 +519,15 @@ impl State {
         let tmp_chan_name = channel_name.clone();
         assert!(self.update_channel_by_name(channel_name.as_slice(), move |: channel| {
             let added = user_ids.len() - channel.users.len();
-            info!("Added {} users for channel {}", added, tmp_chan_name);
+            info!("Added {:?} users for channel {:?}", added, tmp_chan_name);
             channel.users.extend(user_ids.into_iter());
-        }), "Got message for channel {} without knowing about it.");
+        }), "Got message for channel {:?} without knowing about it.");
     }
 
     fn on_topic(&mut self, topic: &server::Topic) {
         assert!(self.update_channel_by_name(topic.get_channel(), |: channel| {
             let topic = String::from_utf8_lossy(topic.get_body_raw()).into_owned();
-            channel.set_topic(topic[]);
+            channel.set_topic(topic.as_slice());
         }));
     }
 
@@ -537,7 +537,7 @@ impl State {
         }))
     }
 
-    // 
+    //
     fn on_kick(&mut self, kick: &server::Kick) {
         let channel_name = IrcIdentifier::from_str(kick.get_channel());
         let kicked_user_nick = IrcIdentifier::from_str(kick.get_kicked_nick());
@@ -548,15 +548,15 @@ impl State {
         ) {
             (Some(chan_id), Some(user_id)) => (*chan_id, *user_id),
             (None, Some(_)) => {
-                warn!("Strange: unknown channel {}", channel_name);
+                warn!("Strange: unknown channel {:?}", channel_name);
                 return;
             },
             (Some(_), None) => {
-                warn!("Strange: unknown nick {}", kicked_user_nick);
+                warn!("Strange: unknown nick {:?}", kicked_user_nick);
                 return;
             },
             (None, None) => {
-                warn!("Strange: unknown chan {} and nick {}", channel_name, kicked_user_nick);
+                warn!("Strange: unknown chan {:?} and nick {:?}", channel_name, kicked_user_nick);
                 return;
             }
         };
@@ -568,9 +568,9 @@ impl State {
 
         let ty_msg = server::IncomingMsg::from_msg(msg.clone());
         let is_self = msg.get_prefix().nick().and_then(|: nick| {
-            Some(nick[] == self.self_nick.as_slice())
+            Some(nick.as_slice() == self.self_nick.as_slice())
         }).unwrap_or(false);
-        
+
         match (&ty_msg, is_self) {
             (&Part(ref part), true) => return self.on_self_part(part),
             (&Part(ref part), false) => return self.on_other_part(part),
@@ -605,11 +605,11 @@ impl State {
 
     pub fn set_self_nick(&mut self, new_nick_str: &str) {
         let new_nick = IrcIdentifier::from_str(new_nick_str);
-        let old_nick = IrcIdentifier::from_str(self.self_nick[]);
+        let old_nick = IrcIdentifier::from_str(self.self_nick.as_slice());
         if self.self_nick.as_slice() != "" {
             let user_id = match self.user_map.remove(&old_nick) {
                 Some(user_id) => user_id,
-                None => panic!("inconsistent user_map: {}[{}]",
+                None => panic!("inconsistent user_map: {:?}[{:?}]",
                     self.user_map, self.self_nick)
             };
             self.user_map.insert(new_nick, user_id);
@@ -631,14 +631,14 @@ impl State {
 
     fn apply_update_self_nick(&mut self, new_nick_str: &str) {
         let new_nick = IrcIdentifier::from_str(new_nick_str);
-        let old_nick = IrcIdentifier::from_str(self.self_nick[]);
+        let old_nick = IrcIdentifier::from_str(self.self_nick.as_slice());
         assert!(self.user_map.remove(&old_nick).is_some());
         self.set_self_nick(new_nick_str.as_slice());
         self.user_map.insert(new_nick, self.self_id);
     }
 
     fn apply_remove_channel(&mut self, id: ChannelId) {
-        info!("remove_channel({})", id);
+        info!("remove_channel({:?})", id);
         self.remove_channel_by_id(id);
     }
 
@@ -647,17 +647,17 @@ impl State {
         self.channel_seq = max(self.channel_seq, chan_id);
 
         self.channels.insert(chan_info.id, Channel::from_info(chan_info));
-        let channel_name = IrcIdentifier::from_str(chan_info.name[]);
+        let channel_name = IrcIdentifier::from_str(chan_info.name.as_slice());
         self.channel_map.insert(channel_name, chan_info.id);
     }
 
     fn apply_update_chan(&mut self, id: ChannelId, diff: &Vec<ChannelDiffCmd>) {
-        match self.channels.entry(&id) {
+        match self.channels.entry(id) {
             hash_map::Entry::Occupied(mut entry) => {
                 let channel_state = entry.get().patch(diff);
                 entry.insert(channel_state);
             }
-            hash_map::Entry::Vacant(_) => warn!("Unknown channel {}", id)
+            hash_map::Entry::Vacant(_) => warn!("Unknown channel {:?}", id)
         };
     }
 
@@ -671,9 +671,9 @@ impl State {
     }
 
     fn apply_update_user(&mut self, id: UserId, diff: &Vec<UserDiffCmd>) {
-        match self.users.entry(&id) {
+        match self.users.entry(id) {
             hash_map::Entry::Occupied(mut entry) => {
-     
+
                 let old_nick = IrcIdentifier::from_str(entry.get().get_nick());
                 let new_user = entry.get().patch(diff);
                 let new_nick = IrcIdentifier::from_str(new_user.get_nick());
@@ -684,20 +684,20 @@ impl State {
                 }
                 entry.insert(new_user);
             }
-            hash_map::Entry::Vacant(_) => warn!("Unknown channel {}", id)
+            hash_map::Entry::Vacant(_) => warn!("Unknown channel {:?}", id)
         };
     }
 
     fn apply_remove_user(&mut self, id: UserId) {
-        info!("apply_remove_user({})", id);
+        info!("apply_remove_user({:?})", id);
         let user_info = match self.users.remove(&id) {
             Some(user_info) => user_info,
-            None => panic!("cannot apply command: {} not found.", id)
+            None => panic!("cannot apply command: {:?} not found.", id)
         };
         let user_nick = IrcIdentifier::from_str(user_info.get_nick());
         match self.user_map.remove(&user_nick) {
             Some(user_id) => assert_eq!(user_id, id),
-            None => panic!("inconsistent user_mapm: {}[{}]",
+            None => panic!("inconsistent user_mapm: {:?}[{:?}]",
                 self.user_map, user_nick)
         };
     }
@@ -705,7 +705,7 @@ impl State {
     fn apply_command(&mut self, cmd: &StateCommand) {
         match *cmd {
             StateCommand::UpdateSelfNick(ref new_nick) =>
-                self.apply_update_self_nick(new_nick[]),
+                self.apply_update_self_nick(new_nick.as_slice()),
             StateCommand::SetGeneration(generation) => self.generation = generation,
 
             StateCommand::CreateUser(ref info) =>
@@ -725,7 +725,7 @@ impl State {
     }
 
     fn unlink_user_channel(&mut self, uid: UserId, chid: ChannelId) {
-        let should_remove = match self.users.entry(&uid) {
+        let should_remove = match self.users.entry(uid) {
             hash_map::Entry::Occupied(mut entry) => {
                 if entry.get().channels.len() == 1 && entry.get().channels.contains(&chid) {
                     true
@@ -737,11 +737,11 @@ impl State {
             hash_map::Entry::Vacant(_) => panic!("Inconsistent state")
         };
         if should_remove {
-            warn!("removing {}", uid);
+            warn!("removing {:?}", uid);
             self.remove_user_by_id(uid);
         }
 
-        let should_remove = match self.channels.entry(&chid) {
+        let should_remove = match self.channels.entry(chid) {
             hash_map::Entry::Occupied(mut entry) => {
                 if entry.get().users.len() == 1 && entry.get().users.contains(&uid) {
                     true
@@ -753,14 +753,14 @@ impl State {
             hash_map::Entry::Vacant(_) => panic!("Inconsistent state")
         };
         if should_remove {
-            warn!("removing {}", chid);
+            warn!("removing {:?}", chid);
             self.remove_channel_by_id(chid);
         }
     }
-    fn update_channel<F>(&mut self, id: ChannelId, modfunc: F) -> bool where 
+    fn update_channel<F>(&mut self, id: ChannelId, modfunc: F) -> bool where
         F: FnOnce(&mut Channel) -> ()
     {
-        match self.channels.entry(&id) {
+        match self.channels.entry(id) {
             hash_map::Entry::Occupied(mut entry) => {
                 // Channel currently has no indexed mutable state
                 modfunc(entry.get_mut());
@@ -793,7 +793,7 @@ impl State {
     fn remove_channel_by_id(&mut self, id: ChannelId) -> bool {
         let (chan_name, users): (_, Vec<_>) = match self.channels.get(&id) {
             Some(chan_state) => (
-                IrcIdentifier::from_str(chan_state.name[]),
+                IrcIdentifier::from_str(chan_state.name.as_slice()),
                 chan_state.users.iter().map(|x| *x).collect()
             ),
             None => return false
@@ -828,7 +828,7 @@ impl State {
         self.validate_state_internal_panic();
     }
 
-    fn update_user_by_nick<F>(&mut self, nick: &str, modfunc: F) -> bool where 
+    fn update_user_by_nick<F>(&mut self, nick: &str, modfunc: F) -> bool where
         F: FnOnce(&mut User) -> ()
     {
         let nick = IrcIdentifier::from_str(nick);
@@ -840,17 +840,17 @@ impl State {
         result
     }
 
-    fn update_user<F>(&mut self, id: UserId, modfunc: F) -> bool where 
+    fn update_user<F>(&mut self, id: UserId, modfunc: F) -> bool where
         F: FnOnce(&mut User) -> ()
     {
-        match self.users.entry(&id) {
+        match self.users.entry(id) {
             hash_map::Entry::Occupied(mut entry) => {
                 let prev_nick = IrcIdentifier::from_str(entry.get().prefix.nick().unwrap());
                 modfunc(entry.get_mut());
                 let new_nick = IrcIdentifier::from_str(entry.get().prefix.nick().unwrap());
-                warn!("prev_nick != new_nick || {} != {}", prev_nick, new_nick);
+                warn!("prev_nick != new_nick || {:?} != {:?}", prev_nick, new_nick);
                 if prev_nick != new_nick {
-                    warn!("self.user_map -- REMOVE {}; INSERT {}", prev_nick, new_nick);
+                    warn!("self.user_map -- REMOVE {:?}; INSERT {:?}", prev_nick, new_nick);
                     self.user_map.remove(&prev_nick);
                     self.user_map.insert(new_nick, id);
                 }
@@ -927,7 +927,7 @@ impl State {
     fn validate_state_internal_panic(&mut self) {
         match self.validate_state_internal() {
             Ok(()) => (),
-            Err(msg) => panic!("invalid state: {}, dump = {}", msg, self)
+            Err(msg) => panic!("invalid state: {:?}, dump = {:?}", msg, self)
         };
     }
 
@@ -935,36 +935,36 @@ impl State {
     fn validate_state_internal(&self) -> Result<(), String> {
         for (&id, state) in self.channels.iter() {
             if id != state.id {
-                return Err(format!("{} at channels[{}]", state.id, id));
+                return Err(format!("{:?} at channels[{:?}]", state.id, id));
             }
             for &user_id in state.users.iter() {
                 if let Some(user_state) = self.users.get(&user_id) {
                     if !user_state.channels.contains(&id) {
-                        return Err(format!("{0} ref {1} => {1} ref {0} not holding", id, user_id));
+                        return Err(format!("{0:?} ref {1:?} => {1:?} ref {0:?} not holding", id, user_id));
                     }
                 } else {
-                    return Err(format!("{} refs non-existent {}", id, user_id));
+                    return Err(format!("{:?} refs non-existent {:?}", id, user_id));
                 }
             }
         }
         for (&id, state) in self.users.iter() {
             if id != state.id {
-                return Err(format!("{} at users[{}]", state.id, id));
+                return Err(format!("{:?} at users[{:?}]", state.id, id));
             }
             for &chan_id in state.channels.iter() {
                 if let Some(chan_state) = self.channels.get(&chan_id) {
                     if !chan_state.users.contains(&id) {
-                        return Err(format!("{0} ref {1} => {1} ref {0} not holding", id, chan_id));
+                        return Err(format!("{0:?} ref {1:?} => {1:?} ref {0:?} not holding", id, chan_id));
                     }
                 } else {
-                    return Err(format!("{} refs non-existent {}", id, chan_id));
+                    return Err(format!("{:?} refs non-existent {:?}", id, chan_id));
                 }
             }
         }
         for (name, &id) in self.channel_map.iter() {
             if let Some(state) = self.channels.get(&id) {
-                if *name != IrcIdentifier::from_str(state.name[]) {
-                    return Err(format!("{} at channel_map[{}]", state.id, name));
+                if *name != IrcIdentifier::from_str(state.name.as_slice()) {
+                    return Err(format!("{:?} at channel_map[{:?}]", state.id, name));
                 }
             } else {
                 return Err(format!("channel map inconsistent"));
@@ -973,13 +973,13 @@ impl State {
         for (name, &id) in self.user_map.iter() {
             if let Some(state) = self.users.get(&id) {
                 if *name != IrcIdentifier::from_str(state.get_nick()) {
-                    return Err(format!("{} at user_map[{}]", state.id, name));
+                    return Err(format!("{:?} at user_map[{:?}]", state.id, name));
                 }
             } else {
                 return Err(format!(
                     concat!(
-                        "user map inconsistent: self.user_map[{}] is not None ",
-                        "=> self.users[{}] is not None"
+                        "user map inconsistent: self.user_map[{:?}] is not None ",
+                        "=> self.users[{:?}] is not None"
                     ), name, id));
             }
         }
@@ -1142,18 +1142,18 @@ mod tests {
 
         let mut connection = IrcConnectionBuf::new();
         let mut state = State::new();
-        
+
         let mut it = |&mut: target: &str, statefunc: &mut FnMut(&mut State)| {
             if target != "" {
                 for rec in iterator {
-                    println!("Processing mesfsage: {}", rec);
+                    println!("Processing mesfsage: {:?}", rec);
                     if marker_match(&rec, target) {
                         break;
                     }
                     if let SessionRecord::Content(ref content) = rec {
                         connection.push_line(content.as_bytes().to_vec());
                         for event in connection.dispatch().into_iter() {
-                            println!("event: {}", event);
+                            println!("event: {:?}", event);
                             state.on_event(&event);
                             state.validate_state_internal_panic();
                         }
@@ -1202,7 +1202,7 @@ mod tests {
                         randomuser.prefix.as_slice(),
                         "randomuser!rustbot@coolhost");
                 },
-                None => panic!("inconsistent state. state = {}", state)
+                None => panic!("inconsistent state. state = {:?}", state)
             }
         });
 

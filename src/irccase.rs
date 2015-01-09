@@ -11,8 +11,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::string::String;
 use std::default::Default;
+use std::hash::{hash, Hasher, Writer};
+use std::string::String;
 
 static ASCII_LOWER_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -132,7 +133,7 @@ pub static STRICT_RFC1459_LOWER_MAP: [u8; 256] = [
 ];
 
 
-pub trait IrcAsciiExt<T> for Sized? {
+pub trait IrcAsciiExt<T: ?Sized> {
     /// Makes a copy of the string in IRC ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// and "[]\\~" are mapped to "{}|\^" respectively,
@@ -153,7 +154,7 @@ impl IrcAsciiExt<Vec<u8>> for [u8] {
     #[inline]
     fn to_irc_lower(&self) -> Vec<u8> {
         let lower_map = RFC1459_LOWER_MAP;
-        self.iter().map(|&byte| lower_map[byte as uint]).collect()
+        self.iter().map(|&byte| lower_map[byte as usize]).collect()
     }
 
     #[inline]
@@ -162,8 +163,8 @@ impl IrcAsciiExt<Vec<u8>> for [u8] {
         self.len() == other.len() &&
             self.iter().zip(other.iter()).all(
             |(byte_self, byte_other)| {
-                lower_map[*byte_self as uint] ==
-                    lower_map[*byte_other as uint]
+                lower_map[*byte_self as usize] ==
+                    lower_map[*byte_other as usize]
             })
     }
 }
@@ -173,7 +174,7 @@ impl OwnedIrcAsciiExt for Vec<u8> {
     fn into_irc_lower(mut self) -> Vec<u8> {
         let lower_map = RFC1459_LOWER_MAP;
         for byte in self.iter_mut() {
-            *byte = lower_map[*byte as uint];
+            *byte = lower_map[*byte as usize];
         }
         self
     }
@@ -208,12 +209,12 @@ fn test_old_basics() {
     assert!("\\".eq_ignore_irc_case("|"));
     assert!("^".eq_ignore_irc_case("~"));
 
-    assert_eq!("[".to_irc_lower()[], "{");
-    assert_eq!("]".to_irc_lower()[], "}");
-    assert_eq!("\\".to_irc_lower()[], "|");
-    assert_eq!("^".to_irc_lower()[], "~");
+    assert_eq!("[".to_irc_lower().as_slice(), "{");
+    assert_eq!("]".to_irc_lower().as_slice(), "}");
+    assert_eq!("\\".to_irc_lower().as_slice(), "|");
+    assert_eq!("^".to_irc_lower().as_slice(), "~");
 
-    assert_eq!("^".to_string().into_irc_lower()[], "~");
+    assert_eq!("^".to_string().into_irc_lower().as_slice(), "~");
 }
 
 #[derive(PartialEq, Eq, Show)]
@@ -262,25 +263,25 @@ impl CaseMapping for StrictRfc1459CaseMapping {
 pub trait CaseMapping: Default+PartialEq+Eq {
     fn get_lower_map(&self) -> &[u8];
 
-    fn to_irc_lower<Sized? T>(&self, left: &T) -> Vec<u8> where T: ToByteSlice {
+    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: ToByteSlice<T> {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();
-        left.to_byte_slice().iter().map(|&byte| lower_map[byte as uint]).collect()
+        left.to_byte_slice().iter().map(|&byte| lower_map[byte as usize]).collect()
     }
 
     #[inline]
-    fn hash_ignore_case<Sized? T>(&self, left: &T, state: &mut ::std::hash::sip::SipState)
-        where T: ToByteSlice+::std::hash::Hash
+    fn hash_ignore_case<T: ?Sized, H: Hasher+Writer+Default>(&self, left: &T, _: &mut H)
+        where T: ToByteSlice<T>+::std::hash::Hash<H>
     {
         let lower_map = self.get_lower_map();
         for byte in left.to_byte_slice().iter() {
-            ::std::hash::Hash::hash(&lower_map[*byte as uint], state);
+            hash::<_, H>(&lower_map[*byte as usize]);
         }
     }
 
     #[inline]
-    fn eq_ignore_case<Sized? T>(&self, left: &T, right: &T) -> bool
-        where T: ToByteSlice
+    fn eq_ignore_case<T: ?Sized>(&self, left: &T, right: &T) -> bool
+        where T: ToByteSlice<T>
     {
         let lower_map = self.get_lower_map();
         let left = left.to_byte_slice();
@@ -288,35 +289,35 @@ pub trait CaseMapping: Default+PartialEq+Eq {
 
         left.len() == right.len() && left.iter().zip(right.iter()).all(
             |(byte_self, byte_other)| {
-                lower_map[*byte_self as uint] ==
-                    lower_map[*byte_other as uint]
+                lower_map[*byte_self as usize] ==
+                    lower_map[*byte_other as usize]
             })
     }
 }
 
-trait ToByteSlice for Sized? {
+trait ToByteSlice<T: ?Sized> {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8];
 }
 
-impl ToByteSlice for str {
+impl<T: ?Sized> ToByteSlice<T> for str {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self.as_bytes()
     }
 }
 
-impl ToByteSlice for String {
+impl<T: ?Sized> ToByteSlice<T> for String {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self.as_slice().as_bytes()
     }
 }
 
-impl ToByteSlice for [u8] {
+impl<T: ?Sized> ToByteSlice<T> for [u8] {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self
     }
 }
 
-impl ToByteSlice for Vec<u8> {
+impl<T: ?Sized> ToByteSlice<T> for Vec<u8> {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self.as_slice()
     }

@@ -1,19 +1,19 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(slicing_syntax, globs, phase, macro_rules, associated_types)]
+#![feature(slicing_syntax)]
 
-#![allow(missing_copy_implementations)]
+#![allow(missing_copy_implementations, unstable)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
 #[cfg(test)] extern crate test;
-#[phase(plugin, link)] extern crate log;
+#[macro_use] extern crate log;
 
 // pub use self::message::IrcMessage;
 pub use self::connection::IrcConnectionBuf;
 pub use self::connection::IrcConnectionCommand;
 pub use self::event::IrcEvent;
 
-pub use self::watchers::{   
+pub use self::watchers::{
     RegisterError,
     RegisterErrorType,
 
@@ -39,7 +39,7 @@ pub use self::irccase::{
 pub use self::state::{
     User,
     UserId,
-    
+
     Channel,
     ChannelId,
 

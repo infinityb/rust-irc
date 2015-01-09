@@ -29,12 +29,12 @@ impl CtcpVersionResponder {
     // pub fn set_include_rust_irc(&mut self, value: bool) {
     //     self.include_rust_irc = value;
     // }
-    
+
     fn get_version(&self) -> CowString {
         match (self.include_rust_irc, &self.customized) {
             (_, &None) => VERSION.into_cow(),
             (true, &Some(ref customized)) => {
-                let string = format!("{} ({})", customized[], VERSION);
+                let string = format!("{:?} ({:?})", customized.as_slice(), VERSION);
                 string.into_cow()
             },
             (false, &Some(ref customized)) => {

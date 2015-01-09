@@ -46,9 +46,9 @@ impl IrcConnectionCommand {
 impl fmt::Show for IrcConnectionCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            IrcConnectionCommand::RawWrite(ref s) => write!(f, "RawWrite({})", s),
-            IrcConnectionCommand::AddWatcher(ref ew) => write!(f, "AddWatcher({}(...))", ew.get_name()),
-            IrcConnectionCommand::AddBundler(ref bun) => write!(f, "AddBundler({}(...))", bun.get_name()),
+            IrcConnectionCommand::RawWrite(ref s) => write!(f, "RawWrite({:?})", s),
+            IrcConnectionCommand::AddWatcher(ref ew) => write!(f, "AddWatcher({:?}(...))", ew.get_name()),
+            IrcConnectionCommand::AddBundler(ref bun) => write!(f, "AddBundler({:?}(...))", bun.get_name()),
         }
     }
 }
@@ -84,9 +84,9 @@ impl IrcConnectionBuf {
             bundler_man: BundlerManager::new(),
             current_nick: None,
         };
-        out.responders.push_back(box CtcpVersionResponder::new());
-        out.bundler_man.add_bundler_trigger(box JoinBundlerTrigger::new());
-        out.bundler_man.add_bundler_trigger(box WhoBundlerTrigger::new());
+        out.responders.push_back(Box::new(CtcpVersionResponder::new()));
+        out.bundler_man.add_bundler_trigger(Box::new(JoinBundlerTrigger::new()));
+        out.bundler_man.add_bundler_trigger(Box::new(WhoBundlerTrigger::new()));
         out
     }
 
@@ -121,7 +121,7 @@ impl IrcConnectionBuf {
                 AddBundler(value) => self.add_bundler(value),
             }
         }
-        
+
         let mut outgoing_events = Vec::new();
 
         while let Some(incoming) = self.incoming_lines.pop_front() {
@@ -130,7 +130,7 @@ impl IrcConnectionBuf {
             let msg = match IrcMsg::new(incoming) {
                 Ok(msg) => msg,
                 Err(reason) => {
-                    panic!("Invalid msg: {} for {}", reason, incoming_copy);
+                    panic!("Invalid msg: {:?} for {:?}", reason, incoming_copy);
                 }
             };
 
@@ -149,7 +149,7 @@ impl IrcConnectionBuf {
 
                 if let server::IncomingMsg::Nick(ref msg) = tymsg {
                     if let Some(current_nick) = self.current_nick.clone() {
-                        if current_nick[] == msg.get_nick() {
+                        if current_nick.as_slice() == msg.get_nick() {
                             self.current_nick = Some(msg.get_new_nick().to_string())
                         }
                     }
@@ -157,7 +157,7 @@ impl IrcConnectionBuf {
 
                 tymsg.into_irc_msg()
             };
-            
+
             outgoing_events.extend(self.bundler_man.on_irc_msg(&msg).into_iter());
             for responder in self.responders.iter_mut() {
                 for resp_msg in responder.on_irc_msg(&msg).into_iter() {
@@ -172,10 +172,10 @@ impl IrcConnectionBuf {
     pub fn register(&mut self, nick: &str) -> Future<RegisterResult> {
         use self::IrcConnectionCommand::AddWatcher;
 
-        let mut reg_watcher = RegisterEventWatcher::new();        
+        let mut reg_watcher = RegisterEventWatcher::new();
         let result_future = reg_watcher.get_future();
-        let watcher: Box<EventWatcher+Send> = box reg_watcher;
-        
+        let watcher: Box<EventWatcher+Send> = Box::new(reg_watcher);
+
         self.command_queue.push_back(AddWatcher(watcher));
         self.outgoing_msgs.push_back(client::Nick::new(nick).into_irc_msg().into_bytes());
         self.outgoing_msgs.push_back(client::User::new(
@@ -190,7 +190,7 @@ impl IrcConnectionBuf {
 
         let mut join_watcher = JoinEventWatcher::new(channel.as_bytes());
         let result_future = join_watcher.get_future();
-        let watcher: Box<EventWatcher+Send> = box join_watcher;
+        let watcher: Box<EventWatcher+Send> = Box::new(join_watcher);
 
         self.command_queue.push_back(AddWatcher(watcher));
         self.outgoing_msgs.push_back(client::Join::new(channel).into_irc_msg().into_bytes());
@@ -203,7 +203,7 @@ impl IrcConnectionBuf {
 
         let mut who_watcher = WhoEventWatcher::new(target.as_bytes());
         let result_future = who_watcher.get_future();
-        let watcher: Box<EventWatcher+Send> = box who_watcher;
+        let watcher: Box<EventWatcher+Send> = Box::new(who_watcher);
 
         self.command_queue.push_back(AddWatcher(watcher));
         self.outgoing_msgs.push_back(client::Who::new(target).into_irc_msg().into_bytes());
