@@ -227,7 +227,9 @@ mod tests {
         conn.push_line(b"PING pretend-server\r\n".to_vec());
         assert_eq!(conn.pop_line(), None);
 
-        assert_eq!(conn.dispatch().len(), 1);
+        conn.dispatch();
+        assert!(conn.pop_event().is_some());
+        assert!(conn.pop_event().is_none());
         assert_eq!(conn.pop_line(), Some(b"PONG pretend-server\r\n".to_vec()));
     }
 }

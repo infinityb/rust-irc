@@ -1152,7 +1152,8 @@ mod tests {
                     }
                     if let SessionRecord::Content(ref content) = rec {
                         connection.push_line(content.as_bytes().to_vec());
-                        for event in connection.dispatch().into_iter() {
+                        connection.dispatch();
+                        while let Some(event) = connection.pop_event() {
                             println!("event: {:?}", event);
                             state.on_event(&event);
                             state.validate_state_internal_panic();
