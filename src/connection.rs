@@ -60,6 +60,9 @@ pub struct IrcConnectionBuf {
     // Lines going out to the server
     outgoing_msgs: RingBuf<Vec<u8>>,
 
+    // outgoing event queue
+    event_queue: RingBuf<IrcEvent>,
+
     // Internal command queue
     command_queue: RingBuf<IrcConnectionCommand>,
 
@@ -79,6 +82,7 @@ impl IrcConnectionBuf {
         let mut out = IrcConnectionBuf {
             incoming_lines: RingBuf::new(),
             outgoing_msgs: RingBuf::new(),
+            event_queue: RingBuf::new(),
             command_queue: RingBuf::new(),
             responders: RingBuf::new(),
             bundler_man: BundlerManager::new(),
@@ -112,7 +116,7 @@ impl IrcConnectionBuf {
         self.bundler_man.add_bundler(bundler);
     }
 
-    pub fn dispatch(&mut self) -> Vec<IrcEvent> {
+    pub fn dispatch(&mut self) {
         while let Some(command) = self.command_queue.pop_front() {
             use self::IrcConnectionCommand::{RawWrite, AddWatcher, AddBundler};
             match command {
@@ -121,8 +125,6 @@ impl IrcConnectionBuf {
                 AddBundler(value) => self.add_bundler(value),
             }
         }
-
-        let mut outgoing_events = Vec::new();
 
         while let Some(incoming) = self.incoming_lines.pop_front() {
             let incoming_copy = incoming.clone();
@@ -158,15 +160,17 @@ impl IrcConnectionBuf {
                 tymsg.into_irc_msg()
             };
 
-            outgoing_events.extend(self.bundler_man.on_irc_msg(&msg).into_iter());
+            self.event_queue.extend(self.bundler_man.on_irc_msg(&msg).into_iter());
             for responder in self.responders.iter_mut() {
                 for resp_msg in responder.on_irc_msg(&msg).into_iter() {
                     self.outgoing_msgs.push_back(resp_msg.into_bytes());
                 }
             }
         }
+    }
 
-        outgoing_events
+    pub fn pop_event(&mut self) -> Option<IrcEvent> {
+        self.event_queue.pop_front()
     }
 
     pub fn register(&mut self, nick: &str) -> Future<RegisterResult> {
