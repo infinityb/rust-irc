@@ -314,7 +314,7 @@ impl IrcConnection {
         let (event_queue_tx, event_queue_rx) = sync_channel(10);
         
         let (raw_writer_tx, raw_writer_rx) = sync_channel::<Vec<u8>>(20);
-        let (raw_reader_tx, raw_reader_rx) = sync_channel::<String>(20);
+        let (raw_reader_tx, raw_reader_rx) = sync_channel::<Vec<u8>>(20);
 
         ::std::thread::Builder::new().name("core-writer".to_string()).spawn(move |:| {
             let mut writer = LineBufferedWriter::new(writer);
@@ -327,17 +327,14 @@ impl IrcConnection {
         });
 
         ::std::thread::Builder::new().name("core-reader".to_string()).spawn(move |:| {
-            let trim_these: &[char] = &['\r', '\n'];
             let mut reader = BufferedReader::new(reader);
             loop {
                 let line_bin = match reader.read_until('\n' as u8) {
-                    Ok(line_bin) => line_bin,
+                    Ok(line_bin) => deline(line_bin),
                     Err(IoError{ kind: EndOfFile, .. }) => break,
                     Err(err) => panic!("I/O Error: {}", err)
                 };
-                let string = String::from_utf8_lossy(line_bin.as_slice());
-                let string = string.as_slice().trim_right_matches(trim_these).to_string();
-                raw_reader_tx.send(string).unwrap();
+                raw_reader_tx.send(line_bin).unwrap();
             }
             warn!("--!-- core-reader is ending! --!--");
         });
@@ -361,8 +358,7 @@ impl IrcConnection {
                     },
                     string = raw_reader_rx.recv() => {
                         let string = string.unwrap();
-
-                        state.dispatch(match IrcMsg::new(string.into_bytes()) {
+                        state.dispatch(match IrcMsg::new(string) {
                             Ok(message) => message,
                             Err(err) => {
                                 warn!("Invalid IRC message: {:?}", err);
@@ -441,4 +437,16 @@ impl IrcConnection {
     pub fn get_command_queue(&mut self) -> SyncSender<IrcConnectionCommand> {
         self.command_queue.clone()
     }
+}
+
+fn deline(mut line: Vec<u8>) -> Vec<u8> {
+    if Some(&b'\n') != line.iter().last() {
+        return line;
+    }
+    line.pop();
+    if Some(&b'\r') != line.iter().last() {
+        return line;
+    }
+    line.pop();
+    line
 }
