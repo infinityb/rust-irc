@@ -122,6 +122,8 @@ impl User {
 
         let mut msg = Vec::with_capacity(output_length);
         msg.push_all(b"USER ");
+        msg.push_all(user.as_bytes());
+        msg.push_all(b" ");
         msg.push_all(mode.as_bytes());
         msg.push_all(b" ");
         msg.push_all(unused.as_bytes());
