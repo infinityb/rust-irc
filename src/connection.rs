@@ -439,6 +439,7 @@ impl IrcConnection {
     }
 }
 
+/// Removes newline characters from a line
 fn deline(mut line: Vec<u8>) -> Vec<u8> {
     if Some(&b'\n') != line.iter().last() {
         return line;

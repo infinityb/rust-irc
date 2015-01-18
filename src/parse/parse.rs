@@ -118,6 +118,16 @@ impl IrcParser {
         }
     }
 
+    fn finalize_arg(&mut self) -> Option<IrcParserState> {
+        self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
+        self.arg_len += 1;
+        self.arg_start = 0;
+        match self.arg_len {
+            15 => Some(IrcParserState::ArgOverflow),
+            _ => None
+        }
+    }
+
     #[inline]
     fn push_byte(&mut self, byte: u8) {
         self.state = match (self.state, byte) {
@@ -160,25 +170,23 @@ impl IrcParser {
             }
 
             (IrcParserState::Arg, b' ') => {
-                self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
-                self.arg_len += 1;
-                self.arg_start = 0;
-                if self.arg_len == 15 {
-                    IrcParserState::ArgOverflow
-                } else {
-                    IrcParserState::ArgStart
+                match self.finalize_arg() {
+                    Some(state) => state,
+                    None => IrcParserState::ArgStart,
+                }
+            }
+            (IrcParserState::Arg, b'\n') => {
+                match self.finalize_arg() {
+                    Some(state) => state,
+                    None => IrcParserState::EndOfLine,
                 }
             }
             (IrcParserState::Arg, _) => IrcParserState::Arg,
 
             (IrcParserState::RestArg, b'\n') => {
-                self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx - 1);
-                self.arg_len += 1;
-                self.arg_start = 0;
-                if self.arg_len == 15 {
-                    IrcParserState::ArgOverflow
-                } else {
-                    IrcParserState::EndOfLine
+                match self.finalize_arg() {
+                    Some(state) => state,
+                    None => IrcParserState::EndOfLine,
                 }
             }
             (IrcParserState::RestArg, _) => IrcParserState::RestArg,
@@ -211,14 +219,15 @@ impl IrcParser {
 
     fn parse(message: Vec<u8>) -> Result<IrcMsg, ParseError> {
         let mut parser = IrcParser::new();
-        for value in message.as_slice().iter() {
-            parser.push_byte(*value);
+        for &value in message.as_slice().iter() {
+            parser.push_byte(value);
         }
         match parser.finish() {
             Ok(()) => (),
             Err(err) => return Err(err)
         };
         assert_eq!(parser.byte_idx as usize, message.len());
+
         let mut parsed = IrcMsg {
             data: message,
             prefix: (parser.prefix_start, parser.prefix_end),
@@ -234,17 +243,13 @@ impl IrcParser {
 
         // Newline and Carriage return removal
         let last_idx = (parsed.arg_len - 1) as usize;
+        let (arg_start, mut arg_end) = parsed.args[last_idx];
 
-        let (arg_start, arg_end) = parsed.args[last_idx];
-        if parsed.data[arg_end as usize - 1] == b'\n' {
-            parsed.args[last_idx] = (arg_start, arg_end - 1);
-
-            let (arg_start, arg_end) = parsed.args[last_idx];
-            if parsed.data[arg_end as usize - 1] == b'\r' {
-                parsed.args[last_idx] = (arg_start, arg_end - 1) ;
-            }
+        if parsed.data[arg_end as usize - 1] == b'\r' {
+            arg_end -= 1;
+            parsed.args[last_idx] = (arg_start, arg_end);
         }
-        
+        parsed.data.truncate(arg_end as usize);
         Ok(parsed)
     }
 }
@@ -380,6 +385,16 @@ mod tests {
             assert_eq!(parsed.get_command(), "PING");
             assert_eq!(parsed.get_args().as_slice(), [b"foo", b"bar baz"].as_slice());
         }
+    }
+
+    #[test]
+    fn test_security() {
+        let example: Vec<_> = b":prefix PING foo\r\n:prefix2 PING bar\r\n".iter().map(|&x| x).collect();
+        let safe = match IrcParser::parse(example) {
+            Ok(parsed) => parsed.into_bytes(),
+            Err(err) => panic!("Should have been able to parse. err: {:?}", err)
+        };
+        assert_eq!(safe.as_slice(), b":prefix PING foo");
     }
 
     #[bench]
