@@ -1,12 +1,19 @@
+use std::io::net::ip::ToSocketAddr;
 use std::collections::RingBuf;
 use std::sync::Future;
 use std::fmt;
+use std::io::{
+    IoResult, IoError, EndOfFile,
+    BufferedReader, TcpStream,
+    LineBufferedWriter
+};
+use std::default::Default;
+use std::sync::mpsc::{sync_channel, SyncSender, Receiver};
 
 use core_plugins::{
     MessageResponder,
     CtcpVersionResponder,
 };
-
 use parse::IrcMsg;
 use event::IrcEvent;
 use message_types::{client, server};
@@ -175,40 +182,32 @@ impl IrcConnectionBuf {
 
     pub fn register(&mut self, nick: &str) -> Future<RegisterResult> {
         use self::IrcConnectionCommand::AddWatcher;
-
         let mut reg_watcher = RegisterEventWatcher::new();
         let result_future = reg_watcher.get_future();
         let watcher: Box<EventWatcher+Send> = Box::new(reg_watcher);
-
         self.command_queue.push_back(AddWatcher(watcher));
         self.outgoing_msgs.push_back(client::Nick::new(nick).into_irc_msg().into_bytes());
         self.outgoing_msgs.push_back(client::User::new(
             "rustirc", "0", "*", "http://github.com/infinityb/rust-irc"
         ).into_irc_msg().into_bytes());
-
         result_future
     }
 
     pub fn join(&mut self, channel: &str) -> Future<JoinResult> {
         use self::IrcConnectionCommand::AddWatcher;
-
         let mut join_watcher = JoinEventWatcher::new(channel.as_bytes());
         let result_future = join_watcher.get_future();
         let watcher: Box<EventWatcher+Send> = Box::new(join_watcher);
-
         self.command_queue.push_back(AddWatcher(watcher));
         self.outgoing_msgs.push_back(client::Join::new(channel).into_irc_msg().into_bytes());
         result_future
-
     }
 
     pub fn who(&mut self, target: &str) -> Future<WhoResult> {
         use self::IrcConnectionCommand::AddWatcher;
-
         let mut who_watcher = WhoEventWatcher::new(target.as_bytes());
         let result_future = who_watcher.get_future();
         let watcher: Box<EventWatcher+Send> = Box::new(who_watcher);
-
         self.command_queue.push_back(AddWatcher(watcher));
         self.outgoing_msgs.push_back(client::Who::new(target).into_irc_msg().into_bytes());
         result_future
@@ -231,5 +230,215 @@ mod tests {
         assert!(conn.pop_event().is_some());
         assert!(conn.pop_event().is_none());
         assert_eq!(conn.pop_line(), Some(b"PONG pretend-server\r\n".to_vec()));
+    }
+}
+
+
+pub struct IrcConnection {
+    command_queue: SyncSender<IrcConnectionCommand>,
+    has_registered: bool
+}
+
+
+struct IrcConnectionInternalState {
+    // The output stream towards the user
+    event_queue_tx: SyncSender<IrcEvent>,
+
+    // Automatic responders e.g. the PING and CTCP handlers
+    responders: RingBuf<Box<MessageResponder+Send>>,
+
+    // manages active bundlers and emits events when they finish
+    bundler_man: BundlerManager,
+
+    // Current nickname held by the client
+    current_nick: Option<String>
+}
+
+impl IrcConnectionInternalState {
+    pub fn new(event_queue_tx: SyncSender<IrcEvent>) -> IrcConnectionInternalState {
+        IrcConnectionInternalState {
+            event_queue_tx: event_queue_tx,
+            responders: Default::default(),
+            bundler_man: BundlerManager::new(),
+            current_nick: Default::default(),
+        }
+    }
+
+    fn dispatch(&mut self, msg: IrcMsg, raw_sender: &SyncSender<Vec<u8>>) {
+        let tymsg = server::IncomingMsg::from_msg(msg);
+        if let server::IncomingMsg::Ping(ref msg) = tymsg {
+            if let Ok(response) = msg.get_response() {
+                raw_sender.send(response.into_bytes()).unwrap();
+            }
+        }
+        if let server::IncomingMsg::Numeric(1, ref numeric) = tymsg {
+            let msg = numeric.to_irc_msg();
+            self.current_nick = Some(String::from_utf8_lossy(&msg[0]).into_owned());
+        }
+
+        if let server::IncomingMsg::Nick(ref msg) = tymsg {
+            if let Some(current_nick) = self.current_nick.take() {
+                if current_nick.as_slice() == msg.get_nick() {
+                    self.current_nick = Some(msg.get_new_nick().to_string())
+                }
+            }
+        }
+
+        let outgoing_events = self.bundler_man.on_irc_msg(tymsg.to_irc_msg());
+
+        for responder in self.responders.iter_mut() {
+            for msg in responder.on_irc_msg(tymsg.to_irc_msg()).into_iter() {
+                raw_sender.send(msg.into_bytes()).unwrap();
+            }
+        }
+
+        for event in outgoing_events.into_iter() {
+            self.event_queue_tx.send(event).unwrap();
+        }
+    }
+
+    // Do we really need Send here?
+    fn add_watcher(&mut self, watcher: Box<EventWatcher+Send>) {
+        self.bundler_man.add_watcher(watcher);
+    }
+
+    fn add_bundler(&mut self, bundler: Box<Bundler+Send>) {
+        self.bundler_man.add_bundler(bundler);
+    }
+}
+
+impl IrcConnection {
+    fn new_from_rw<R: Reader+Send, W: Writer+Send>(reader: R, writer: W)
+            -> IoResult<(IrcConnection, Receiver<IrcEvent>)> {
+        let (command_queue_tx, command_queue_rx) = sync_channel::<IrcConnectionCommand>(0);
+        let (event_queue_tx, event_queue_rx) = sync_channel(10);
+        
+        let (raw_writer_tx, raw_writer_rx) = sync_channel::<Vec<u8>>(20);
+        let (raw_reader_tx, raw_reader_rx) = sync_channel::<String>(20);
+
+        ::std::thread::Builder::new().name("core-writer".to_string()).spawn(move |:| {
+            let mut writer = LineBufferedWriter::new(writer);
+            for message in raw_writer_rx.iter() {
+                let mut message = message.clone();
+                message.push_all(b"\r\n");
+                assert!(writer.write(message.as_slice()).is_ok());
+            }
+            warn!("--!-- core-writer is ending! --!--");
+        });
+
+        ::std::thread::Builder::new().name("core-reader".to_string()).spawn(move |:| {
+            let trim_these: &[char] = &['\r', '\n'];
+            let mut reader = BufferedReader::new(reader);
+            loop {
+                let line_bin = match reader.read_until('\n' as u8) {
+                    Ok(line_bin) => line_bin,
+                    Err(IoError{ kind: EndOfFile, .. }) => break,
+                    Err(err) => panic!("I/O Error: {}", err)
+                };
+                let string = String::from_utf8_lossy(line_bin.as_slice());
+                let string = string.as_slice().trim_right_matches(trim_these).to_string();
+                raw_reader_tx.send(string).unwrap();
+            }
+            warn!("--!-- core-reader is ending! --!--");
+        });
+
+        ::std::thread::Builder::new().name("core-dispatch".to_string()).spawn(move |:| -> () {
+            let mut state = IrcConnectionInternalState::new(event_queue_tx);
+            state.bundler_man.add_bundler_trigger(Box::new(JoinBundlerTrigger::new()));
+            state.bundler_man.add_bundler_trigger(Box::new(WhoBundlerTrigger::new()));
+            state.responders.push_back(Box::new(CtcpVersionResponder::new()));
+
+            loop {
+                select! {
+                    command = command_queue_rx.recv() => {
+                        match command.unwrap() {
+                            IrcConnectionCommand::RawWrite(value) => {
+                                raw_writer_tx.send(value).unwrap();
+                            }
+                            IrcConnectionCommand::AddWatcher(value) => state.add_watcher(value),
+                            IrcConnectionCommand::AddBundler(value) => state.add_bundler(value),
+                        }
+                    },
+                    string = raw_reader_rx.recv() => {
+                        let string = string.unwrap();
+
+                        state.dispatch(match IrcMsg::new(string.into_bytes()) {
+                            Ok(message) => message,
+                            Err(err) => {
+                                warn!("Invalid IRC message: {:?}", err);
+                                continue;
+                            }
+                        }, &raw_writer_tx);
+                    }
+                }
+            }
+        });
+
+        let conn = IrcConnection {
+            command_queue: command_queue_tx,
+            has_registered: false
+        };
+        Ok((conn, event_queue_rx))
+    }
+
+    pub fn new<A: ToSocketAddr>(addr: A) -> IoResult<(IrcConnection, Receiver<IrcEvent>)> {
+        let stream = match TcpStream::connect(addr) {
+            Ok(stream) => stream,
+            Err(err) => return Err(err)
+        };
+        IrcConnection::new_from_rw(stream.clone(), stream.clone())
+    }
+
+    pub fn register(&mut self, nick: &str) -> RegisterResult {
+        let mut reg_watcher = RegisterEventWatcher::new();        
+        let result_rx = reg_watcher.get_monitor();
+        let watcher: Box<EventWatcher+Send> = Box::new(reg_watcher);
+        self.command_queue.send(AddWatcher(watcher)).unwrap();
+        self.write_str(format!("NICK {}", nick).as_slice());
+        if !self.has_registered {
+            self.write_str("USER rustirc 0 *: http://github.com/infinityb/rust-irc");
+        }
+        let register_result = result_rx.recv();
+        register_result.unwrap()
+    }
+
+    pub fn join(&mut self, channel: &str) -> JoinResult {
+        let mut join_watcher = JoinEventWatcher::new(channel.as_bytes());
+        let result_rx = join_watcher.get_monitor();
+        let watcher: Box<EventWatcher+Send> = Box::new(join_watcher);
+        self.command_queue.send(IrcConnectionCommand::AddWatcher(watcher)).unwrap();
+
+        let mut join_msg = Vec::new();
+        join_msg.push_all(b"JOIN ");
+        join_msg.push_all(channel.as_slice().as_bytes());
+
+        self.command_queue.send(IrcConnectionCommand::RawWrite(join_msg)).unwrap();
+        result_rx.recv().unwrap()
+    }
+
+    pub fn who(&mut self, target: &str) -> WhoResult {
+        let mut who_watcher = WhoEventWatcher::new(target.as_bytes());
+        let result_rx = who_watcher.get_monitor();
+        let watcher: Box<EventWatcher+Send> = Box::new(who_watcher);
+        self.command_queue.send(AddWatcher(watcher)).unwrap();
+
+        let mut who_msg = Vec::new();
+        who_msg.push_all(b"WHO ");
+        who_msg.push_all(target.as_bytes());
+
+        self.command_queue.send(RawWrite(who_msg)).unwrap();
+        result_rx.recv().unwrap()
+    }
+
+    pub fn write_str(&mut self, content: &str) {
+        self.write_buf(content.as_bytes());
+    }
+
+    pub fn write_buf(&mut self, content: &[u8]) {
+        self.command_queue.send(RawWrite(content.to_vec())).unwrap();
+    }
+
+    pub fn get_command_queue(&mut self) -> SyncSender<IrcConnectionCommand> {
+        self.command_queue.clone()
     }
 }

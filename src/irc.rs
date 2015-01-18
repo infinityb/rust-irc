@@ -9,7 +9,7 @@
 #[macro_use] extern crate log;
 
 // pub use self::message::IrcMessage;
-pub use self::connection::IrcConnectionBuf;
+pub use self::connection::{IrcConnectionBuf, IrcConnection};
 pub use self::connection::IrcConnectionCommand;
 pub use self::event::IrcEvent;
 
