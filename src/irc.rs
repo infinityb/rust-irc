@@ -54,19 +54,19 @@ mod connection;
 mod watchers;
 mod core_plugins;
 
-#[experimental = "Subject to all types of change"]
+#[unstable(reason="Subject to all types of change")]
 /// Experimental message types
 pub mod message_types;
 
-#[experimental = "Subject to being moved"]
+#[unstable(reason="Subject to being moved")]
 /// Experimental utility code
 pub mod util;
 
-#[experimental = "Subject to being moved"]
+#[unstable(reason="Subject to being moved")]
 /// Experimental parsing code
 pub mod parse;
 
-#[experimental = "Subject to all types of change"]
+#[unstable(reason="Subject to all types of change")]
 pub mod identifier;
 
 /// Event types

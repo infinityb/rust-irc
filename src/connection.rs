@@ -1,8 +1,8 @@
-use std::io::net::ip::ToSocketAddr;
+use std::old_io::net::ip::ToSocketAddr;
 use std::collections::RingBuf;
 use std::sync::Future;
 use std::fmt;
-use std::io::{
+use std::old_io::{
     IoResult, IoError, EndOfFile,
     BufferedReader, TcpStream,
     LineBufferedWriter
@@ -50,7 +50,7 @@ impl IrcConnectionCommand {
     }
 }
 
-impl fmt::Show for IrcConnectionCommand {
+impl fmt::Debug for IrcConnectionCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             IrcConnectionCommand::RawWrite(ref s) => write!(f, "RawWrite({:?})", s),
@@ -321,7 +321,7 @@ impl IrcConnection {
             for message in raw_writer_rx.iter() {
                 let mut message = message.clone();
                 message.push_all(b"\r\n");
-                assert!(writer.write(message.as_slice()).is_ok());
+                assert!(writer.write_all(message.as_slice()).is_ok());
             }
             warn!("--!-- core-writer is ending! --!--");
         });

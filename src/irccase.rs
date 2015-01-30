@@ -217,7 +217,7 @@ fn test_old_basics() {
     assert_eq!("^".to_string().into_irc_lower().as_slice(), "~");
 }
 
-#[derive(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct AsciiCaseMapping;
 
 impl Default for AsciiCaseMapping {
@@ -232,7 +232,7 @@ impl CaseMapping for AsciiCaseMapping {
 }
 
 
-#[derive(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct Rfc1459CaseMapping;
 
 impl Default for Rfc1459CaseMapping {
@@ -246,7 +246,7 @@ impl CaseMapping for Rfc1459CaseMapping {
     }
 }
 
-#[derive(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct StrictRfc1459CaseMapping;
 
 impl Default for StrictRfc1459CaseMapping {

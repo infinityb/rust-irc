@@ -97,7 +97,7 @@ struct IrcParser {
     state: IrcParserState
 }
 
-#[derive(Show, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
     InvalidMessage(&'static str),
     EncodingError,
@@ -262,8 +262,7 @@ impl IrcParser {
 // command, and all parameters are separated by one (or
 // more) ASCII space character(s) (0x20).
 
-#[experimental]
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct IrcMsg {
     data: Vec<u8>,
     prefix: (u32, u32),
@@ -516,7 +515,7 @@ impl<'a> PartialEq for IrcMsgPrefix<'a> {
 }
 impl<'a> Eq for IrcMsgPrefix<'a> {}
 
-impl<'a> fmt::Show for IrcMsgPrefix<'a> {
+impl<'a> fmt::Debug for IrcMsgPrefix<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "IrcMsgPrefix::new({})", self.as_slice())
     }

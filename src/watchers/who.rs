@@ -24,7 +24,7 @@ impl ChannelTargeted for WhoResult {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct WhoSuccess {
     pub channel: Vec<u8>,
     pub who_records: Vec<WhoRecord>,
@@ -41,15 +41,15 @@ impl WhoSuccess {
 
 
 // Does /WHO even error?
-#[derive(Clone, Show)]
-#[experimental = "Public fields definitely going away"]
+#[derive(Clone, Debug)]
+#[unstable(reason="Public fields definitely going away")]
 pub struct WhoError {
     pub channel: Vec<u8>,
 }
 
 
-#[derive(Clone, Show)]
-#[experimental = "Public fields definitely going away"]
+#[derive(Clone, Debug)]
+#[unstable(reason="Public fields definitely going away")]
 pub struct WhoRecord {
     pub hostname: String,
     pub server: String,
@@ -127,7 +127,7 @@ impl BundlerTrigger for WhoBundlerTrigger {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct WhoBundler {
     target_channel: Vec<u8>,
     who_records: Vec<WhoRecord>,
@@ -241,7 +241,7 @@ impl WhoEventWatcher {
     }
 }
 
-impl fmt::Show for WhoEventWatcher {
+impl fmt::Debug for WhoEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "WhoEventWatcher(channel={:?})", self.channel.as_slice())
     }

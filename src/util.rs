@@ -1,4 +1,4 @@
-#[derive(PartialEq, Copy, Clone, Show)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct StringSlicer {
     from_idx: usize,
     to_idx: usize
@@ -57,7 +57,7 @@ impl StringSlicer {
     }
 }
 
-#[derive(PartialEq, Copy, Clone, Show)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub struct OptionalStringSlicer {
     exists: bool,
     from_idx: usize,

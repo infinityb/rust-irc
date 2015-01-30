@@ -10,7 +10,7 @@ use event::IrcEvent;
 
 pub type RegisterResult = Result<(), RegisterError>;
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct RegisterError {
     pub errtype: RegisterErrorType,
     pub message: IrcMsg,
@@ -27,7 +27,7 @@ impl RegisterError {
     }
 }
 
-#[derive(Clone, Show, Copy)]
+#[derive(Clone, Debug, Copy)]
 pub enum RegisterErrorType {
     NoNicknameGiven,
     NicknameInUse,
@@ -166,7 +166,7 @@ impl EventWatcher for RegisterEventWatcher {
 }
 
 
-impl fmt::Show for RegisterEventWatcher {
+impl fmt::Debug for RegisterEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "RegisterEventWatcher()")
     }

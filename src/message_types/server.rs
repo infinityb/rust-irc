@@ -47,7 +47,7 @@ macro_rules! msg_wrapper_common {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub enum IncomingMsg {
     Join(Join),
     Kick(Kick),
@@ -147,7 +147,7 @@ fn test_incoming() {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Join(IrcMsg);
 msg_wrapper_common!(Join);
 impl_into_incoming_msg!(Join);
@@ -206,7 +206,7 @@ fn test_join_basics() {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Kick(IrcMsg);
 impl_into_incoming_msg!(Kick);
 msg_wrapper_common!(Kick);
@@ -258,7 +258,7 @@ impl FromIrcMsg for Kick {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Mode(IrcMsg);
 impl_into_incoming_msg!(Mode);
 msg_wrapper_common!(Mode);
@@ -292,7 +292,7 @@ impl FromIrcMsg for Mode {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Nick(IrcMsg);
 impl_into_incoming_msg!(Nick);
 msg_wrapper_common!(Nick);
@@ -334,7 +334,7 @@ impl FromIrcMsg for Nick {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Notice(IrcMsg);
 impl_into_incoming_msg!(Notice);
 msg_wrapper_common!(Notice);
@@ -384,7 +384,7 @@ mod benchmarks {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Part(IrcMsg);
 impl_into_incoming_msg!(Part);
 msg_wrapper_common!(Part);
@@ -422,7 +422,7 @@ impl FromIrcMsg for Part {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Ping(IrcMsg);
 impl_into_incoming_msg!(Ping);
 msg_wrapper_common!(Ping);
@@ -479,7 +479,7 @@ fn test_ping_basics() {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Privmsg(IrcMsg);
 impl_into_incoming_msg!(Privmsg);
 msg_wrapper_common!(Privmsg);
@@ -559,7 +559,7 @@ fn test_privmsg_basics() {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Quit(IrcMsg);
 impl_into_incoming_msg!(Quit);
 msg_wrapper_common!(Quit);
@@ -605,7 +605,7 @@ fn test_quit_basics() {
     assert!(ping.is_err());
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Topic(IrcMsg);
 impl_into_incoming_msg!(Topic);
 msg_wrapper_common!(Topic);
@@ -648,7 +648,7 @@ impl FromIrcMsg for Topic {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Numeric(IrcMsg);
 msg_wrapper_common!(Numeric);
 

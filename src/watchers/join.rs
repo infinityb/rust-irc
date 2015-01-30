@@ -23,7 +23,7 @@ impl ChannelTargeted for JoinResult {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct JoinSuccess {
     pub channel: Vec<u8>,
     pub nicks: Vec<String>,
@@ -31,7 +31,7 @@ pub struct JoinSuccess {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct TopicMeta {
     pub text: Vec<u8>,
     pub set_at: u64,
@@ -50,7 +50,7 @@ impl TopicMeta {
 }
 
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct JoinError {
     pub channel: Vec<u8>,
     pub errcode: i16,
@@ -126,7 +126,7 @@ impl BundlerTrigger for JoinBundlerTrigger {
     }
 }
 
-impl fmt::Show for JoinBundlerTrigger {
+impl fmt::Debug for JoinBundlerTrigger {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "JoinBundlerTrigger(current_nick={:?})", self.current_nick.as_slice())
     }
@@ -324,7 +324,7 @@ impl Bundler for JoinBundler {
 }
 
 
-impl fmt::Show for JoinBundler {
+impl fmt::Debug for JoinBundler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "JoinBundler({:?})", self.channel.as_slice())
     }
@@ -380,7 +380,7 @@ impl JoinEventWatcher {
 }
 
 
-impl fmt::Show for JoinEventWatcher {
+impl fmt::Debug for JoinEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "JoinEventWatcher(channel={:?})", self.channel.as_slice())
     }
