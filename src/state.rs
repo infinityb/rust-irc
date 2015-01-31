@@ -1120,7 +1120,7 @@ impl Patch<StateDiff> for State {
 
 #[cfg(test)]
 mod tests {
-    use std::io::BufReader;
+    use std::old_io::BufReader;
 
     use super::{State, UserId};
     use super::irc_identifier::IrcIdentifier;

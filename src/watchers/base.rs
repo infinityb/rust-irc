@@ -174,7 +174,7 @@ fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{IoResult, BufReader};
+    use std::old_io::{IoResult, BufReader};
 
     use parse::IrcMsg;
     use watchers::{

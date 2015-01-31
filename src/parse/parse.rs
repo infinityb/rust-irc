@@ -262,6 +262,7 @@ impl IrcParser {
 // command, and all parameters are separated by one (or
 // more) ASCII space character(s) (0x20).
 
+#[stable]
 #[derive(Clone, Debug)]
 pub struct IrcMsg {
     data: Vec<u8>,
@@ -271,7 +272,9 @@ pub struct IrcMsg {
     args: [(u32, u32); 15],
 }
 
+#[stable(since="0.1.0")]
 impl IrcMsg {
+    #[stable]
     pub fn new(data: Vec<u8>) -> Result<IrcMsg, ParseError> {
         let parsed = match IrcParser::parse(data) {
             Ok(parsed) => parsed,
@@ -286,33 +289,40 @@ impl IrcMsg {
         Ok(parsed)
     }
 
+    #[unstable(reason="waiting on rust getter conventions")]
     pub fn has_prefix(&self) -> bool {
         let (prefix_start, prefix_end) = self.prefix;
         prefix_end > prefix_start
     }
 
+    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_prefix_raw(&self) -> &[u8] {
         let (prefix_start, prefix_end) = self.prefix;
         &self.data[prefix_start as usize..prefix_end as usize]
     }
 
+    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_prefix_str(&self) -> &str {
         unsafe { ::std::str::from_utf8_unchecked(self.get_prefix_raw()) }
     }
 
+    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
         IrcMsgPrefix::new(self.get_prefix_str().into_cow())
     }
 
+    #[unstable(reason="waiting on rust getter conventions")]
     fn get_command_raw<'a>(&'a self) -> &[u8] {
         let (command_start, command_end) = self.command;
         &self.data[command_start as usize..command_end as usize]
     }
 
+    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_command(&self) -> &str {
         unsafe { ::std::str::from_utf8_unchecked(self.get_command_raw()) }
     }
 
+    #[unstable(reason="waiting on rust getter conventions; unsure of the Vec")]
     pub fn get_args(&self) -> Vec<&[u8]> {
         let mut out = Vec::with_capacity(self.arg_len as usize);
         for i in range(0, self.arg_len as usize) {
@@ -322,14 +332,17 @@ impl IrcMsg {
         out
     }
 
+    #[unstable(reason="seems weird")]
     pub fn len(&self) -> usize {
         self.arg_len as usize
     }
 
+    #[stable]
     pub fn into_bytes(self) -> Vec<u8> {
         self.data
     }
 
+    #[stable]
     pub fn as_bytes(&self) -> &[u8] {
         self.data.as_slice()
     }
