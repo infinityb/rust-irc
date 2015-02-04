@@ -78,7 +78,7 @@ impl IncomingMsg {
             "PRIVMSG" => to_incoming::<Privmsg>(msg),
             "QUIT" => to_incoming::<Quit>(msg),
             "TOPIC" => to_incoming::<Topic>(msg),
-            _ => match msg.get_command().parse::<u16>() {
+            _ => match msg.get_command().parse::<u16>().ok() {
                 Some(_) => to_incoming::<Numeric>(msg),
                 None => IncomingMsg::Unknown(msg)
             }
@@ -668,7 +668,7 @@ impl IntoIncomingMsg for Numeric {
 
 impl FromIrcMsg for Numeric {
     fn from_irc_msg(msg: IrcMsg) -> Result<Numeric, IrcMsg>  {
-        match msg.get_command().parse::<u16>() {
+        match msg.get_command().parse::<u16>().ok() {
             Some(_) => Ok(Numeric(msg)),
             None => Err(msg)
         }
