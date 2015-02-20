@@ -80,7 +80,7 @@ impl JoinBundlerTrigger {
 
     fn on_nick(&mut self, msg: &IrcMsg) {
         let is_self_nick = msg.get_prefix().nick()
-            .and_then(|: nick| Some(nick.as_bytes() == self.current_nick.as_slice()))
+            .and_then(|nick| Some(nick.as_bytes() == self.current_nick.as_slice()))
             .unwrap_or(false);
 
         if is_self_nick {
@@ -92,7 +92,7 @@ impl JoinBundlerTrigger {
 
     fn is_self_join(&self, msg: &IrcMsg) -> bool {
         msg.get_prefix().nick()
-            .and_then(|: nick| Some(nick.as_bytes() == self.current_nick.as_slice()))
+            .and_then(|nick| Some(nick.as_bytes() == self.current_nick.as_slice()))
             .unwrap_or(false)
     }
 }

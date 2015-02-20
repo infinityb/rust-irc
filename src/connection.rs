@@ -316,7 +316,7 @@ impl IrcConnection {
         let (raw_writer_tx, raw_writer_rx) = sync_channel::<Vec<u8>>(20);
         let (raw_reader_tx, raw_reader_rx) = sync_channel::<Vec<u8>>(20);
 
-        ::std::thread::Builder::new().name("core-writer".to_string()).spawn(move |:| {
+        ::std::thread::Builder::new().name("core-writer".to_string()).spawn(move || {
             let mut writer = LineBufferedWriter::new(writer);
             for message in raw_writer_rx.iter() {
                 let mut message = message.clone();
@@ -326,7 +326,7 @@ impl IrcConnection {
             warn!("--!-- core-writer is ending! --!--");
         });
 
-        ::std::thread::Builder::new().name("core-reader".to_string()).spawn(move |:| {
+        ::std::thread::Builder::new().name("core-reader".to_string()).spawn(move || {
             let mut reader = BufferedReader::new(reader);
             loop {
                 let line_bin = match reader.read_until('\n' as u8) {
@@ -339,7 +339,7 @@ impl IrcConnection {
             warn!("--!-- core-reader is ending! --!--");
         });
 
-        ::std::thread::Builder::new().name("core-dispatch".to_string()).spawn(move |:| -> () {
+        ::std::thread::Builder::new().name("core-dispatch".to_string()).spawn(move || {
             let mut state = IrcConnectionInternalState::new(event_queue_tx);
             state.bundler_man.add_bundler_trigger(Box::new(JoinBundlerTrigger::new()));
             state.bundler_man.add_bundler_trigger(Box::new(WhoBundlerTrigger::new()));
