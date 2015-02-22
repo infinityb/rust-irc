@@ -63,7 +63,6 @@ impl BundlerManager {
     /// WhoBundlerTrigger
     pub fn with_defaults() -> BundlerManager {
         let mut manager = BundlerManager::new();
-        manager.add_bundler_trigger(Box::new(super::JoinBundlerTrigger::new()));
         manager.add_bundler_trigger(Box::new(super::WhoBundlerTrigger::new()));
         manager
     }
@@ -85,6 +84,7 @@ impl BundlerManager {
         let mut outgoing_events: Vec<IrcEvent> = Vec::new();
 
         for new_bundler in bundler_trigger_impl(&mut self.bundler_triggers, msg).into_iter() {
+            println!("event_bundlers.push_back(name={:?})", new_bundler.get_name());
             self.event_bundlers.push_back(new_bundler);
         }
 
@@ -164,6 +164,8 @@ fn bundler_accept_impl(buf: &mut VecDeque<Box<Bundler+Send+'static>>,
                 }
                 if !bundler.is_finished() {
                     keep_bundlers.push_back(bundler);
+                } else {
+                    println!("finished with bundler {:?}", bundler.get_name());
                 }
             },
             None => break

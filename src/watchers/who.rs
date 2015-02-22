@@ -1,6 +1,5 @@
 use std::fmt;
-use std::sync::Future;
-use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
+use std::sync::mpsc::SyncSender;
 use std::borrow::IntoCow;
 
 use irccase::IrcAsciiExt;
@@ -201,15 +200,6 @@ pub struct WhoEventWatcher {
 
 
 impl WhoEventWatcher {
-    pub fn new(channel: &[u8]) -> WhoEventWatcher {
-        WhoEventWatcher {
-            channel: channel.to_vec(),
-            monitors: Vec::new(),
-            result: None,
-            finished: false
-        }
-    }
-
     fn dispatch_monitors(&mut self) {
         let result = self.result.clone().unwrap();
         for monitor in self.monitors.iter() {
@@ -219,25 +209,6 @@ impl WhoEventWatcher {
             }
         }
         self.monitors = Vec::new();
-    }
-
-    fn add_monitor(&mut self, monitor: SyncSender<WhoResult>) {
-        let result = self.result.clone();
-
-        match result {
-            Some(result) => monitor.send(result.clone()).ok().expect("send failure"),
-            None => self.monitors.push(monitor)
-        }
-    }
-
-    pub fn get_monitor(&mut self) -> Receiver<WhoResult> {
-        let (tx, rx) = sync_channel(1);
-        self.add_monitor(tx);
-        rx
-    }
-
-    pub fn get_future(&mut self) -> Future<WhoResult> {
-        Future::from_receiver(self.get_monitor())
     }
 }
 

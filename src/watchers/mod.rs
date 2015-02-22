@@ -4,19 +4,15 @@ pub use self::join::{
     JoinError,
     JoinBundler,
     JoinBundlerTrigger,
-    JoinEventWatcher
 };
 pub use self::base::{
-    MessageWatcher,
     Bundler,
     BundlerManager,
     BundlerTrigger,
-    EventWatcher
 };
 pub use self::register::{
     RegisterError,
     RegisterErrorType,
-    RegisterEventWatcher,
     RegisterResult,
 };
 pub use self::who::{
@@ -26,7 +22,6 @@ pub use self::who::{
     WhoError,
     WhoBundler,
     WhoBundlerTrigger,
-    WhoEventWatcher
 };
 
 pub mod join;

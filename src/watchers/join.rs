@@ -1,10 +1,8 @@
 use std::fmt;
-use std::sync::Future;
-use std::sync::mpsc::{Receiver, SyncSender, sync_channel};
 use irccase::IrcAsciiExt;
 
 use parse::IrcMsg;
-use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
+use watchers::base::{Bundler, BundlerTrigger};
 use event::IrcEvent;
 
 
@@ -29,7 +27,6 @@ pub struct JoinSuccess {
     pub nicks: Vec<String>,
     pub topic: Option<TopicMeta>,
 }
-
 
 #[derive(Clone, Debug)]
 pub struct TopicMeta {
@@ -57,24 +54,15 @@ pub struct JoinError {
     pub message: String
 }
 
-#[derive(Copy)]
-enum JoinBundlerTriggerState {
-    Unregistered,
-    Running
-}
-
-
 pub struct JoinBundlerTrigger {
-    state: JoinBundlerTriggerState,
     current_nick: Vec<u8>,
 }
 
 
 impl JoinBundlerTrigger {
-    pub fn new() -> JoinBundlerTrigger {
+    pub fn new(nick: &[u8]) -> JoinBundlerTrigger {
         JoinBundlerTrigger {
-            state: JoinBundlerTriggerState::Unregistered,
-            current_nick: Vec::new()
+            current_nick: nick.to_vec()
         }
     }
 
@@ -100,14 +88,8 @@ impl JoinBundlerTrigger {
 
 impl BundlerTrigger for JoinBundlerTrigger {
     fn on_irc_msg(&mut self, msg: &IrcMsg) -> Vec<Box<Bundler+Send>> {
-        match (self.state, msg.get_command()) {
-            (JoinBundlerTriggerState::Unregistered, "001") => {
-                self.state = JoinBundlerTriggerState::Running;
-                self.current_nick = msg[0].to_vec();
-                Vec::new()
-            },
-            (JoinBundlerTriggerState::Unregistered, _) => Vec::new(),
-            (JoinBundlerTriggerState::Running, "JOIN") => {
+        match msg.get_command() {
+            "JOIN" => {
                 let mut out = Vec::new();
                 if self.is_self_join(msg) {
                     let channel = &msg[0];
@@ -116,12 +98,12 @@ impl BundlerTrigger for JoinBundlerTrigger {
                 }
                 out
             },
-            (JoinBundlerTriggerState::Running, "NICK") => {
+            "NICK" => {
                 // potentially our nick is changing
                 self.on_nick(msg);
                 Vec::new()
             }
-            (JoinBundlerTriggerState::Running, _) => Vec::new()
+            _ => Vec::new()
         }
     }
 }
@@ -327,89 +309,5 @@ impl Bundler for JoinBundler {
 impl fmt::Debug for JoinBundler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "JoinBundler({:?})", self.channel.as_slice())
-    }
-}
-
-
-/// Waits for target JoinBundleEvent and clones it down the monitor
-pub struct JoinEventWatcher {
-    channel: Vec<u8>,
-    result: Option<JoinResult>,
-    monitors: Vec<SyncSender<JoinResult>>,
-}
-
-
-impl JoinEventWatcher {
-    pub fn new(channel: &[u8]) -> JoinEventWatcher {
-        JoinEventWatcher {
-            channel: channel.to_vec(),
-            monitors: Vec::new(),
-            result: None,
-        }
-    }
-
-    fn dispatch_monitors(&mut self) {
-        let result = self.result.clone().unwrap();
-        for monitor in self.monitors.iter() {
-            match monitor.try_send(result.clone()) {
-                Ok(_) => (),
-                Err(_) => panic!("sending failed")
-            }
-        }
-        self.monitors = Vec::new();
-    }
-
-    fn add_monitor(&mut self, monitor: SyncSender<JoinResult>) {
-        let result = self.result.clone();
-
-        match result {
-            Some(result) => monitor.send(result.clone()).ok().expect("send failure"),
-            None => self.monitors.push(monitor)
-        };
-    }
-
-    pub fn get_monitor(&mut self) -> Receiver<JoinResult> {
-        let (tx, rx) = sync_channel(1);
-        self.add_monitor(tx);
-        rx
-    }
-
-    pub fn get_future(&mut self) -> Future<JoinResult> {
-        Future::from_receiver(self.get_monitor())
-    }
-}
-
-
-impl fmt::Debug for JoinEventWatcher {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "JoinEventWatcher(channel={:?})", self.channel.as_slice())
-    }
-}
-
-
-impl EventWatcher for JoinEventWatcher {
-    fn on_event(&mut self, message: &IrcEvent) {
-
-        match *message {
-            IrcEvent::JoinBundle(ref result) => {
-                if result.get_channel().eq_ignore_irc_case(self.channel.as_slice()) {
-                    self.result = Some(result.clone());
-                    self.dispatch_monitors();
-                }
-            },
-            _ => ()
-        }
-    }
-
-    fn is_finished(&self) -> bool {
-        self.result.is_some()
-    }
-
-    fn get_name(&self) -> &'static str {
-        "JoinEventWatcher"
-    }
-
-    fn display(&self) -> String {
-        format!("{:?}", self)
     }
 }

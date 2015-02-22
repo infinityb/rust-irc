@@ -1,6 +1,6 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(core, std_misc, collections, hash, std_misc)]
+#![feature(core, std_misc, io, collections, hash, std_misc)]
 
 #![allow(missing_copy_implementations)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
@@ -8,9 +8,6 @@
 #[cfg(test)] extern crate test;
 #[macro_use] extern crate log;
 
-// pub use self::message::IrcMessage;
-pub use self::connection::{IrcConnectionBuf, IrcConnection};
-pub use self::connection::IrcConnectionCommand;
 pub use self::event::IrcEvent;
 
 pub use self::watchers::{
@@ -44,12 +41,12 @@ pub use self::state::{
     ChannelId,
 
     State,
+    FrozenState,
     MessageEndpoint,
 };
 
 #[cfg(test)] pub mod testinfra;
 mod numerics;
-mod connection;
 mod watchers;
 mod core_plugins;
 

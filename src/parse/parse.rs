@@ -118,13 +118,13 @@ impl IrcParser {
     }
 
     fn finalize_arg(&mut self) -> Option<IrcParserState> {
+        if self.arg_len == 15 {
+            return Some(IrcParserState::ArgOverflow);
+        }
         self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
         self.arg_len += 1;
         self.arg_start = 0;
-        match self.arg_len {
-            15 => Some(IrcParserState::ArgOverflow),
-            _ => None
-        }
+        None
     }
 
     #[inline]

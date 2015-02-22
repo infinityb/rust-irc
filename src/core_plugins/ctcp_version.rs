@@ -14,21 +14,6 @@ pub struct CtcpVersionResponder {
 }
 
 impl CtcpVersionResponder {
-    pub fn new() -> CtcpVersionResponder {
-        CtcpVersionResponder {
-            customized: None,
-            include_rust_irc: true
-        }
-    }
-
-    // pub fn set_version(&mut self, version: &str) {
-    //     self.customized = Some(version.to_string());
-    // }
-
-    // pub fn set_include_rust_irc(&mut self, value: bool) {
-    //     self.include_rust_irc = value;
-    // }
-
     fn get_version(&self) -> Cow<'static, str> {
         match (self.include_rust_irc, &self.customized) {
             (_, &None) => VERSION.into_cow(),

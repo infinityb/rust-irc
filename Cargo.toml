@@ -1,6 +1,6 @@
 [package]
 name = "irc"
-version = "0.2.0"
+version = "0.3.0"
 authors = [ "Stacey Ell <stacey.ell@gmail.com>" ]
 
 [lib]

@@ -8,6 +8,7 @@ use std::collections::{
     HashSet,
 };
 use std::borrow::IntoCow;
+use std::ops::Deref;
 
 use message_types::server;
 use parse::{IrcMsg, IrcMsgPrefix};
@@ -313,6 +314,20 @@ pub struct StateDiff {
     commands: Vec<StateCommand>
 }
 
+pub struct FrozenState(State);
+
+impl Deref for FrozenState {
+    type Target = State;
+
+    fn deref<'a>(&'a self) -> &'a State {
+        let FrozenState(ref state) = *self;
+        state
+    }
+}
+
+unsafe impl Send for FrozenState {}
+unsafe impl Sync for FrozenState {}
+
 #[derive(Debug, Clone)]
 pub struct State {
     // Can this be made diffable by using sorted `users`, `channels`,
@@ -331,9 +346,6 @@ pub struct State {
 
     generation: u64,
 }
-
-// I'm not sure if this is OK
-unsafe impl Send for State {}
 
 impl State {
     pub fn new() -> State {
@@ -566,7 +578,23 @@ impl State {
         self.unlink_user_channel(user_id, chan_id);
     }
 
-    fn from_message(&mut self, msg: &IrcMsg) {
+    pub fn is_self_join(&self, msg: &IrcMsg) -> Option<server::Join> {
+        use message_types::server::IncomingMsg::Join;
+
+        let is_self = msg.get_prefix().nick().and_then(|nick| {
+            Some(nick.as_slice() == self.self_nick.as_slice())
+        }).unwrap_or(false);
+
+        if !is_self {
+            return None;
+        }
+        match server::IncomingMsg::from_msg(msg.clone()) {
+            Join(join) => Some(join),
+            _ => None,
+        }
+    }
+
+    pub fn on_message(&mut self, msg: &IrcMsg) {
         use message_types::server::IncomingMsg::{Part, Quit, Join, Topic, Kick, Nick};
 
         let ty_msg = server::IncomingMsg::from_msg(msg.clone());
@@ -594,7 +622,7 @@ impl State {
 
     pub fn on_event(&mut self, event: &IrcEvent) {
         let () = match *event {
-            IrcEvent::IrcMsg(ref message) => self.from_message(message),
+            IrcEvent::IrcMsg(ref message) => self.on_message(message),
             IrcEvent::JoinBundle(Ok(ref join_bun)) => self.on_self_join(join_bun),
             IrcEvent::JoinBundle(Err(_)) => (),
             IrcEvent::WhoBundle(Ok(ref who_bun)) => self.on_who(who_bun),
@@ -916,6 +944,10 @@ impl State {
 
     pub fn resolve_user(&self, uid: UserId) -> Option<&User> {
         self.users.get(&uid)
+    }
+
+    pub fn clone_frozen(&self) -> FrozenState {
+        FrozenState(self.clone())
     }
 }
 
