@@ -59,6 +59,15 @@ impl BundlerManager {
         }
     }
 
+    /// Initialise a BundlerManager with JoinBundlerTrigger and
+    /// WhoBundlerTrigger
+    pub fn with_defaults() -> BundlerManager {
+        let mut manager = BundlerManager::new();
+        manager.add_bundler_trigger(Box::new(super::JoinBundlerTrigger::new()));
+        manager.add_bundler_trigger(Box::new(super::WhoBundlerTrigger::new()));
+        manager
+    }
+
     // Do we really need +Send here?
     pub fn add_watcher(&mut self, watcher: Box<EventWatcher+Send+'static>) {
         self.event_watchers.push_back(watcher);
