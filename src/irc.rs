@@ -50,7 +50,6 @@ pub use self::state::{
 #[cfg(test)] pub mod testinfra;
 mod numerics;
 mod connection;
-// mod message;
 mod watchers;
 mod core_plugins;
 
@@ -68,6 +67,9 @@ pub mod parse;
 
 #[unstable(reason="Subject to all types of change")]
 pub mod identifier;
+
+#[unstable(reason="Subject to all types of change")]
+pub mod stream;
 
 /// Event types
 mod event;
