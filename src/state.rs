@@ -332,6 +332,9 @@ pub struct State {
     generation: u64,
 }
 
+// I'm not sure if this is OK
+unsafe impl Send for State {}
+
 impl State {
     pub fn new() -> State {
         State {
