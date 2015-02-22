@@ -1,4 +1,4 @@
-use std::collections::RingBuf;
+use std::collections::VecDeque;
 
 use parse::IrcMsg;
 use event::IrcEvent;
@@ -35,40 +35,40 @@ pub trait Bundler {
 
 /// Emits Bundlers when certain messages are detected
 pub trait BundlerTrigger {
-    fn on_irc_msg(&mut self, message: &IrcMsg) -> Vec<Box<Bundler+Send>>;
+    fn on_irc_msg(&mut self, message: &IrcMsg) -> Vec<Box<Bundler+Send+'static>>;
 }
 
 /// Controls the lifecycle of EventWatchers, Bundlers, and BundlerTriggers
 pub struct BundlerManager {
     /// Unfinished watchers currently attached to the stream
-    event_watchers: RingBuf<Box<EventWatcher+Send>>,
+    event_watchers: VecDeque<Box<EventWatcher+Send+'static>>,
 
     /// Active event bundlers.
-    event_bundlers: RingBuf<Box<Bundler+Send>>,
+    event_bundlers: VecDeque<Box<Bundler+Send+'static>>,
 
     /// Bundler triggers.  They create Bundlers.
-    bundler_triggers: Vec<Box<BundlerTrigger+Send>>,
+    bundler_triggers: Vec<Box<BundlerTrigger+Send+'static>>,
 }
 
 impl BundlerManager {
     pub fn new() -> BundlerManager {
         BundlerManager {
-            event_watchers: RingBuf::new(),
-            event_bundlers: RingBuf::new(),
+            event_watchers: VecDeque::new(),
+            event_bundlers: VecDeque::new(),
             bundler_triggers: Vec::new(),
         }
     }
 
     // Do we really need +Send here?
-    pub fn add_watcher(&mut self, watcher: Box<EventWatcher+Send>) {
+    pub fn add_watcher(&mut self, watcher: Box<EventWatcher+Send+'static>) {
         self.event_watchers.push_back(watcher);
     }
 
-    pub fn add_bundler(&mut self, bundler: Box<Bundler+Send>) {
+    pub fn add_bundler(&mut self, bundler: Box<Bundler+Send+'static>) {
         self.event_bundlers.push_back(bundler);
     }
 
-    pub fn add_bundler_trigger(&mut self, bundler: Box<BundlerTrigger+Send>) {
+    pub fn add_bundler_trigger(&mut self, bundler: Box<BundlerTrigger+Send+'static>) {
         self.bundler_triggers.push(bundler);
     }
 
@@ -95,7 +95,7 @@ impl BundlerManager {
     }
 }
 
-fn bundler_trigger_impl(triggers: &mut Vec<Box<BundlerTrigger+Send>>,
+fn bundler_trigger_impl(triggers: &mut Vec<Box<BundlerTrigger+Send+'static>>,
                         msg: &IrcMsg
                        ) -> Vec<Box<Bundler+Send>> {
 
@@ -111,10 +111,10 @@ fn bundler_trigger_impl(triggers: &mut Vec<Box<BundlerTrigger+Send>>,
 }
 
 
-fn watcher_accept_impl(buf: &mut RingBuf<Box<EventWatcher+Send>>,
+fn watcher_accept_impl(buf: &mut VecDeque<Box<EventWatcher+Send+'static>>,
                        event: &IrcEvent
-                      ) -> Vec<Box<EventWatcher+Send>> {
-    let mut keep_watchers: RingBuf<Box<EventWatcher+Send>> = RingBuf::new();
+                      ) -> Vec<Box<EventWatcher+Send+'static>> {
+    let mut keep_watchers: VecDeque<Box<EventWatcher+Send>> = VecDeque::new();
     let mut finished_watchers: Vec<Box<EventWatcher+Send>> = Vec::new();
 
     loop {
@@ -140,11 +140,11 @@ fn watcher_accept_impl(buf: &mut RingBuf<Box<EventWatcher+Send>>,
 }
 
 
-fn bundler_accept_impl(buf: &mut RingBuf<Box<Bundler+Send>>,
+fn bundler_accept_impl(buf: &mut VecDeque<Box<Bundler+Send+'static>>,
                        msg: &IrcMsg
                       ) -> Vec<IrcEvent> {
 
-    let mut keep_bundlers: RingBuf<Box<Bundler+Send>> = RingBuf::new();
+    let mut keep_bundlers: VecDeque<Box<Bundler+Send>> = VecDeque::new();
     let mut emit_events: Vec<IrcEvent> = Vec::new();
 
     loop {
@@ -212,8 +212,8 @@ mod tests {
             events.extend(bunman.on_irc_msg(&msg).into_iter());
         }
 
-        let mut join_bundles = 0us;
-        let mut who_bundles = 0us;
+        let mut join_bundles = 0;
+        let mut who_bundles = 0;
 
         for event in events.into_iter() {
             if let JoinBundle(_) = event {

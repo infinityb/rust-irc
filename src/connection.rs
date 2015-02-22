@@ -1,5 +1,5 @@
 use std::old_io::net::ip::ToSocketAddr;
-use std::collections::RingBuf;
+use std::collections::VecDeque;
 use std::sync::Future;
 use std::fmt;
 use std::old_io::{
@@ -62,19 +62,19 @@ impl fmt::Debug for IrcConnectionCommand {
 
 pub struct IrcConnectionBuf {
     // Lines coming from the server
-    incoming_lines: RingBuf<Vec<u8>>,
+    incoming_lines: VecDeque<Vec<u8>>,
 
     // Lines going out to the server
-    outgoing_msgs: RingBuf<Vec<u8>>,
+    outgoing_msgs: VecDeque<Vec<u8>>,
 
     // outgoing event queue
-    event_queue: RingBuf<IrcEvent>,
+    event_queue: VecDeque<IrcEvent>,
 
     // Internal command queue
-    command_queue: RingBuf<IrcConnectionCommand>,
+    command_queue: VecDeque<IrcConnectionCommand>,
 
     // Automatic responders e.g. the PING and CTCP handlers
-    responders: RingBuf<Box<MessageResponder+Send>>,
+    responders: VecDeque<Box<MessageResponder+Send>>,
 
     // manages active bundlers and emits events when they finish
     bundler_man: BundlerManager,
@@ -87,11 +87,11 @@ pub struct IrcConnectionBuf {
 impl IrcConnectionBuf {
     pub fn new() -> IrcConnectionBuf {
         let mut out = IrcConnectionBuf {
-            incoming_lines: RingBuf::new(),
-            outgoing_msgs: RingBuf::new(),
-            event_queue: RingBuf::new(),
-            command_queue: RingBuf::new(),
-            responders: RingBuf::new(),
+            incoming_lines: VecDeque::new(),
+            outgoing_msgs: VecDeque::new(),
+            event_queue: VecDeque::new(),
+            command_queue: VecDeque::new(),
+            responders: VecDeque::new(),
             bundler_man: BundlerManager::new(),
             current_nick: None,
         };
@@ -245,7 +245,7 @@ struct IrcConnectionInternalState {
     event_queue_tx: SyncSender<IrcEvent>,
 
     // Automatic responders e.g. the PING and CTCP handlers
-    responders: RingBuf<Box<MessageResponder+Send>>,
+    responders: VecDeque<Box<MessageResponder+Send>>,
 
     // manages active bundlers and emits events when they finish
     bundler_man: BundlerManager,
@@ -308,15 +308,18 @@ impl IrcConnectionInternalState {
 }
 
 impl IrcConnection {
-    fn new_from_rw<R: Reader+Send, W: Writer+Send>(reader: R, writer: W)
-            -> IoResult<(IrcConnection, Receiver<IrcEvent>)> {
+    fn new_from_rw<R, W>(reader: R, writer: W)
+            -> IoResult<(IrcConnection, Receiver<IrcEvent>)>
+        where
+           R: Reader+Send+'static,
+           W: Writer+Send+'static {
         let (command_queue_tx, command_queue_rx) = sync_channel::<IrcConnectionCommand>(0);
         let (event_queue_tx, event_queue_rx) = sync_channel(10);
         
         let (raw_writer_tx, raw_writer_rx) = sync_channel::<Vec<u8>>(20);
         let (raw_reader_tx, raw_reader_rx) = sync_channel::<Vec<u8>>(20);
 
-        ::std::thread::Builder::new().name("core-writer".to_string()).spawn(move || {
+        let _ = ::std::thread::Builder::new().name("core-writer".to_string()).spawn(move || {
             let mut writer = LineBufferedWriter::new(writer);
             for message in raw_writer_rx.iter() {
                 let mut message = message.clone();
@@ -326,7 +329,7 @@ impl IrcConnection {
             warn!("--!-- core-writer is ending! --!--");
         });
 
-        ::std::thread::Builder::new().name("core-reader".to_string()).spawn(move || {
+        let _ = ::std::thread::Builder::new().name("core-reader".to_string()).spawn(move || {
             let mut reader = BufferedReader::new(reader);
             loop {
                 let line_bin = match reader.read_until('\n' as u8) {
@@ -339,7 +342,7 @@ impl IrcConnection {
             warn!("--!-- core-reader is ending! --!--");
         });
 
-        ::std::thread::Builder::new().name("core-dispatch".to_string()).spawn(move || {
+        let _ = ::std::thread::Builder::new().name("core-dispatch".to_string()).spawn(move || {
             let mut state = IrcConnectionInternalState::new(event_queue_tx);
             state.bundler_man.add_bundler_trigger(Box::new(JoinBundlerTrigger::new()));
             state.bundler_man.add_bundler_trigger(Box::new(WhoBundlerTrigger::new()));

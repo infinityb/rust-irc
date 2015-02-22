@@ -1,6 +1,6 @@
 use std::cmp::PartialEq;
 use std::default::Default;
-use std::hash::{Hash, Hasher, Writer};
+use std::hash::{Hash, Hasher};
 use std::str::{from_utf8, Utf8Error};
 
 use irccase::CaseMapping;
@@ -91,9 +91,9 @@ impl<CM: CaseMapping> PartialEq for Channel<CM> {
     }
 }
 
-impl<CM: CaseMapping, H: Hasher+Writer+Default> Hash<H> for Channel<CM> {
+impl<CM: CaseMapping> Hash for Channel<CM> {
     #[inline]
-    fn hash(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         let Channel(ref case_mapping, ref data) = *self;
         data.len().hash(state);
         case_mapping.hash_ignore_case(data, state);
@@ -226,9 +226,9 @@ impl<CM: CaseMapping> PartialEq for Nickname<CM> {
     }
 }
 
-impl<CM: CaseMapping, H: Hasher+Writer+Default> Hash<H> for Nickname<CM> {
+impl<CM: CaseMapping> Hash for Nickname<CM> {
     #[inline]
-    fn hash(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         let Nickname(ref case_mapping, ref data) = *self;
         data.len().hash(state);
         case_mapping.hash_ignore_case(data, state);

@@ -12,7 +12,7 @@
 // except according to those terms.
 
 use std::default::Default;
-use std::hash::{hash, Hasher, Writer};
+use std::hash::{Hash, Hasher};
 use std::string::String;
 
 static ASCII_LOWER_MAP: [u8; 256] = [
@@ -263,26 +263,28 @@ impl CaseMapping for StrictRfc1459CaseMapping {
 pub trait CaseMapping: Default+PartialEq+Eq {
     fn get_lower_map(&self) -> &[u8];
 
-    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: ToByteSlice<T> {
+    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: ToByteSlice {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();
         left.to_byte_slice().iter().map(|&byte| lower_map[byte as usize]).collect()
     }
 
     #[inline]
-    fn hash_ignore_case<T: ?Sized, H: Hasher+Writer+Default>(&self, left: &T, _: &mut H)
-        where T: ToByteSlice<T>+::std::hash::Hash<H>
-    {
+    fn hash_ignore_case<T: ?Sized, H>(&self, left: &T, hasher: &mut H)
+        where
+            T: ToByteSlice + Hash,
+            H: Hasher {
+
         let lower_map = self.get_lower_map();
         for byte in left.to_byte_slice().iter() {
-            hash::<_, H>(&lower_map[*byte as usize]);
+            hasher.write_u8(lower_map[*byte as usize]);
         }
     }
 
     #[inline]
     fn eq_ignore_case<T: ?Sized>(&self, left: &T, right: &T) -> bool
-        where T: ToByteSlice<T>
-    {
+        where
+            T: ToByteSlice {
         let lower_map = self.get_lower_map();
         let left = left.to_byte_slice();
         let right = right.to_byte_slice();
@@ -295,29 +297,29 @@ pub trait CaseMapping: Default+PartialEq+Eq {
     }
 }
 
-trait ToByteSlice<T: ?Sized> {
+trait ToByteSlice {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8];
 }
 
-impl<T: ?Sized> ToByteSlice<T> for str {
+impl ToByteSlice for str {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self.as_bytes()
     }
 }
 
-impl<T: ?Sized> ToByteSlice<T> for String {
+impl ToByteSlice for String {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self.as_slice().as_bytes()
     }
 }
 
-impl<T: ?Sized> ToByteSlice<T> for [u8] {
+impl ToByteSlice for [u8] {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self
     }
 }
 
-impl<T: ?Sized> ToByteSlice<T> for Vec<u8> {
+impl ToByteSlice for Vec<u8> {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
         self.as_slice()
     }

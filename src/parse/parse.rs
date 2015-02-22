@@ -1,7 +1,6 @@
-use std::string::CowString;
 use std::fmt;
 use std::ops::Index;
-use std::borrow::IntoCow;
+use std::borrow::{Cow, IntoCow};
 
 use util::{StringSlicer, OptionalStringSlicer};
 
@@ -455,7 +454,7 @@ impl PrefixSlicer {
     }
 
     #[allow(dead_code)]
-    pub fn apply<'a>(&self, prefix: CowString<'a>) -> IrcMsgPrefix<'a> {
+    pub fn apply<'a>(&self, prefix: Cow<'a, str>) -> IrcMsgPrefix<'a> {
         IrcMsgPrefix {
             data: prefix,
             slicer: self.clone()
@@ -466,13 +465,13 @@ impl PrefixSlicer {
 /// An IRC prefix, which identifies the source of a message.
 #[derive(Clone)]
 pub struct IrcMsgPrefix<'a> {
-    data: CowString<'a>,
+    data: Cow<'a, str>,
     slicer: PrefixSlicer
 }
 
 impl<'a> IrcMsgPrefix<'a> {
-    /// Parse a CowString into a IrcMsgPrefix
-    pub fn new(s: CowString<'a>) -> IrcMsgPrefix {
+    /// Parse a Cow<'_, str> into a IrcMsgPrefix
+    pub fn new(s: Cow<'a, str>) -> IrcMsgPrefix {
         let slicer = PrefixSlicer::new(s.as_slice());
         IrcMsgPrefix {
             data: s,
