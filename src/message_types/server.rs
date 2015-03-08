@@ -59,6 +59,7 @@ pub enum IncomingMsg {
     Privmsg(Privmsg),
     Quit(Quit),
     Topic(Topic),
+    Invite(Invite),
     
     // Others
     Numeric(u16, Numeric),
@@ -78,6 +79,7 @@ impl IncomingMsg {
             "PRIVMSG" => to_incoming::<Privmsg>(msg),
             "QUIT" => to_incoming::<Quit>(msg),
             "TOPIC" => to_incoming::<Topic>(msg),
+            "INVITE" => to_incoming::<Invite>(msg),
             _ => match msg.get_command().parse::<u16>().ok() {
                 Some(_) => to_incoming::<Numeric>(msg),
                 None => IncomingMsg::Unknown(msg)
@@ -104,6 +106,7 @@ impl IncomingMsg {
             IncomingMsg::Privmsg(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Quit(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Topic(ref msg) => msg.to_irc_msg(),
+            IncomingMsg::Invite(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Numeric(_, ref msg) => msg.to_irc_msg(),
             IncomingMsg::Unknown(ref msg) => msg,
         }
@@ -121,6 +124,7 @@ impl IncomingMsg {
             IncomingMsg::Privmsg(msg) => msg.into_irc_msg(),
             IncomingMsg::Quit(msg) => msg.into_irc_msg(),
             IncomingMsg::Topic(msg) => msg.into_irc_msg(),
+            IncomingMsg::Invite(msg) => msg.into_irc_msg(),
             IncomingMsg::Numeric(_, msg) => msg.into_irc_msg(),
             IncomingMsg::Unknown(msg) => msg,
         }
@@ -645,6 +649,38 @@ impl FromIrcMsg for Topic {
             return Err(msg);
         }
         Ok(Topic(msg))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Invite(IrcMsg);
+impl_into_incoming_msg!(Invite);
+msg_wrapper_common!(Invite);
+
+impl Invite {
+    pub fn get_target(&self) -> &str {
+        let Invite(ref msg) = *self;
+        unsafe { str::from_utf8_unchecked(&msg[1]) }
+    }
+}
+
+impl FromIrcMsg for Invite {
+    fn from_irc_msg(msg: IrcMsg) -> Result<Invite, IrcMsg> {
+        if !msg.get_command().eq_ignore_irc_case("INVITE") {
+            return Err(msg);
+        }
+        if msg.len() < 2 {
+            warn!("Invalid TOPIC: Not enough arguments {}", msg.len());
+            return Err(msg);
+        }
+        if !is_full_prefix(msg.get_prefix_str()) {
+            warn!("Invalid TOPIC: Insufficient prefix `{}`", msg.get_prefix_str());
+            return Err(msg);
+        }
+        if !str::from_utf8(&msg[0]).is_ok() {
+            return Err(msg);
+        }
+        Ok(Invite(msg))
     }
 }
 
