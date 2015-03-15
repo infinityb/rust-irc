@@ -45,7 +45,6 @@ pub fn is_channel(identifier: &str) -> bool {
 
 
 enum PrefixCheckerState {
-    Failed,
     Nick,
     User,
     Host,
@@ -56,7 +55,6 @@ pub fn is_full_prefix(prefix: &str) -> bool {
     let mut state = PrefixCheckerState::Nick;
     for &byte in prefix.as_bytes().iter() {
         state = match (state, byte) {
-            (PrefixCheckerState::Failed, _) => PrefixCheckerState::Failed,
             (PrefixCheckerState::Nick, b'!') => PrefixCheckerState::User,
             (PrefixCheckerState::Nick, _) => PrefixCheckerState::Nick,
             (PrefixCheckerState::User, b'@') => PrefixCheckerState::Host,
@@ -80,7 +78,6 @@ enum IrcParserState {
     Arg,
     RestArg,
     ArgOverflow,
-    Failed,
     EndOfLine,
 }
 
@@ -92,7 +89,7 @@ struct IrcParser {
     command_end: u32,
     arg_len: u32,
     arg_start: u32,
-    args: [(u32, u32); 15],
+    args: [(u32, u32); IRCMSG_MAX_ARGS],
     state: IrcParserState
 }
 
@@ -112,13 +109,13 @@ impl IrcParser {
             command_end: 0,
             arg_len: 0,
             arg_start: 0,
-            args: [(0, 0); 15],
+            args: [(0, 0); IRCMSG_MAX_ARGS],
             state: IrcParserState::Initial,
         }
     }
 
     fn finalize_arg(&mut self) -> Option<IrcParserState> {
-        if self.arg_len == 15 {
+        if self.arg_len as usize == IRCMSG_MAX_ARGS{
             return Some(IrcParserState::ArgOverflow);
         }
         self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
@@ -191,7 +188,6 @@ impl IrcParser {
             (IrcParserState::RestArg, _) => IrcParserState::RestArg,
 
             (IrcParserState::ArgOverflow, _) => IrcParserState::ArgOverflow,
-            (IrcParserState::Failed, _) => IrcParserState::Failed,
             (IrcParserState::EndOfLine, _) => IrcParserState::EndOfLine,
         };
         self.byte_idx += 1;
@@ -204,7 +200,6 @@ impl IrcParser {
             IrcParserState::Prefix => Err(ParseError::InvalidMessage("too short")),
             IrcParserState::CommandStart => Err(ParseError::InvalidMessage("too short")),
             IrcParserState::Command => Err(ParseError::InvalidMessage("too short")),
-            IrcParserState::Failed => Err(ParseError::InvalidMessage("failed")),
             IrcParserState::ArgOverflow => Err(ParseError::InvalidMessage("too many arguments")),
             IrcParserState::ArgStart => Ok(()),
             IrcParserState::EndOfLine => Ok(()),
@@ -232,7 +227,7 @@ impl IrcParser {
             prefix: (parser.prefix_start, parser.prefix_end),
             command: (parser.command_start, parser.command_end),
             arg_len: 0,
-            args: [(0, 0); 15]
+            args: [(0, 0); IRCMSG_MAX_ARGS]
         };
 
         parsed.arg_len = parser.arg_len;
@@ -253,6 +248,8 @@ impl IrcParser {
     }
 }
 
+const IRCMSG_MAX_ARGS: usize = 20;
+
 // RFC 2812 2.3 Messages
 //
 // Each IRC message may consist of up to three main parts:
@@ -268,7 +265,7 @@ pub struct IrcMsg {
     prefix: (u32, u32),
     command: (u32, u32),
     arg_len: u32,
-    args: [(u32, u32); 15],
+    args: [(u32, u32); IRCMSG_MAX_ARGS],
 }
 
 #[stable(since="0.1.0")]

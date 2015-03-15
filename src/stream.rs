@@ -1,4 +1,6 @@
-use std::io::{self, Write, BufRead};
+use std::io::{self, BufReader, Read, Write, BufRead};
+// use std::net::TcpStream;
+
 use parse::{IrcMsg, ParseError};
 use message_types::{client, server};
 use state::State;
@@ -10,11 +12,17 @@ pub enum Error {
     Empty,
 }
 
-pub struct IrcReaderIter<'a> {
-    reader: &'a mut IrcReader,
+pub struct IrcReaderIter<'a, R: IrcRead + 'a> {
+    reader: &'a mut R,
 }
 
-impl<'a> Iterator for IrcReaderIter<'a> {
+impl<'a, R> IrcReaderIter<'a, R> where R: IrcRead + 'a {
+    pub fn new(reader: &'a mut R) -> IrcReaderIter<'a, R> {
+        IrcReaderIter { reader: reader }
+    }
+}
+
+impl<'a, R> Iterator for IrcReaderIter<'a, R> where R: IrcRead + 'a {
     type Item = Result<IrcMsg, Error>;
 
     fn next(&mut self) -> Option<Result<IrcMsg, Error>> {
@@ -25,14 +33,24 @@ impl<'a> Iterator for IrcReaderIter<'a> {
     }
 }
 
-pub struct IrcReader {
-    reader: Box<BufRead+Send+'static>,
+pub trait IrcRead {
+    fn get_irc_msg(&mut self) -> Result<IrcMsg, Error>;
 }
 
-impl IrcReader {
-    pub fn get_irc_msg(&mut self) -> Result<IrcMsg, Error> {
+pub struct IrcReader<R>(BufReader<R>);
+
+impl<R> IrcReader<R> where R: Read {
+    pub fn new(reader: R) -> IrcReader<R> {
+        IrcReader(BufReader::new(reader))
+    }
+}
+
+impl<R> IrcRead for IrcReader<R> where R: Read {
+    fn get_irc_msg(&mut self) -> Result<IrcMsg, Error> {
+        let IrcReader(ref mut reader) = *self;
+
         let mut buf: Vec<u8> = Vec::new();
-        if let Err(err) = self.reader.read_until(b'\n', &mut buf) {
+        if let Err(err) = reader.read_until(b'\n', &mut buf) {
             return Err(Error::Io(err));
         }
         if buf.len() == 0 {
@@ -44,24 +62,57 @@ impl IrcReader {
         }
     }
 
-    pub fn iter<'a>(&'a mut self) -> IrcReaderIter<'a> {
-        IrcReaderIter { reader: self }
+}
+
+pub trait IrcWrite {
+    fn write_irc_msg(&mut self, msg: &IrcMsg) -> io::Result<()>;
+}
+
+pub struct IrcWriter<W>(W);
+
+impl<W> IrcWriter<W> where W: Write {
+    pub fn new(writer: W) -> IrcWriter<W> {
+        IrcWriter(writer)
     }
 }
 
-pub struct IrcWriter {
-    writer: Box<Write+Send+'static>
-}
-
-impl IrcWriter {
-    pub fn write_irc_msg(&mut self, msg: &IrcMsg) -> io::Result<()> {
+impl<W> IrcWrite for IrcWriter<W> where W: Write {
+    fn write_irc_msg(&mut self, msg: &IrcMsg) -> io::Result<()> {
+        let IrcWriter(ref mut writer) = *self;
         let buf = msg.as_bytes();
-        assert_eq!(try!(self.writer.write(buf)), buf.len());
-        assert_eq!(try!(self.writer.write(b"\r\n")), 2);
-        try!(self.writer.flush());
+        assert_eq!(try!(writer.write(buf)), buf.len());
+        assert_eq!(try!(writer.write(b"\r\n")), 2);
+        try!(writer.flush());
         Ok(())
     }
 }
+
+// pub struct IrcStream<S>(S) where S: Read + Write;
+
+// impl<S> IrcStream<S> where S: Read + Write {
+//     pub fn new(stream: R) -> IrcStream<R> {
+//         IrcStream(BufReader::new(reader))
+//     }
+// }
+
+// impl<R> IrcRead for IrcStream<R> where R: Read {
+//     fn get_irc_msg(&mut self) -> Result<IrcMsg, Error> {
+//         let IrcStream(ref mut reader) = *self;
+
+//         let mut buf: Vec<u8> = Vec::new();
+//         if let Err(err) = reader.read_until(b'\n', &mut buf) {
+//             return Err(Error::Io(err));
+//         }
+//         if buf.len() == 0 {
+//             return Err(Error::Empty);
+//         }
+//         match IrcMsg::new(buf) {
+//             Ok(msg) => Ok(msg),
+//             Err(err) => Err(Error::Parse(err))
+//         }
+//     }
+// }
+
 
 #[derive(Debug)]
 pub enum RegisterError {
@@ -175,17 +226,17 @@ impl RegisterRequest {
     }
 }
 
-pub struct IrcConnector {
-    reader: IrcReader,
-    writer: IrcWriter,
+pub struct IrcConnector<R, W> {
+    reader: R,
+    writer: W,
     user_sent: bool,
 }
 
-impl IrcConnector {
-    pub fn from_pair(reader: Box<BufRead+Send+'static>, writer: Box<Write+Send+'static>) -> IrcConnector {
+impl<R, W> IrcConnector<R, W> where R: IrcRead, W: IrcWrite {
+    pub fn from_pair(reader: R, writer: W) -> IrcConnector<R, W> {
         IrcConnector {
-            reader: IrcReader { reader: reader },
-            writer: IrcWriter { writer: writer },
+            reader: reader,
+            writer: writer,
             user_sent: false,
         }
     }
@@ -203,7 +254,7 @@ impl IrcConnector {
         
         let mut state = State::new();
 
-        for msg in self.reader.iter() {
+        for msg in IrcReaderIter::new(&mut self.reader) {
             let msg = match msg {
                 Ok(msg) => msg,
                 Err(err) => return Err(RegisterError::Stream(err))
@@ -223,8 +274,89 @@ impl IrcConnector {
         unreachable!();
     }
 
-    pub fn split(self) -> (IrcReader, IrcWriter) {
+    pub fn split(self) -> (R, W) {
         let IrcConnector { reader: r, writer: w, .. } = self;
         (r, w)
+    }
+}
+
+
+// pub struct IrcStream<S> {
+//     stream: S,
+//     user_sent: bool,
+// }
+
+// impl<S> IrcStream<S> where S: io::Read + io::Write {
+//     pub fn new(stream: S) -> IrcStream<S> {
+//         IrcStream {
+//             stream: stream,
+//             user_sent: false,
+//         }
+//     }
+
+//     pub fn register(&mut self, req: &RegisterRequest) -> Result<State, RegisterError> {
+//         if !self.user_sent {
+//             if let Err(err) = self.stream.write_irc_msg(&req.get_user().into_irc_msg()) {
+//                 return Err(RegisterError::Stream(Error::Io(err)))
+//             }
+//             self.user_sent = true;
+//         }
+//         if let Err(err) = self.stream.write_irc_msg(&req.get_nick().into_irc_msg()) {
+//             return Err(RegisterError::Stream(Error::Io(err)))
+//         }
+        
+//         let mut state = State::new();
+
+//         for msg in IrcReaderIter::new(&mut self.reader) {
+//             let msg = match msg {
+//                 Ok(msg) => msg,
+//                 Err(err) => return Err(RegisterError::Stream(err))
+//             };
+//             state.on_message(&msg);
+//             let tymsg = server::IncomingMsg::from_msg(msg);
+//             if let server::IncomingMsg::Numeric(432, _) = tymsg {
+//                 return Err(RegisterError::InvalidNick);
+//             }
+//             if let server::IncomingMsg::Numeric(433, _) = tymsg {
+//                 return Err(RegisterError::NickInUse);
+//             }
+//             if let server::IncomingMsg::Numeric(1, _) = tymsg {
+//                 return Ok(state);
+//             }
+//         }
+//         unreachable!();
+//     }
+// }
+
+// impl IrcStream<TcpStream> {
+//     pub fn split(self) -> io::Result<(IrcReader<TcpStream>, IrcWriter<TcpStream>)> {
+//         let IrcStream { stream: stream, .. } = self;
+//         let write_stream = try!(stream.try_clone());
+//         Ok((IrcReader::new(stream), IrcWriter::new(write_stream)))
+//     }
+// }
+
+
+impl<T> IrcRead for Box<T> where T: IrcRead {
+    fn get_irc_msg(&mut self) -> Result<IrcMsg, Error> {
+        (**self).get_irc_msg()
+    }
+}
+
+impl<T> IrcWrite for Box<T> where T: IrcWrite {
+    fn write_irc_msg(&mut self, msg: &IrcMsg) -> io::Result<()> {
+        (**self).write_irc_msg(msg)
+    }
+}
+
+impl IrcRead for Box<IrcRead> {
+    fn get_irc_msg(&mut self) -> Result<IrcMsg, Error> {
+        (**self).get_irc_msg()
+    }
+}
+
+impl IrcWrite for Box<IrcWrite> {
+    fn write_irc_msg(&mut self, msg: &IrcMsg) -> io::Result<()> {
+        (**self).write_irc_msg(msg)
     }
 }
