@@ -464,7 +464,7 @@ impl FromIrcMsg for Ping {
             warn!("Invalid PING: Not enough arguments {}", msg.len());
             return Err(msg);
         }
-        for idx in range(0, min(2, msg.len())) {
+        for idx in 0..min(2, msg.len()) {
             if !str::from_utf8(&msg[idx]).is_ok() {
                 return Err(msg);
             }

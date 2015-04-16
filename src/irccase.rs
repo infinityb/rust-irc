@@ -227,7 +227,7 @@ impl Default for AsciiCaseMapping {
 impl CaseMapping for AsciiCaseMapping {
     #[inline]
     fn get_lower_map(&self) -> &[u8] {
-        ASCII_LOWER_MAP.as_slice()
+        &ASCII_LOWER_MAP
     }
 }
 
@@ -242,7 +242,7 @@ impl Default for Rfc1459CaseMapping {
 impl CaseMapping for Rfc1459CaseMapping {
     #[inline]
     fn get_lower_map(&self) -> &[u8] {
-        RFC1459_LOWER_MAP.as_slice()
+        &RFC1459_LOWER_MAP
     }
 }
 
@@ -256,7 +256,7 @@ impl Default for StrictRfc1459CaseMapping {
 impl CaseMapping for StrictRfc1459CaseMapping {
     #[inline]
     fn get_lower_map(&self) -> &[u8] {
-        STRICT_RFC1459_LOWER_MAP.as_slice()
+        &STRICT_RFC1459_LOWER_MAP
     }
 }
 
@@ -309,7 +309,7 @@ impl ToByteSlice for str {
 
 impl ToByteSlice for String {
     fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_slice().as_bytes()
+        self.as_bytes()
     }
 }
 

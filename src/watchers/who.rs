@@ -91,7 +91,7 @@ impl WhoRecord {
     }
 }
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct WhoBundlerTrigger {
     suppress: bool
 }

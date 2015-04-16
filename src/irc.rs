@@ -1,8 +1,7 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(core, std_misc, io, collections, hash, std_misc)]
+#![feature(core, collections, convert, hash, slice_patterns, into_cow)]
 
-#![allow(missing_copy_implementations)]
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
 #[cfg(test)] extern crate test;

@@ -215,14 +215,14 @@ impl RegisterRequest {
         }
 
         client::User::new(
-            self.user.as_slice(),
+            &self.user,
             &format!("{}", mode), "*",
-            self.realname.as_slice(),
+            &self.realname,
         )
     }
 
     fn get_nick(&self) -> client::Nick {
-        client::Nick::new(self.nick.as_slice())
+        client::Nick::new(&self.nick)
     }
 }
 

@@ -67,9 +67,9 @@ impl<CM: CaseMapping> Channel<CM> {
     }
 
     #[inline]
-    pub fn from_bytes<Q: AsSlice<u8>+?Sized>(name: &Q) -> Result<Channel<CM>, ChannelError> {
-        match channel_validate_buf(name.as_slice()) {
-            Ok(()) => Ok(Channel(Default::default(), name.as_slice().to_vec())),
+    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(name: &Q) -> Result<Channel<CM>, ChannelError> {
+        match channel_validate_buf(name.as_ref()) {
+            Ok(()) => Ok(Channel(Default::default(), name.as_ref().to_vec())),
             Err(err) => Err(err),
         }
     }
@@ -177,16 +177,16 @@ impl<CM: CaseMapping> Nickname<CM> {
     }
 
     #[inline]
-    pub fn from_bytes<Q: AsSlice<u8>+?Sized>(name: &Q) -> Result<Nickname<CM>, NicknameError> {
-        match nickname_validate_buf(name.as_slice()) {
-            Ok(()) => Ok(Nickname(Default::default(), name.as_slice().to_vec())),
+    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(name: &Q) -> Result<Nickname<CM>, NicknameError> {
+        match nickname_validate_buf(name.as_ref()) {
+            Ok(()) => Ok(Nickname(Default::default(), name.as_ref().to_vec())),
             Err(err) => Err(err),
         }
     }
 
     pub fn as_str(&self) -> &str {
         let Nickname(_, ref data) = *self;
-        match from_utf8(data.as_slice()) {
+        match from_utf8(data.as_ref()) {
             Ok(str_ref) => str_ref,
             // Error condition should never happen. the UTF-8 invariant should
             // not be violated at any point.
