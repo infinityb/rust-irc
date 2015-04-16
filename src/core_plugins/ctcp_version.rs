@@ -18,7 +18,7 @@ impl CtcpVersionResponder {
         match (self.include_rust_irc, &self.customized) {
             (_, &None) => VERSION.into_cow(),
             (true, &Some(ref customized)) => {
-                let string = format!("{:?} ({:?})", customized.as_slice(), VERSION);
+                let string = format!("{:?} ({:?})", customized, VERSION);
                 string.into_cow()
             },
             (false, &Some(ref customized)) => {

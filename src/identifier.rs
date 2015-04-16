@@ -59,17 +59,10 @@ impl<CM: CaseMapping> Channel<CM> {
         Channel::from_bytes(channel.as_bytes())
     }
 
-    /// Safe to call if you know channel does not contain any invalid characters
     #[inline]
-    #[deprecated]
-    pub fn from_str_panic(channel: &str) -> Channel<CM> {
-        Channel::from_str(channel).ok().expect("Illegal character in channel name")
-    }
-
-    #[inline]
-    pub fn from_bytes<Q: AsSlice<u8>+?Sized>(name: &Q) -> Result<Channel<CM>, ChannelError> {
-        match channel_validate_buf(name.as_slice()) {
-            Ok(()) => Ok(Channel(Default::default(), name.as_slice().to_vec())),
+    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(name: &Q) -> Result<Channel<CM>, ChannelError> {
+        match channel_validate_buf(name.as_ref()) {
+            Ok(()) => Ok(Channel(Default::default(), name.as_ref().to_vec())),
             Err(err) => Err(err),
         }
     }
@@ -169,24 +162,17 @@ impl<CM: CaseMapping> Nickname<CM> {
         Nickname::from_bytes(nick.as_bytes())
     }
 
-    /// Safe to call if you know nickname does not contain any invalid characters
     #[inline]
-    #[deprecated]
-    pub fn from_str_panic(nick: &str) -> Nickname<CM> {
-        Nickname::from_bytes(nick.as_bytes()).ok().expect("Illegal character in nickname")
-    }
-
-    #[inline]
-    pub fn from_bytes<Q: AsSlice<u8>+?Sized>(name: &Q) -> Result<Nickname<CM>, NicknameError> {
-        match nickname_validate_buf(name.as_slice()) {
-            Ok(()) => Ok(Nickname(Default::default(), name.as_slice().to_vec())),
+    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(name: &Q) -> Result<Nickname<CM>, NicknameError> {
+        match nickname_validate_buf(name.as_ref()) {
+            Ok(()) => Ok(Nickname(Default::default(), name.as_ref().to_vec())),
             Err(err) => Err(err),
         }
     }
 
     pub fn as_str(&self) -> &str {
         let Nickname(_, ref data) = *self;
-        match from_utf8(data.as_slice()) {
+        match from_utf8(data.as_ref()) {
             Ok(str_ref) => str_ref,
             // Error condition should never happen. the UTF-8 invariant should
             // not be violated at any point.

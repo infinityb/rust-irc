@@ -41,14 +41,12 @@ impl WhoSuccess {
 
 // Does /WHO even error?
 #[derive(Clone, Debug)]
-#[unstable(reason="Public fields definitely going away")]
 pub struct WhoError {
     pub channel: Vec<u8>,
 }
 
 
 #[derive(Clone, Debug)]
-#[unstable(reason="Public fields definitely going away")]
 pub struct WhoRecord {
     pub hostname: String,
     pub server: String,
@@ -79,19 +77,17 @@ impl WhoRecord {
         }
     }
 
-    #[stable]
     pub fn get_prefix_raw(&self) -> String {
         format!("{}!{}@{}", self.nick, self.username, self.hostname)
     }
 
-    #[stable]
     pub fn get_prefix(&self) -> IrcMsgPrefix {
         let prefix_str = format!("{}!{}@{}", self.nick, self.username, self.hostname);
         IrcMsgPrefix::new(prefix_str.into_cow())
     }
 }
 
-#[derive(Copy)]
+#[derive(Clone, Copy)]
 pub struct WhoBundlerTrigger {
     suppress: bool
 }

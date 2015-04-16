@@ -21,7 +21,7 @@ static CHANNEL_TARGETED_COMMANDS: [&'static str; 6] = [
 
 /// Whether or not a command name is allowed to target a channel
 pub fn can_target_channel(identifier: &str) -> bool {
-    for &command in CHANNEL_TARGETED_COMMANDS.as_slice().iter() {
+    for &command in CHANNEL_TARGETED_COMMANDS.iter() {
         if command.eq_ignore_irc_case(identifier) {
             return true;
         }
@@ -35,8 +35,8 @@ pub fn is_channel(identifier: &str) -> bool {
     if identifier.chars().count() == 0 {
         return false;
     }
-    for character in CHANNEL_PREFIX_CHARS.iter() {
-        if identifier.char_at(0) == *character {
+    for &character in CHANNEL_PREFIX_CHARS.iter() {
+        if identifier.chars().next() == Some(character) {
             return true;
         }
     }
@@ -68,7 +68,7 @@ pub fn is_full_prefix(prefix: &str) -> bool {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum IrcParserState {
     Initial,
     Prefix,
@@ -213,7 +213,7 @@ impl IrcParser {
 
     fn parse(message: Vec<u8>) -> Result<IrcMsg, ParseError> {
         let mut parser = IrcParser::new();
-        for &value in message.as_slice().iter() {
+        for &value in message.iter() {
             parser.push_byte(value);
         }
         match parser.finish() {
@@ -231,7 +231,7 @@ impl IrcParser {
         };
 
         parsed.arg_len = parser.arg_len;
-        for i in range(0, parsed.arg_len) {
+        for i in 0..parsed.arg_len {
             parsed.args[i as usize] = parser.args[i as usize];
         }
 
@@ -258,7 +258,6 @@ const IRCMSG_MAX_ARGS: usize = 20;
 // command, and all parameters are separated by one (or
 // more) ASCII space character(s) (0x20).
 
-#[stable]
 #[derive(Clone, Debug)]
 pub struct IrcMsg {
     data: Vec<u8>,
@@ -268,9 +267,7 @@ pub struct IrcMsg {
     args: [(u32, u32); IRCMSG_MAX_ARGS],
 }
 
-#[stable(since="0.1.0")]
 impl IrcMsg {
-    #[stable]
     pub fn new(data: Vec<u8>) -> Result<IrcMsg, ParseError> {
         let parsed = match IrcParser::parse(data) {
             Ok(parsed) => parsed,
@@ -285,70 +282,60 @@ impl IrcMsg {
         Ok(parsed)
     }
 
-    #[unstable(reason="waiting on rust getter conventions")]
     pub fn has_prefix(&self) -> bool {
         let (prefix_start, prefix_end) = self.prefix;
         prefix_end > prefix_start
     }
 
-    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_prefix_raw(&self) -> &[u8] {
         let (prefix_start, prefix_end) = self.prefix;
         &self.data[prefix_start as usize..prefix_end as usize]
     }
 
-    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_prefix_str(&self) -> &str {
         unsafe { ::std::str::from_utf8_unchecked(self.get_prefix_raw()) }
     }
 
-    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
         IrcMsgPrefix::new(self.get_prefix_str().into_cow())
     }
 
-    #[unstable(reason="waiting on rust getter conventions")]
     fn get_command_raw<'a>(&'a self) -> &[u8] {
         let (command_start, command_end) = self.command;
         &self.data[command_start as usize..command_end as usize]
     }
 
-    #[unstable(reason="waiting on rust getter conventions")]
     pub fn get_command(&self) -> &str {
         unsafe { ::std::str::from_utf8_unchecked(self.get_command_raw()) }
     }
 
-    #[unstable(reason="waiting on rust getter conventions; unsure of the Vec")]
     pub fn get_args(&self) -> Vec<&[u8]> {
         let mut out = Vec::with_capacity(self.arg_len as usize);
-        for i in range(0, self.arg_len as usize) {
+        for i in 0..(self.arg_len as usize) {
             let (arg_start, arg_end) = self.args[i];
             out.push(&self.data[arg_start as usize..arg_end as usize]);
         }
         out
     }
 
-    #[unstable(reason="seems weird")]
     pub fn len(&self) -> usize {
         self.arg_len as usize
     }
 
-    #[stable]
     pub fn into_bytes(self) -> Vec<u8> {
         self.data
     }
 
-    #[stable]
     pub fn as_bytes(&self) -> &[u8] {
-        self.data.as_slice()
+        self.data.as_ref()
     }
 }
 
 impl Index<usize> for IrcMsg {
     type Output = [u8];
 
-    fn index<'a>(&'a self, index: &usize) -> &'a [u8] {
-        let (arg_start, arg_end) = self.args[*index];
+    fn index<'a>(&'a self, index: usize) -> &'a [u8] {
+        let (arg_start, arg_end) = self.args[index];
         &self.data[arg_start as usize..arg_end as usize]
     }
 }
@@ -469,7 +456,7 @@ pub struct IrcMsgPrefix<'a> {
 impl<'a> IrcMsgPrefix<'a> {
     /// Parse a Cow<'_, str> into a IrcMsgPrefix
     pub fn new(s: Cow<'a, str>) -> IrcMsgPrefix {
-        let slicer = PrefixSlicer::new(s.as_slice());
+        let slicer = PrefixSlicer::new(&s);
         IrcMsgPrefix {
             data: s,
             slicer: slicer
@@ -478,22 +465,22 @@ impl<'a> IrcMsgPrefix<'a> {
 
     /// The nick component of a prefix
     pub fn nick(&'a self) -> Option<&'a str> {
-        self.slicer.nick_idx_pair.slice_on(self.data.as_slice())
+        self.slicer.nick_idx_pair.slice_on(&self.data)
     }
 
     /// The username component of a prefix
     pub fn username(&'a self) -> Option<&'a str> {
-        self.slicer.username_idx_pair.slice_on(self.data.as_slice())
+        self.slicer.username_idx_pair.slice_on(&self.data)
     }
 
     /// The hostname component of a prefix
     pub fn hostname(&'a self) -> &'a str {
-        self.slicer.hostname_idx_pair.slice_on(self.data.as_slice())
+        self.slicer.hostname_idx_pair.slice_on(&self.data)
     }
 
     /// Get the protocol representation as a slice
     pub fn as_slice(&self) -> &str {
-        self.data.as_slice()
+        &self.data
     }
 
     /// Get an owned copy

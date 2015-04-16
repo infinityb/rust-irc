@@ -71,7 +71,7 @@ mod irc_identifier {
 
         pub fn as_slice(&self) -> &str {
             let IrcIdentifier(ref string) = *self;
-            string.as_slice()
+            &string
         }
     }
 }
@@ -267,7 +267,7 @@ impl ChannelInfo {
             None => Vec::new()
         }).ok().expect("non-string");
 
-        let channel_name = ::std::str::from_utf8(join.channel.as_slice())
+        let channel_name = ::std::str::from_utf8(&join.channel)
             .ok().expect("bad chan").to_string();
 
         ChannelInfo {
@@ -424,7 +424,7 @@ impl State {
     }
 
     fn on_self_join(&mut self, join: &JoinSuccess) {
-        let channel_name = ::std::str::from_utf8(join.channel.as_slice()).ok().unwrap();
+        let channel_name = ::std::str::from_utf8(&join.channel).ok().unwrap();
         let channel_name = IrcIdentifier::from_str(channel_name);
 
         if let Some(_) = self.channel_map.get(&channel_name) {
@@ -441,7 +441,7 @@ impl State {
     }
 
     fn validate_state_with_who(&self, who: &WhoSuccess) {
-        let channel_name = ::std::str::from_utf8(who.channel.as_slice()).ok().unwrap();
+        let channel_name = ::std::str::from_utf8(&who.channel).ok().unwrap();
         let channel_name = IrcIdentifier::from_str(channel_name);
 
         let (_, channel) = match self.get_channel_by_name(channel_name.as_slice()) {
@@ -504,7 +504,7 @@ impl State {
         let mut user_ids = Vec::with_capacity(who.who_records.len());
 
         for rec in who.who_records.iter() {
-            let nick = IrcIdentifier::from_str(rec.nick.as_slice());
+            let nick = IrcIdentifier::from_str(&rec.nick);
             user_ids.push(match self.user_map.get(&nick) {
                 Some(user_id) => *user_id,
                 None => {
@@ -542,7 +542,7 @@ impl State {
     fn on_topic(&mut self, topic: &server::Topic) {
         assert!(self.update_channel_by_name(topic.get_channel(), |channel| {
             let topic = String::from_utf8_lossy(topic.get_body_raw()).into_owned();
-            channel.set_topic(topic.as_slice());
+            channel.set_topic(&topic);
         }));
     }
 
@@ -582,7 +582,7 @@ impl State {
         use message_types::server::IncomingMsg::Join;
 
         let is_self = msg.get_prefix().nick().and_then(|nick| {
-            Some(nick.as_slice() == self.self_nick.as_slice())
+            Some(nick == self.self_nick)
         }).unwrap_or(false);
 
         if !is_self {
@@ -599,7 +599,7 @@ impl State {
 
         let ty_msg = server::IncomingMsg::from_msg(msg.clone());
         let is_self = msg.get_prefix().nick().and_then(|nick| {
-            Some(nick.as_slice() == self.self_nick.as_slice())
+            Some(nick == self.self_nick)
         }).unwrap_or(false);
 
         match (&ty_msg, is_self) {
@@ -631,13 +631,13 @@ impl State {
     }
 
     pub fn get_self_nick<'a>(&'a self) -> &'a str {
-        self.self_nick.as_slice()
+        &self.self_nick
     }
 
     pub fn set_self_nick(&mut self, new_nick_str: &str) {
         let new_nick = IrcIdentifier::from_str(new_nick_str);
-        let old_nick = IrcIdentifier::from_str(self.self_nick.as_slice());
-        if self.self_nick.as_slice() != "" {
+        let old_nick = IrcIdentifier::from_str(&self.self_nick);
+        if &self.self_nick != "" {
             let user_id = match self.user_map.remove(&old_nick) {
                 Some(user_id) => user_id,
                 None => panic!("inconsistent user_map: {:?}[{:?}]",
@@ -662,9 +662,9 @@ impl State {
 
     fn apply_update_self_nick(&mut self, new_nick_str: &str) {
         let new_nick = IrcIdentifier::from_str(new_nick_str);
-        let old_nick = IrcIdentifier::from_str(self.self_nick.as_slice());
+        let old_nick = IrcIdentifier::from_str(&self.self_nick);
         assert!(self.user_map.remove(&old_nick).is_some());
-        self.set_self_nick(new_nick_str.as_slice());
+        self.set_self_nick(&new_nick_str);
         self.user_map.insert(new_nick, self.self_id);
     }
 
@@ -678,7 +678,7 @@ impl State {
         self.channel_seq = max(self.channel_seq, chan_id);
 
         self.channels.insert(chan_info.id, Channel::from_info(chan_info));
-        let channel_name = IrcIdentifier::from_str(chan_info.name.as_slice());
+        let channel_name = IrcIdentifier::from_str(&chan_info.name);
         self.channel_map.insert(channel_name, chan_info.id);
     }
 
@@ -736,8 +736,9 @@ impl State {
     fn apply_command(&mut self, cmd: &StateCommand) {
         match *cmd {
             StateCommand::UpdateSelfNick(ref new_nick) =>
-                self.apply_update_self_nick(new_nick.as_slice()),
-            StateCommand::SetGeneration(generation) => self.generation = generation,
+                self.apply_update_self_nick(&new_nick),
+            StateCommand::SetGeneration(generation) =>
+                self.generation = generation,
 
             StateCommand::CreateUser(ref info) =>
                 self.apply_create_user(info),
@@ -824,7 +825,7 @@ impl State {
     fn remove_channel_by_id(&mut self, id: ChannelId) -> bool {
         let (chan_name, users): (_, Vec<_>) = match self.channels.get(&id) {
             Some(chan_state) => (
-                IrcIdentifier::from_str(chan_state.name.as_slice()),
+                IrcIdentifier::from_str(&chan_state.name),
                 chan_state.users.iter().map(|x| *x).collect()
             ),
             None => return false
@@ -998,7 +999,7 @@ impl State {
         }
         for (name, &id) in self.channel_map.iter() {
             if let Some(state) = self.channels.get(&id) {
-                if *name != IrcIdentifier::from_str(state.name.as_slice()) {
+                if *name != IrcIdentifier::from_str(&state.name) {
                     return Err(format!("{:?} at channel_map[{:?}]", state.id, name));
                 }
             } else {
