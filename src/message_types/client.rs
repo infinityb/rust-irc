@@ -2,8 +2,11 @@ use parse::IrcMsg;
 
 
 fn byte_length_sum(items: &[&str]) -> usize {
-    use std::iter::AdditiveIterator;
-    items.iter().map(|x| x.as_bytes().len()).sum()
+    let mut acc = 0;
+    for len in items.iter().map(|x| x.as_bytes().len()) {
+        acc += len;
+    }
+    acc
 }
 
 macro_rules! msg_wrapper_common {

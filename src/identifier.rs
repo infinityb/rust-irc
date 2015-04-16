@@ -59,13 +59,6 @@ impl<CM: CaseMapping> Channel<CM> {
         Channel::from_bytes(channel.as_bytes())
     }
 
-    /// Safe to call if you know channel does not contain any invalid characters
-    #[inline]
-    #[deprecated]
-    pub fn from_str_panic(channel: &str) -> Channel<CM> {
-        Channel::from_str(channel).ok().expect("Illegal character in channel name")
-    }
-
     #[inline]
     pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(name: &Q) -> Result<Channel<CM>, ChannelError> {
         match channel_validate_buf(name.as_ref()) {
@@ -167,13 +160,6 @@ impl<CM: CaseMapping> Nickname<CM> {
     #[inline]
     pub fn from_str(nick: &str) -> Result<Nickname<CM>, NicknameError> {
         Nickname::from_bytes(nick.as_bytes())
-    }
-
-    /// Safe to call if you know nickname does not contain any invalid characters
-    #[inline]
-    #[deprecated]
-    pub fn from_str_panic(nick: &str) -> Nickname<CM> {
-        Nickname::from_bytes(nick.as_bytes()).ok().expect("Illegal character in nickname")
     }
 
     #[inline]
