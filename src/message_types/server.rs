@@ -371,22 +371,6 @@ impl FromIrcMsg for Notice {
     }
 }
 
-#[cfg(test)]
-mod benchmarks {
-    use test::Bencher;
-    use parse::IrcMsg;
-    use super::{to_incoming, Kick};
-
-    #[bench]
-    fn bench_kick_parsing(b: &mut Bencher) {
-        b.iter(|| {
-            let vec = b":aibi!q@172.17.42.1 KICK #test randomuser :reason".to_vec();
-            let verified = to_incoming::<Kick>(IrcMsg::new(vec.clone()).ok().unwrap());
-            assert_eq!(verified.to_irc_msg().get_command(), "KICK")
-        });
-    }
-}
-
 
 #[derive(Clone, Debug)]
 pub struct Part(IrcMsg);

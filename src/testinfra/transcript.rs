@@ -1,4 +1,4 @@
-use std::old_io::IoResult;
+use std::io;
 
 use parse::IrcMsg;
 
@@ -10,7 +10,7 @@ pub enum SessionRecord {
     Unknown(String),
 }
 
-pub fn decode_line(line_res: IoResult<String>) -> Option<SessionRecord> {
+pub fn decode_line(line_res: io::Result<String>) -> Option<SessionRecord> {
     match line_res {
         Ok(ok) => Some(decode_line2(ok)),
         Err(err) => panic!("error reading: {:?}", err)
@@ -19,7 +19,7 @@ pub fn decode_line(line_res: IoResult<String>) -> Option<SessionRecord> {
 
 pub fn decode_line2(line: String) -> SessionRecord {
     let trim_these: &[_] = &['\r', '\n'];
-    let slice = line.as_slice().trim_right_matches(trim_these);
+    let slice = line.trim_right_matches(trim_these);
 
     match (&slice[0..3], (&slice[3..]).to_string()) {
         (">> ", rest) => match IrcMsg::new(rest.into_bytes()) {
@@ -34,7 +34,7 @@ pub fn decode_line2(line: String) -> SessionRecord {
 
 pub fn marker_match(rec: &SessionRecord, target: &str) -> bool {
     match *rec {
-        SessionRecord::Comment(ref comm) => comm.as_slice() == target,
+        SessionRecord::Comment(ref comm) => comm == target,
         _ => false
     }
 }

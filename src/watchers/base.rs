@@ -185,7 +185,7 @@ fn bundler_accept_impl(buf: &mut VecDeque<Box<Bundler+Send+'static>>,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::old_io::{IoResult, BufReader};
+    use std::io::{self, BufRead, BufReader};
 
     use parse::IrcMsg;
     use watchers::{
@@ -199,13 +199,13 @@ mod tests {
 
     const TEST_DATA: &'static [u8] = include_bytes!("../../testdata/watcher.txt");
 
-    fn unsafe_to_irc_message(line_res: IoResult<String>) -> IrcMsg {
+    fn unsafe_to_irc_message(line_res: io::Result<String>) -> IrcMsg {
         let line = match line_res {
             Ok(line) => line,
             Err(err) => panic!("err: {:?}", err)
         };
         let totrim: &[_] = &['\n', '\r'];
-        match IrcMsg::new(line.as_slice().trim_right_matches(totrim).to_string().into_bytes()) {
+        match IrcMsg::new(line.trim_right_matches(totrim).to_string().into_bytes()) {
             Ok(message) => message,
             Err(err) => panic!("err: {:?}", err)
         }
@@ -213,13 +213,12 @@ mod tests {
 
     #[test]
     fn test_bundle_watcher() {
-        let mut reader = BufReader::new(TEST_DATA);
         let mut bunman = BundlerManager::new();
-        bunman.add_bundler_trigger(Box::new(JoinBundlerTrigger::new()));
+        bunman.add_bundler_trigger(Box::new(JoinBundlerTrigger::new(b"botnick")));
         bunman.add_bundler_trigger(Box::new(WhoBundlerTrigger::new()));
         let mut events = Vec::new();
 
-        for msg in reader.lines().map(unsafe_to_irc_message) {
+        for msg in BufReader::new(TEST_DATA).lines().map(unsafe_to_irc_message) {
             events.extend(bunman.on_irc_msg(&msg).into_iter());
         }
 

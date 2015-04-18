@@ -4,7 +4,6 @@
 
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
-#[cfg(test)] extern crate test;
 #[macro_use] extern crate log;
 
 pub use self::event::IrcEvent;

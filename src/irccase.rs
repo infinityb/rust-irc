@@ -209,12 +209,12 @@ fn test_old_basics() {
     assert!("\\".eq_ignore_irc_case("|"));
     assert!("^".eq_ignore_irc_case("~"));
 
-    assert_eq!("[".to_irc_lower().as_slice(), "{");
-    assert_eq!("]".to_irc_lower().as_slice(), "}");
-    assert_eq!("\\".to_irc_lower().as_slice(), "|");
-    assert_eq!("^".to_irc_lower().as_slice(), "~");
+    assert_eq!("[".to_irc_lower(), "{");
+    assert_eq!("]".to_irc_lower(), "}");
+    assert_eq!("\\".to_irc_lower(), "|");
+    assert_eq!("^".to_irc_lower(), "~");
 
-    assert_eq!("^".to_string().into_irc_lower().as_slice(), "~");
+    assert_eq!("^".to_string().into_irc_lower(), "~");
 }
 
 #[derive(PartialEq, Eq, Debug)]

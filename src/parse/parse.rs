@@ -344,7 +344,6 @@ impl Index<usize> for IrcMsg {
 #[cfg(test)]
 mod tests {
     use super::{IrcParser, ParseError};
-    use test::Bencher;
 
     #[test]
     fn test_basics() {
@@ -359,7 +358,9 @@ mod tests {
             assert_eq!(parsed.get_prefix_raw(), b"prefix");
             assert_eq!(parsed.get_prefix_str(), "prefix");
             assert_eq!(parsed.get_command(), "PING");
-            assert_eq!(parsed.get_args().as_slice(), [b"foo", b"bar", b"baz"].as_slice());
+
+            let args_expect: &[&[u8]] = &[b"foo", b"bar", b"baz"];
+            assert_eq!(parsed.get_args(), args_expect);
         }
 
         {
@@ -378,7 +379,9 @@ mod tests {
             assert_eq!(parsed.get_prefix_raw(), b"prefix");
             assert_eq!(parsed.get_prefix_str(), "prefix");
             assert_eq!(parsed.get_command(), "PING");
-            assert_eq!(parsed.get_args().as_slice(), [b"foo", b"bar baz"].as_slice());
+
+            let args_expect: &[&[u8]] = &[b"foo", b"bar baz"];
+            assert_eq!(parsed.get_args(), args_expect);
         }
     }
 
@@ -390,18 +393,6 @@ mod tests {
             Err(err) => panic!("Should have been able to parse. err: {:?}", err)
         };
         assert_eq!(safe.as_slice(), b":prefix PING foo");
-    }
-
-    #[bench]
-    fn irc_parser_msg(b: &mut Bencher) {
-        let message = b":irc.rizon.no 372 cooldude` :- o No takeovers\n";
-        b.iter(|| {
-            let mut parser = IrcParser::new();
-            for value in message.as_slice().iter() {
-                parser.push_byte(*value);
-            }
-            assert!(parser.finish().is_ok());
-        })
     }
 }
 
