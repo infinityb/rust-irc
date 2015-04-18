@@ -26,21 +26,15 @@ pub use self::watchers::{
     WhoBundlerTrigger,
 };
 
+pub use stream::{
+    IrcConnectorExtension,
+    IrcConnectionBuilder,
+    IrcConnector,
+};
+
 pub use self::irccase::{
     IrcAsciiExt,
     OwnedIrcAsciiExt,
-};
-
-pub use self::state::{
-    User,
-    UserId,
-
-    Channel,
-    ChannelId,
-
-    State,
-    FrozenState,
-    MessageEndpoint,
 };
 
 #[cfg(test)] pub mod testinfra;
@@ -66,9 +60,6 @@ mod event;
 
 /// IRC case manipulation
 mod irccase;
-
-/// IRC state tracker
-mod state;
 
 /// Receive buffer
 pub mod recv;
