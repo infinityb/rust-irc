@@ -69,3 +69,6 @@ mod irccase;
 
 /// IRC state tracker
 mod state;
+
+/// Receive buffer
+pub mod recv;
