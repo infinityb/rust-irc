@@ -11,6 +11,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ops::Deref;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::string::String;
@@ -54,7 +55,7 @@ static ASCII_LOWER_MAP: [u8; 256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
-pub static RFC1459_LOWER_MAP: [u8; 256] = [
+static RFC1459_LOWER_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -93,7 +94,7 @@ pub static RFC1459_LOWER_MAP: [u8; 256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
-pub static STRICT_RFC1459_LOWER_MAP: [u8; 256] = [
+static STRICT_RFC1459_LOWER_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
     0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
@@ -263,20 +264,20 @@ impl CaseMapping for StrictRfc1459CaseMapping {
 pub trait CaseMapping: Default+PartialEq+Eq {
     fn get_lower_map(&self) -> &[u8];
 
-    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: ToByteSlice {
+    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: Deref<Target=[u8]> {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();
-        left.to_byte_slice().iter().map(|&byte| lower_map[byte as usize]).collect()
+        left.deref().iter().map(|&byte| lower_map[byte as usize]).collect()
     }
 
     #[inline]
     fn hash_ignore_case<T: ?Sized, H>(&self, left: &T, hasher: &mut H)
         where
-            T: ToByteSlice + Hash,
+            T: Deref<Target=[u8]> + Hash,
             H: Hasher {
 
         let lower_map = self.get_lower_map();
-        for byte in left.to_byte_slice().iter() {
+        for byte in left.deref().iter() {
             hasher.write_u8(lower_map[*byte as usize]);
         }
     }
@@ -284,44 +285,16 @@ pub trait CaseMapping: Default+PartialEq+Eq {
     #[inline]
     fn eq_ignore_case<T: ?Sized>(&self, left: &T, right: &T) -> bool
         where
-            T: ToByteSlice {
+            T: Deref<Target=[u8]> {
         let lower_map = self.get_lower_map();
-        let left = left.to_byte_slice();
-        let right = right.to_byte_slice();
+        let left = left.deref();
+        let right = right.deref();
 
         left.len() == right.len() && left.iter().zip(right.iter()).all(
             |(byte_self, byte_other)| {
                 lower_map[*byte_self as usize] ==
                     lower_map[*byte_other as usize]
             })
-    }
-}
-
-trait ToByteSlice {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8];
-}
-
-impl ToByteSlice for str {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-}
-
-impl ToByteSlice for String {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-}
-
-impl ToByteSlice for [u8] {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self
-    }
-}
-
-impl ToByteSlice for Vec<u8> {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_slice()
     }
 }
 

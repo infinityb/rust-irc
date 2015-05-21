@@ -59,7 +59,7 @@ pub mod stream;
 mod event;
 
 /// IRC case manipulation
-mod irccase;
+pub mod irccase;
 
 /// Receive buffer
 pub mod recv;
