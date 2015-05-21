@@ -59,6 +59,7 @@ impl IrcMsgBuffer {
 		for _ in 0..bytes {
 			self.data.pop_front();
 		}
+		
 		Ok(try!(IrcMsg::new(buffer)))
 	}
 }
