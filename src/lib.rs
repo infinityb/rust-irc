@@ -1,4 +1,3 @@
-#![crate_name = "irc"]
 #![crate_type = "dylib"]
 #![feature(core, collections, convert, hash, slice_patterns, into_cow)]
 
@@ -6,7 +5,12 @@
 
 #[macro_use] extern crate log;
 
-pub use self::event::IrcEvent;
+pub use self::event::{
+    IrcEvent,
+    IrcSender,
+    Plugin,
+    PluginManager,
+};
 
 pub use self::watchers::{
     RegisterError,
