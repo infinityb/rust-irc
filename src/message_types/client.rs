@@ -134,7 +134,7 @@ impl User {
     //  <user> <mode> <unused> <realname>
     pub fn new(user: &str, mode: &str, unused: &str, realname: &str) -> User {
 
-        let output_length = byte_length_sum(&[user, mode, unused, realname]) + 8;
+        let output_length = byte_length_sum(&[user, mode, unused, realname]) + 9;
 
         let mut msg = Vec::with_capacity(output_length);
         msg.push_all(b"USER ");
