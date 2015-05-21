@@ -11,7 +11,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::Deref;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::string::String;
@@ -264,20 +263,20 @@ impl CaseMapping for StrictRfc1459CaseMapping {
 pub trait CaseMapping: Default+PartialEq+Eq {
     fn get_lower_map(&self) -> &[u8];
 
-    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: Deref<Target=[u8]> {
+    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: AsRef<[u8]> {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();
-        left.deref().iter().map(|&byte| lower_map[byte as usize]).collect()
+        left.as_ref().iter().map(|&byte| lower_map[byte as usize]).collect()
     }
 
     #[inline]
     fn hash_ignore_case<T: ?Sized, H>(&self, left: &T, hasher: &mut H)
         where
-            T: Deref<Target=[u8]> + Hash,
+            T: AsRef<[u8]> + Hash,
             H: Hasher {
 
         let lower_map = self.get_lower_map();
-        for byte in left.deref().iter() {
+        for byte in left.as_ref().iter() {
             hasher.write_u8(lower_map[*byte as usize]);
         }
     }
@@ -285,10 +284,10 @@ pub trait CaseMapping: Default+PartialEq+Eq {
     #[inline]
     fn eq_ignore_case<T: ?Sized>(&self, left: &T, right: &T) -> bool
         where
-            T: Deref<Target=[u8]> {
+            T: AsRef<[u8]> {
         let lower_map = self.get_lower_map();
-        let left = left.deref();
-        let right = right.deref();
+        let left = left.as_ref();
+        let right = right.as_ref();
 
         left.len() == right.len() && left.iter().zip(right.iter()).all(
             |(byte_self, byte_other)| {
