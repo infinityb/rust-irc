@@ -1,6 +1,6 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(collections, convert, hash, slice_patterns, into_cow)]
+#![feature(core, collections, convert, hash, slice_patterns, into_cow)]
 
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 

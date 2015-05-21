@@ -132,6 +132,42 @@ static STRICT_RFC1459_LOWER_MAP: [u8; 256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
+pub fn irc_lower<T: ?Sized>(cm: &CaseMapping, left: &T) -> Vec<u8> where T: AsRef<[u8]> {
+    // irc_lower(...) preserves the UTF-8 invariant.
+    let lower_map = cm.get_lower_map();
+    left.as_ref().iter().map(|&byte| lower_map[byte as usize]).collect()
+}
+
+pub fn hash_ignore_case<T: ?Sized, H>(cm: &CaseMapping, left: &T, hasher: &mut H) 
+    where   
+        T: AsRef<[u8]> + Hash,
+        H: Hasher {
+
+    let lower_map = cm.get_lower_map();
+    for byte in left.as_ref().iter() {
+        hasher.write_u8(lower_map[*byte as usize]);
+    }
+}
+
+pub fn eq_ignore_case<T: ?Sized>(cm: &CaseMapping, left: &T, right: &T) -> bool
+    where   
+        T: AsRef<[u8]> {
+    let lower_map = cm.get_lower_map();
+    let left  = left.as_ref();
+    let right = right.as_ref();
+
+    left.len() == right.len() && left.iter().zip(right.iter()).all(
+        |(byte_self, byte_other)| {
+            lower_map[*byte_self as usize] ==
+                lower_map[*byte_other as usize]
+        })
+}
+
+/// This has become insane.  Replace with a struct type which wraps
+/// a static pointer
+pub trait CaseMapping {
+    fn get_lower_map(&self) -> &[u8];
+}
 
 pub trait IrcAsciiExt<T: ?Sized> {
     /// Makes a copy of the string in IRC ASCII lower case:
@@ -260,43 +296,6 @@ impl CaseMapping for StrictRfc1459CaseMapping {
     }
 }
 
-pub trait CaseMapping: Default+PartialEq+Eq {
-    fn get_lower_map(&self) -> &[u8];
-
-    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: AsRef<[u8]> {
-        // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
-        let lower_map = self.get_lower_map();
-        left.as_ref().iter().map(|&byte| lower_map[byte as usize]).collect()
-    }
-
-    #[inline]
-    fn hash_ignore_case<T: ?Sized, H>(&self, left: &T, hasher: &mut H)
-        where
-            T: AsRef<[u8]> + Hash,
-            H: Hasher {
-
-        let lower_map = self.get_lower_map();
-        for byte in left.as_ref().iter() {
-            hasher.write_u8(lower_map[*byte as usize]);
-        }
-    }
-
-    #[inline]
-    fn eq_ignore_case<T: ?Sized>(&self, left: &T, right: &T) -> bool
-        where
-            T: AsRef<[u8]> {
-        let lower_map = self.get_lower_map();
-        let left = left.as_ref();
-        let right = right.as_ref();
-
-        left.len() == right.len() && left.iter().zip(right.iter()).all(
-            |(byte_self, byte_other)| {
-                lower_map[*byte_self as usize] ==
-                    lower_map[*byte_other as usize]
-            })
-    }
-}
-
 #[test]
 fn test_basics() {
     assert!(AsciiCaseMapping.eq_ignore_case("A", "a"));
@@ -330,3 +329,11 @@ fn test_basics() {
         b"a{}|^z".to_vec());
 }
 
+pub fn casemap_equal(cm0: &CaseMapping, cm1: &CaseMapping) -> bool {
+    use std::raw::TraitObject;
+
+    let cm0: TraitObject = unsafe { ::std::mem::transmute(cm0) };
+    let cm1: TraitObject = unsafe { ::std::mem::transmute(cm1) };
+
+    cm0.vtable == cm1.vtable
+}
