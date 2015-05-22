@@ -40,7 +40,7 @@ impl MessageResponder for CtcpVersionResponder {
                 let mut vec = Vec::new();
                 vec.push_all(b"VERSION ");
                 vec.push_all(self.get_version().as_bytes());
-                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), vec.as_slice());
+                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), &vec);
                 out.push(privmsg.into_irc_msg());
             }
         }
@@ -58,7 +58,7 @@ impl Plugin for CtcpVersionResponder {
                 let mut vec = Vec::new();
                 vec.push_all(b"VERSION ");
                 vec.push_all(self.get_version().as_bytes());
-                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), vec.as_slice());
+                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), &vec);
 
                 sender.write_msg(privmsg.into_irc_msg());
             }

@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use std::str::{from_utf8, Utf8Error};
 
 use irccase::{
-    casemap_equal,
     eq_ignore_case,
     hash_ignore_case,
     CaseMapping
@@ -32,7 +31,7 @@ static DIGIT: &'static [u8] = &[b'0', b'1', b'2', b'3', b'4', b'5', b'6', b'7', 
 
 
 #[derive(Clone)]
-pub struct Channel(&'static CaseMapping, Vec<u8>);
+pub struct Channel(CaseMapping, Vec<u8>);
 
 pub enum ChannelError {
     InvalidByte(usize),
@@ -59,12 +58,12 @@ fn channel_validate_buf(buf: &[u8]) -> Result<(), ChannelError> {
 
 impl Channel {
     #[inline]
-    pub fn from_str(cm: &'static CaseMapping, channel: &str) -> Result<Channel, ChannelError> {
+    pub fn from_str(cm: CaseMapping, channel: &str) -> Result<Channel, ChannelError> {
         Channel::from_bytes(cm, channel.as_bytes())
     }
 
     #[inline]
-    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(cm: &'static CaseMapping, name: &Q) -> Result<Channel, ChannelError> {
+    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(cm: CaseMapping, name: &Q) -> Result<Channel, ChannelError> {
         match channel_validate_buf(name.as_ref()) {
             Ok(()) => Ok(Channel(cm, name.as_ref().to_vec())),
             Err(err) => Err(err),
@@ -78,7 +77,7 @@ impl PartialEq for Channel {
         let Channel(cm0, ref s_data) = *self;
         let Channel(cm1, ref o_data) = *other;
         
-        casemap_equal(cm0, cm1) && eq_ignore_case(cm0, s_data, o_data)
+        (cm0 == cm1) && eq_ignore_case(cm0, s_data, o_data)
     }
 
     #[inline]
@@ -86,7 +85,7 @@ impl PartialEq for Channel {
         let Channel(cm0, ref s_data) = *self;
         let Channel(cm1, ref o_data) = *other;
 
-        !casemap_equal(cm0, cm1) || !eq_ignore_case(cm0, s_data, o_data)
+        !(cm0 == cm1) || !eq_ignore_case(cm0, s_data, o_data)
     }
 }
 
@@ -103,7 +102,7 @@ impl Hash for Channel {
 
 
 #[derive(Clone)]
-pub struct Nickname(&'static CaseMapping, Vec<u8>);
+pub struct Nickname(CaseMapping, Vec<u8>);
 
 pub enum NicknameError {
     InvalidByte(usize),
@@ -166,12 +165,12 @@ fn nickname_validate_buf(buf: &[u8]) -> Result<(), NicknameError> {
 
 impl Nickname {
     #[inline]
-    pub fn from_str(cm: &'static CaseMapping, nick: &str) -> Result<Nickname, NicknameError> {
+    pub fn from_str(cm: CaseMapping, nick: &str) -> Result<Nickname, NicknameError> {
         Nickname::from_bytes(cm, nick.as_bytes())
     }
 
     #[inline]
-    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(cm: &'static CaseMapping, name: &Q) -> Result<Nickname, NicknameError> {
+    pub fn from_bytes<Q: AsRef<[u8]>+?Sized>(cm: CaseMapping, name: &Q) -> Result<Nickname, NicknameError> {
         match nickname_validate_buf(name.as_ref()) {
             Ok(()) => Ok(Nickname(cm, name.as_ref().to_vec())),
             Err(err) => Err(err),
@@ -209,14 +208,14 @@ impl PartialEq for Nickname {
     fn eq(&self, other: &Nickname) -> bool {
         let Nickname(cm0, ref s_data) = *self;
         let Nickname(cm1, ref o_data) = *other;
-        casemap_equal(cm0, cm1) && eq_ignore_case(cm0, s_data, o_data)
+        (cm0 == cm1) && eq_ignore_case(cm0, s_data, o_data)
     }
 
     #[inline]
     fn ne(&self, other: &Nickname) -> bool {
         let Nickname(cm0, ref s_data) = *self;
         let Nickname(cm1, ref o_data) = *other;
-        !casemap_equal(cm0, cm1) || !eq_ignore_case(cm0, s_data, o_data)
+        !(cm0 == cm1) || !eq_ignore_case(cm0, s_data, o_data)
     }
 }
 

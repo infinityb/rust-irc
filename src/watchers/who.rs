@@ -17,8 +17,8 @@ trait ChannelTargeted {
 impl ChannelTargeted for WhoResult {
     fn get_channel(&self) -> &[u8] {
         match *self {
-            Ok(ref join_succ) => join_succ.channel.as_slice(),
-            Err(ref join_err) => join_err.channel.as_slice()
+            Ok(ref join_succ) => &join_succ.channel,
+            Err(ref join_err) => &join_err.channel
         }
     }
 }
@@ -45,7 +45,6 @@ pub struct WhoError {
     pub channel: Vec<u8>,
 }
 
-
 #[derive(Clone, Debug)]
 pub struct WhoRecord {
     pub hostname: String,
@@ -55,25 +54,19 @@ pub struct WhoRecord {
     pub rest: String,
 }
 
-
 impl WhoRecord {
     fn new(args: &[&[u8]]) -> Option<WhoRecord> {
-        match args {
-            [_self_nick, _channel, username,
-             hostname, server, nick, _unk1, rest
-            ] => {
-                let whorec = WhoRecord {
-                    hostname: String::from_utf8_lossy(hostname).into_owned(),
-                    server: String::from_utf8_lossy(server).into_owned(),
-                    username: String::from_utf8_lossy(username).into_owned(),
-                    nick: String::from_utf8_lossy(nick).into_owned(),
-                    rest: String::from_utf8_lossy(rest).into_owned(),
-                };
-                Some(whorec)
-            },
-            _ => {
-                None
-            }
+        if args.len() == 8 {
+            let whorec = WhoRecord {
+                hostname: String::from_utf8_lossy(args[3]).into_owned(),
+                server: String::from_utf8_lossy(args[4]).into_owned(),
+                username: String::from_utf8_lossy(args[2]).into_owned(),
+                nick: String::from_utf8_lossy(args[5]).into_owned(),
+                rest: String::from_utf8_lossy(args[7]).into_owned(),
+            };
+            Some(whorec)
+        } else {
+            None
         }
     }
 
@@ -157,13 +150,13 @@ impl Bundler for WhoBundler {
             return Vec::new();
         }
 
-        if !args[1].eq_ignore_irc_case(self.target_channel.as_slice()) {
+        if !args[1].eq_ignore_irc_case(&self.target_channel) {
             return Vec::new();
         }
 
         match server::IncomingMsg::from_msg(msg.clone()) {
             server::IncomingMsg::Numeric(352, ref message2) => {
-                self.add_record(message2.to_irc_msg().get_args().as_slice());
+                self.add_record(&message2.to_irc_msg().get_args());
                 Vec::new()
             },
             server::IncomingMsg::Numeric(315, ref _message) => {
@@ -210,7 +203,7 @@ impl WhoEventWatcher {
 
 impl fmt::Debug for WhoEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "WhoEventWatcher(channel={:?})", self.channel.as_slice())
+        write!(f, "WhoEventWatcher(channel={:?})", &self.channel)
     }
 }
 
@@ -218,7 +211,7 @@ impl EventWatcher for WhoEventWatcher {
     fn on_event(&mut self, event: &IrcEvent) {
         match event {
             &IrcEvent::WhoBundle(ref result) => {
-                if result.get_channel().eq_ignore_irc_case(self.channel.as_slice()) {
+                if result.get_channel().eq_ignore_irc_case(&self.channel) {
                     self.result = Some(result.clone());
                     self.dispatch_monitors();
                     self.finished = true;

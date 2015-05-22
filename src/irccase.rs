@@ -11,7 +11,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::string::String;
 
@@ -132,13 +131,13 @@ static STRICT_RFC1459_LOWER_MAP: [u8; 256] = [
     0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
 ];
 
-pub fn irc_lower<T: ?Sized>(cm: &CaseMapping, left: &T) -> Vec<u8> where T: AsRef<[u8]> {
+pub fn irc_lower<T: ?Sized>(cm: CaseMapping, left: &T) -> Vec<u8> where T: AsRef<[u8]> {
     // irc_lower(...) preserves the UTF-8 invariant.
     let lower_map = cm.get_lower_map();
     left.as_ref().iter().map(|&byte| lower_map[byte as usize]).collect()
 }
 
-pub fn hash_ignore_case<T: ?Sized, H>(cm: &CaseMapping, left: &T, hasher: &mut H) 
+pub fn hash_ignore_case<T: ?Sized, H>(cm: CaseMapping, left: &T, hasher: &mut H) 
     where   
         T: AsRef<[u8]> + Hash,
         H: Hasher {
@@ -149,7 +148,7 @@ pub fn hash_ignore_case<T: ?Sized, H>(cm: &CaseMapping, left: &T, hasher: &mut H
     }
 }
 
-pub fn eq_ignore_case<T: ?Sized>(cm: &CaseMapping, left: &T, right: &T) -> bool
+pub fn eq_ignore_case<T: ?Sized>(cm: CaseMapping, left: &T, right: &T) -> bool
     where   
         T: AsRef<[u8]> {
     let lower_map = cm.get_lower_map();
@@ -163,10 +162,27 @@ pub fn eq_ignore_case<T: ?Sized>(cm: &CaseMapping, left: &T, right: &T) -> bool
         })
 }
 
-/// This has become insane.  Replace with a struct type which wraps
-/// a static pointer
-pub trait CaseMapping {
-    fn get_lower_map(&self) -> &[u8];
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CaseMapping(&'static [u8]);
+
+impl CaseMapping {
+    fn get_lower_map(&self) -> &[u8] {
+        self.0
+    }
+}
+
+pub static ASCII: CaseMapping = CaseMapping(&ASCII_LOWER_MAP);
+pub static RFC1459: CaseMapping = CaseMapping(&RFC1459_LOWER_MAP);
+pub static STRICT_RFC1459: CaseMapping = CaseMapping(&STRICT_RFC1459_LOWER_MAP);
+
+// Find a casemapping by name
+pub fn find_casemapping(name: &str) -> Option<CaseMapping> {
+    match name {
+        "strict-rfc1459" => Some(STRICT_RFC1459),
+        "rfc1459" => Some(RFC1459),
+        "ascii" => Some(ASCII),
+        _ => None,
+    }
 }
 
 pub trait IrcAsciiExt<T: ?Sized> {
@@ -253,87 +269,28 @@ fn test_old_basics() {
     assert_eq!("^".to_string().into_irc_lower(), "~");
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct AsciiCaseMapping;
-
-impl Default for AsciiCaseMapping {
-    fn default() -> AsciiCaseMapping { AsciiCaseMapping }
-}
-
-impl CaseMapping for AsciiCaseMapping {
-    #[inline]
-    fn get_lower_map(&self) -> &[u8] {
-        &ASCII_LOWER_MAP
-    }
-}
-
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct Rfc1459CaseMapping;
-
-impl Default for Rfc1459CaseMapping {
-    fn default() -> Rfc1459CaseMapping { Rfc1459CaseMapping }
-}
-
-impl CaseMapping for Rfc1459CaseMapping {
-    #[inline]
-    fn get_lower_map(&self) -> &[u8] {
-        &RFC1459_LOWER_MAP
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct StrictRfc1459CaseMapping;
-
-impl Default for StrictRfc1459CaseMapping {
-    fn default() -> StrictRfc1459CaseMapping { StrictRfc1459CaseMapping }
-}
-
-impl CaseMapping for StrictRfc1459CaseMapping {
-    #[inline]
-    fn get_lower_map(&self) -> &[u8] {
-        &STRICT_RFC1459_LOWER_MAP
-    }
-}
-
 #[test]
 fn test_basics() {
-    assert!(AsciiCaseMapping.eq_ignore_case("A", "a"));
-    assert!(!AsciiCaseMapping.eq_ignore_case("[", "{"));
-    assert!(!AsciiCaseMapping.eq_ignore_case("\\", "|"));
-    assert!(!AsciiCaseMapping.eq_ignore_case("]", "}"));
-    assert!(!AsciiCaseMapping.eq_ignore_case("^", "~"));
 
-    assert!(Rfc1459CaseMapping.eq_ignore_case("A", "a"));
-    assert!(Rfc1459CaseMapping.eq_ignore_case("[", "{"));
-    assert!(Rfc1459CaseMapping.eq_ignore_case("\\", "|"));
-    assert!(Rfc1459CaseMapping.eq_ignore_case("]", "}"));
-    assert!(Rfc1459CaseMapping.eq_ignore_case("^", "~"));
+    assert!(eq_ignore_case(ASCII, "A", "a"));
+    assert!(!eq_ignore_case(ASCII, "[", "{"));
+    assert!(!eq_ignore_case(ASCII, "\\", "|"));
+    assert!(!eq_ignore_case(ASCII, "]", "}"));
+    assert!(!eq_ignore_case(ASCII, "^", "~"));
 
-    assert!(StrictRfc1459CaseMapping.eq_ignore_case("A", "a"));
-    assert!(StrictRfc1459CaseMapping.eq_ignore_case("[", "{"));
-    assert!(StrictRfc1459CaseMapping.eq_ignore_case("\\", "|"));
-    assert!(StrictRfc1459CaseMapping.eq_ignore_case("]", "}"));
-    assert!(!StrictRfc1459CaseMapping.eq_ignore_case("^", "~"));
+    assert!(eq_ignore_case(RFC1459, "A", "a"));
+    assert!(eq_ignore_case(RFC1459, "[", "{"));
+    assert!(eq_ignore_case(RFC1459, "\\", "|"));
+    assert!(eq_ignore_case(RFC1459, "]", "}"));
+    assert!(eq_ignore_case(RFC1459, "^", "~"));
 
-    assert_eq!(
-        AsciiCaseMapping.to_irc_lower("A[]\\^Z"),
-        b"a[]\\^z".to_vec());
+    assert!(eq_ignore_case(STRICT_RFC1459, "A", "a"));
+    assert!(eq_ignore_case(STRICT_RFC1459, "[", "{"));
+    assert!(eq_ignore_case(STRICT_RFC1459, "\\", "|"));
+    assert!(eq_ignore_case(STRICT_RFC1459, "]", "}"));
+    assert!(!eq_ignore_case(STRICT_RFC1459, "^", "~"));
 
-    assert_eq!(
-        Rfc1459CaseMapping.to_irc_lower("A[]\\^Z"),
-        b"a{}|~z".to_vec());
-
-    assert_eq!(
-        StrictRfc1459CaseMapping.to_irc_lower("A[]\\^Z"),
-        b"a{}|^z".to_vec());
-}
-
-pub fn casemap_equal(cm0: &CaseMapping, cm1: &CaseMapping) -> bool {
-    use std::raw::TraitObject;
-
-    let cm0: TraitObject = unsafe { ::std::mem::transmute(cm0) };
-    let cm1: TraitObject = unsafe { ::std::mem::transmute(cm1) };
-
-    cm0.vtable == cm1.vtable
+    assert_eq!(irc_lower(ASCII, "A[]\\^Z"), b"a[]\\^z".to_vec());
+    assert_eq!(irc_lower(RFC1459, "A[]\\^Z"), b"a{}|~z".to_vec());
+    assert_eq!(irc_lower(STRICT_RFC1459, "A[]\\^Z"), b"a{}|^z".to_vec());
 }
