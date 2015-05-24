@@ -173,3 +173,17 @@ impl Who {
         Who(IrcMsg::new(msg).ok().expect("Generated invalid message"))
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct Quit(IrcMsg);
+msg_wrapper_common!(Quit);
+
+impl Quit {
+    pub fn new(target: &str) -> Quit {
+        let mut msg = Vec::new();
+        msg.push_all(b"QUIT :");
+        msg.push_all(target.as_bytes());
+
+        Quit(IrcMsg::new(msg).ok().expect("Generated invalid message"))
+    }
+}
