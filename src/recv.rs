@@ -44,11 +44,11 @@ impl IrcMsgBuffer {
 		let mut found_eol = false;
 
 		for &byte in self.data.iter() {
+			bytes += 1;
 			if byte == b'\n' {
 				found_eol = true;
 				break;
 			}
-			bytes += 1;
 		}
 
 		if !found_eol {
@@ -59,7 +59,6 @@ impl IrcMsgBuffer {
 		for _ in 0..bytes {
 			self.data.pop_front();
 		}
-
 		Ok(try!(IrcMsg::new(buffer)))
 	}
 }
