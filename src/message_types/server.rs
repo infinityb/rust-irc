@@ -56,6 +56,7 @@ pub enum IncomingMsg {
     Notice(Notice),
     Part(Part),
     Ping(Ping),
+    Pong(Pong),
     Privmsg(Privmsg),
     Quit(Quit),
     Topic(Topic),
@@ -76,6 +77,7 @@ impl IncomingMsg {
             "NOTICE" => to_incoming::<Notice>(msg),
             "PART" => to_incoming::<Part>(msg),
             "PING" => to_incoming::<Ping>(msg),
+            "PONG" => to_incoming::<Pong>(msg),
             "PRIVMSG" => to_incoming::<Privmsg>(msg),
             "QUIT" => to_incoming::<Quit>(msg),
             "TOPIC" => to_incoming::<Topic>(msg),
@@ -103,6 +105,7 @@ impl IncomingMsg {
             IncomingMsg::Notice(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Part(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Ping(ref msg) => msg.to_irc_msg(),
+            IncomingMsg::Pong(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Privmsg(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Quit(ref msg) => msg.to_irc_msg(),
             IncomingMsg::Topic(ref msg) => msg.to_irc_msg(),
@@ -121,6 +124,7 @@ impl IncomingMsg {
             IncomingMsg::Notice(msg) => msg.into_irc_msg(),
             IncomingMsg::Part(msg) => msg.into_irc_msg(),
             IncomingMsg::Ping(msg) => msg.into_irc_msg(),
+            IncomingMsg::Pong(msg) => msg.into_irc_msg(),
             IncomingMsg::Privmsg(msg) => msg.into_irc_msg(),
             IncomingMsg::Quit(msg) => msg.into_irc_msg(),
             IncomingMsg::Topic(msg) => msg.into_irc_msg(),
@@ -466,6 +470,61 @@ fn test_ping_basics() {
     assert!(ping.is_err());
 }
 
+#[derive(Clone, Debug)]
+pub struct Pong(IrcMsg);
+impl_into_incoming_msg!(Pong);
+msg_wrapper_common!(Pong);
+
+impl Pong {
+    pub fn get_server1(&self) -> &str {
+        let Pong(ref msg) = *self;
+        unsafe { str::from_utf8_unchecked(&msg[0]) }
+    }
+
+    pub fn get_server2(&self) -> Option<&str> {
+        let Pong(ref msg) = *self;
+        if msg.len() > 1 {
+            unsafe { Some(str::from_utf8_unchecked(&msg[1])) }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_response(&self) -> Result<client::Pong, ()> {
+        let Pong(ref msg) = *self;
+        match msg.len() {
+            1 => Ok(client::Pong::new(self.get_server1())),
+            _ => Err(())
+        }
+    }
+}
+
+impl FromIrcMsg for Pong {
+    fn from_irc_msg(msg: IrcMsg) -> Result<Pong, IrcMsg> {
+        if !msg.get_command().eq_ignore_irc_case("PONG") {
+            return Err(msg);
+        }
+        if msg.len() < 1 {
+            warn!("Invalid PONG: Not enough arguments {}", msg.len());
+            return Err(msg);
+        }
+        for idx in 0..min(2, msg.len()) {
+            if !str::from_utf8(&msg[idx]).is_ok() {
+                return Err(msg);
+            }
+        }
+        Ok(Pong(msg))
+    }
+}
+
+#[test]
+fn test_pong_basics() {
+    let mut raw_owned = Vec::new();
+    raw_owned.push_all(b":person!user@host NOTPONG server1 :server2");
+    let msg = IrcMsg::new(raw_owned).unwrap();
+    let ping: Result<Ping, _> = FromIrcMsg::from_irc_msg(msg);
+    assert!(ping.is_err());
+}
 
 #[derive(Clone, Debug)]
 pub struct Privmsg(IrcMsg);

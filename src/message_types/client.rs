@@ -73,6 +73,19 @@ impl Nick {
 
 
 #[derive(Clone, Debug)]
+pub struct Ping(IrcMsg);
+msg_wrapper_common!(Ping);
+
+impl Ping {
+    pub fn new(argument: &str) -> Ping {
+        let mut msg = Vec::with_capacity(6 + argument.as_bytes().len());
+        msg.push_all(b"PING :");
+        msg.push_all(argument.as_bytes());
+        Ping(IrcMsg::new(msg).ok().expect("Generated invalid message"))
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Pong(IrcMsg);
 msg_wrapper_common!(Pong);
 
