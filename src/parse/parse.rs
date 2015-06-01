@@ -93,10 +93,27 @@ struct IrcParser {
     state: IrcParserState
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum ParseError {
-    InvalidMessage(&'static str),
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ParseErrorKind {
     EncodingError,
+    Truncated,
+    TooManyArguments,
+    // ...
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParseError {
+    pub kind: ParseErrorKind,
+    pub message: Vec<u8>,
+}
+
+impl ParseError {
+    fn new(ekind: ParseErrorKind, msg: Vec<u8>) -> ParseError {
+        ParseError {
+            kind: ekind,
+            message: msg,
+        }
+    }
 }
 
 impl IrcParser {
@@ -194,13 +211,13 @@ impl IrcParser {
     }
 
     #[inline]
-    fn finish(&mut self) -> Result<(), ParseError> {
+    fn finish(&mut self) -> Result<(), ParseErrorKind> {
         match self.state {
-            IrcParserState::Initial => Err(ParseError::InvalidMessage("too short")),
-            IrcParserState::Prefix => Err(ParseError::InvalidMessage("too short")),
-            IrcParserState::CommandStart => Err(ParseError::InvalidMessage("too short")),
-            IrcParserState::Command => Err(ParseError::InvalidMessage("too short")),
-            IrcParserState::ArgOverflow => Err(ParseError::InvalidMessage("too many arguments")),
+            IrcParserState::Initial => Err(ParseErrorKind::Truncated),
+            IrcParserState::Prefix => Err(ParseErrorKind::Truncated),
+            IrcParserState::CommandStart => Err(ParseErrorKind::Truncated),
+            IrcParserState::Command => Err(ParseErrorKind::Truncated),
+            IrcParserState::ArgOverflow => Err(ParseErrorKind::TooManyArguments),
             IrcParserState::ArgStart => Ok(()),
             IrcParserState::EndOfLine => Ok(()),
             IrcParserState::Arg | IrcParserState::RestArg => {
@@ -216,10 +233,10 @@ impl IrcParser {
         for &value in message.iter() {
             parser.push_byte(value);
         }
-        match parser.finish() {
-            Ok(()) => (),
-            Err(err) => return Err(err)
-        };
+        if let Err(err) = parser.finish() {
+            return Err(ParseError::new(err, message));
+        }
+        
         assert_eq!(parser.byte_idx as usize, message.len());
 
         let mut parsed = IrcMsg {
@@ -274,10 +291,10 @@ impl IrcMsg {
             Err(err) => return Err(err)
         };
         if !::std::str::from_utf8(parsed.get_prefix_raw()).is_ok() {
-            return Err(ParseError::EncodingError)
+            return Err(ParseError::new(ParseErrorKind::EncodingError, parsed.into_bytes()))
         }
         if !::std::str::from_utf8(parsed.get_command_raw()).is_ok() {
-            return Err(ParseError::EncodingError)
+            return Err(ParseError::new(ParseErrorKind::EncodingError, parsed.into_bytes()))
         }
         Ok(parsed)
     }
