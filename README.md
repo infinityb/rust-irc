@@ -4,18 +4,41 @@ rust-irc
 
 [Documentation](http://infinityb.github.io/rust-irc)
 
-Parsing IRC messages and maybe a bit more!
+Safe API for parsing and creating IRC commands/messages.
 
-This code-base is in the process of being split into two projects, the
-IRC protocol and the IRC bot.  The IRC bot repository has moved [Here](https://github.com/infinityb/rust-irc-bot).
+## Server Message types
+* JOIN
+* KICK
+* MODE
+* NICK
+* NOTICE
+* PART
+* PING
+* PONG
+* PRIVMSG
+* QUIT
+* TOPIC
+* INVITE
+
+## Client Message types
+* JOIN
+* NICK
+* PING
+* PONG
+* PRIVMSG
+* USER
+* WHO
+* QUIT
 
 Current State
 =============
-Work in progress. Lots of unsupported stuff.
+Work in progress. Lots of unsupported message types.
 
-Not really ready for the real world.  Usable in controlled circumstances where
-the server won't send you broken messages.  Broken messages will most likely
-result in panic!() at present.  This is considered a bug.
+See [infinityb/rust-irc-bot](https://github.com/infinityb/rust-irc-bot) (especially [ringbuf.rs](https://github.com/infinityb/rust-irc-bot/blob/master/src/ringbuf.rs)) for an example of use with [carllerche/mio](https://github.com/carllerche/mio).
+
+Event-loop specific implementations will most likely be implemented in separate crates eventually.
+
+Periodically fuzzed with AFL using [kmcallister/afl.rs](https://github.com/kmcallister/afl.rs).
 
 License
 =======
