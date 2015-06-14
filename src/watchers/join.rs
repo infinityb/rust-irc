@@ -193,7 +193,7 @@ impl JoinBundler {
             self.result = Some(Err(JoinError {
                 channel: self.channel.as_slice().to_vec(),
                 errcode: 0,
-                message: String::from_str("")
+                message: String::new(),
             }));
         }
         Some(if success { JoinBundlerState::Joining } else { JoinBundlerState::JoinFail })
