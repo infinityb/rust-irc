@@ -532,6 +532,6 @@ impl<'a> Eq for IrcMsgPrefix<'a> {}
 
 impl<'a> fmt::Debug for IrcMsgPrefix<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "IrcMsgPrefix::new({})", self.as_slice())
+        write!(f, "IrcMsgPrefix::new({:?})", self.as_slice())
     }
 }
