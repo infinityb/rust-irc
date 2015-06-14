@@ -221,9 +221,13 @@ impl IrcParser {
             IrcParserState::ArgStart => Ok(()),
             IrcParserState::EndOfLine => Ok(()),
             IrcParserState::Arg | IrcParserState::RestArg => {
-                self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
-                self.arg_len += 1;
-                Ok(())
+                if self.arg_len < IRCMSG_MAX_ARGS as u32 {
+                    self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
+                    self.arg_len += 1;
+                    Ok(())
+                } else {
+                    Err(ParseErrorKind::TooManyArguments)
+                }
             }
         }
     }
@@ -238,6 +242,10 @@ impl IrcParser {
         }
         
         assert_eq!(parser.byte_idx as usize, message.len());
+
+        if parser.arg_len == 0 {
+            return Err(ParseError::new(ParseErrorKind::Truncated, message));
+        }
 
         let mut parsed = IrcMsg {
             data: message,
@@ -260,6 +268,7 @@ impl IrcParser {
             arg_end -= 1;
             parsed.args[last_idx] = (arg_start, arg_end);
         }
+
         parsed.data.truncate(arg_end as usize);
         Ok(parsed)
     }
@@ -360,7 +369,7 @@ impl Index<usize> for IrcMsg {
 
 #[cfg(test)]
 mod tests {
-    use super::{IrcParser, ParseError};
+    use super::{IrcParser, ParseErrorKind};
 
     #[test]
     fn test_basics() {
@@ -382,7 +391,9 @@ mod tests {
 
         {
             let example: Vec<_> = b"PING a b c d e f g h i j k l m n o p q r s t u v w x y z\n".iter().map(|&x| x).collect();
-            assert_eq!(IrcParser::parse(example).err(), Some(ParseError::InvalidMessage("too many arguments")));
+            assert_eq!(
+                IrcParser::parse(example).err().unwrap().kind,
+                ParseErrorKind::TooManyArguments);
         }
 
         {
