@@ -34,7 +34,7 @@ Current State
 =============
 Work in progress. Lots of unsupported message types.
 
-See [infinityb/rust-irc-bot](https://github.com/infinityb/rust-irc-bot) (especially [ringbuf.rs](https://github.com/infinityb/rust-irc-bot/blob/master/src/ringbuf.rs)) for an example of use with [carllerche/mio](https://github.com/carllerche/mio).
+See [infinityb/rust-irc-mio](https://github.com/infinityb/rust-irc-mio) for integration with [carllerche/mio](https://github.com/carllerche/mio).
 
 Event-loop specific implementations will most likely be implemented in separate crates eventually.
 
