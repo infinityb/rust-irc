@@ -58,23 +58,22 @@ pub struct WhoRecord {
 
 impl WhoRecord {
     fn new(args: &[&[u8]]) -> Option<WhoRecord> {
-        match args {
-            [_self_nick, _channel, username,
-             hostname, server, nick, _unk1, rest
-            ] => {
-                let whorec = WhoRecord {
-                    hostname: String::from_utf8_lossy(hostname).into_owned(),
-                    server: String::from_utf8_lossy(server).into_owned(),
-                    username: String::from_utf8_lossy(username).into_owned(),
-                    nick: String::from_utf8_lossy(nick).into_owned(),
-                    rest: String::from_utf8_lossy(rest).into_owned(),
-                };
-                Some(whorec)
-            },
-            _ => {
-                None
-            }
+        if args.len() != 8 {
+            return None;
         }
+        let username = args[2];
+        let hostname = args[3];
+        let server = args[4];
+        let nick = args[5];
+        let rest = args[7];
+
+        Some(WhoRecord {
+            hostname: String::from_utf8_lossy(hostname).into_owned(),
+            server: String::from_utf8_lossy(server).into_owned(),
+            username: String::from_utf8_lossy(username).into_owned(),
+            nick: String::from_utf8_lossy(nick).into_owned(),
+            rest: String::from_utf8_lossy(rest).into_owned(),
+        })
     }
 
     pub fn get_prefix_raw(&self) -> String {

@@ -1,4 +1,4 @@
-#![feature(convert, hasher_write, slice_patterns)]
+#![feature(convert, hasher_write)]
 
 #![allow(stable_features)]
 // hasher_write was stabilised in rust 1.4
