@@ -1,4 +1,4 @@
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow;
 
 use parse::IrcMsg;
 use core_plugins::traits::MessageResponder;
@@ -16,13 +16,13 @@ pub struct CtcpVersionResponder {
 impl CtcpVersionResponder {
     fn get_version(&self) -> Cow<'static, str> {
         match (self.include_rust_irc, &self.customized) {
-            (_, &None) => VERSION.into_cow(),
+            (_, &None) => Cow::Borrowed(VERSION),
             (true, &Some(ref customized)) => {
                 let string = format!("{:?} ({:?})", customized, VERSION);
-                string.into_cow()
+                Cow::Owned(string)
             },
             (false, &Some(ref customized)) => {
-               customized.clone().into_cow()
+               Cow::Owned(customized.clone())
             }
         }
     }

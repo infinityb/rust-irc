@@ -1,6 +1,6 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(convert, hasher_write, slice_patterns, into_cow)]
+#![feature(convert, hasher_write, slice_patterns)]
 
 #![allow(stable_features)]
 // hasher_write was stabilised in rust 1.4

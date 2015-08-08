@@ -7,7 +7,7 @@ use std::collections::{
     HashMap,
     HashSet,
 };
-use std::borrow::IntoCow;
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use message_types::server;
@@ -143,7 +143,8 @@ impl Patch<Vec<UserDiffCmd>> for User {
         for cmd in diff.iter() {
             match *cmd {
                 UserDiffCmd::ChangePrefix(ref prefix_str) => {
-                    other.prefix = IrcMsgPrefix::new(prefix_str.clone().into_cow());
+                    other.prefix = IrcMsgPrefix::new(
+                        Cow::Owned(prefix_str.clone()));
                 },
                 UserDiffCmd::AddChannel(chan_id) => {
                     other.channels.insert(chan_id);
@@ -651,10 +652,12 @@ impl State {
     fn initialize_self_nick(&mut self, new_nick_str: &str) {
         let new_nick = IrcIdentifier::from_str(new_nick_str);
         self.user_map.insert(new_nick, self.self_id);
+
+        let hack_prefix = format!("{}!someone@somewhere", new_nick_str);
         self.users.insert(self.self_id, User {
             id: self.self_id,
             // FIXME: hack
-            prefix: IrcMsgPrefix::new(format!("{}!someone@somewhere", new_nick_str).into_cow()),
+            prefix: IrcMsgPrefix::new(Cow::Owned(hack_prefix)),
             channels: HashSet::new(),
         });
         self.set_self_nick(new_nick_str);

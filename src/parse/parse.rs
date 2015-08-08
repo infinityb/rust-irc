@@ -1,6 +1,6 @@
 use std::fmt;
 use std::ops::Index;
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow;
 
 use util::{StringSlicer, OptionalStringSlicer};
 
@@ -323,7 +323,7 @@ impl IrcMsg {
     }
 
     pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
-        IrcMsgPrefix::new(self.get_prefix_str().into_cow())
+        IrcMsgPrefix::new(Cow::Borrowed(self.get_prefix_str()))
     }
 
     fn get_command_raw<'a>(&'a self) -> &[u8] {
@@ -505,7 +505,7 @@ impl<'a> IrcMsgPrefix<'a> {
     /// Get an owned copy
     pub fn to_owned(&self) -> IrcMsgPrefix<'static> {
         IrcMsgPrefix {
-            data: self.data.to_string().into_cow(),
+            data: Cow::Owned(self.data.to_string()),
             slicer: self.slicer.clone()
         }
     }
@@ -515,7 +515,7 @@ impl<'a> IrcMsgPrefix<'a> {
         match (self.nick(), self.username(), self.hostname()) {
             (Some(_), Some(username), hostname) => {
                 let prefix_data = format!("{}!{}@{}", nick, username, hostname);
-                Some(IrcMsgPrefix::new(prefix_data.into_cow()))
+                Some(IrcMsgPrefix::new(Cow::Owned(prefix_data)))
             },
             _ => None
         }

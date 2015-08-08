@@ -1,6 +1,6 @@
 use std::fmt;
 use std::sync::mpsc::SyncSender;
-use std::borrow::IntoCow;
+use std::borrow::Cow;
 
 use irccase::IrcAsciiExt;
 use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
@@ -83,7 +83,7 @@ impl WhoRecord {
 
     pub fn get_prefix(&self) -> IrcMsgPrefix {
         let prefix_str = format!("{}!{}@{}", self.nick, self.username, self.hostname);
-        IrcMsgPrefix::new(prefix_str.into_cow())
+        IrcMsgPrefix::new(Cow::Owned(prefix_str))
     }
 }
 
