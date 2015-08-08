@@ -138,7 +138,7 @@ impl IncomingMsg {
 #[test]
 fn test_incoming() {
     let mut msg_raw = Vec::new();
-    msg_raw.push_all(b":person!user@host JOIN #foo");
+    msg_raw.extend(&b":person!user@host JOIN #foo"[..]);
     let msg = IrcMsg::new(msg_raw).unwrap();
 
     match IncomingMsg::from_msg(msg.clone()) {
@@ -204,7 +204,7 @@ fn test_join_basics() {
 
     for &(raw, nick, channel) in valid_messages.iter() {
         let mut raw_owned = Vec::with_capacity(raw.len());
-        raw_owned.push_all(raw);
+        raw_owned.extend(raw);
 
         let msg = IrcMsg::new(raw_owned).unwrap();
         let join_msg: Join = FromIrcMsg::from_irc_msg(msg).ok().unwrap();
@@ -464,7 +464,7 @@ impl FromIrcMsg for Ping {
 #[test]
 fn test_ping_basics() {
     let mut raw_owned = Vec::new();
-    raw_owned.push_all(b":person!user@host NOTPING server1 :server2");
+    raw_owned.extend(&b":person!user@host NOTPING server1 :server2"[..]);
     let msg = IrcMsg::new(raw_owned).unwrap();
     let ping: Result<Ping, _> = FromIrcMsg::from_irc_msg(msg);
     assert!(ping.is_err());
@@ -520,7 +520,7 @@ impl FromIrcMsg for Pong {
 #[test]
 fn test_pong_basics() {
     let mut raw_owned = Vec::new();
-    raw_owned.push_all(b":person!user@host NOTPONG server1 :server2");
+    raw_owned.extend(&b":person!user@host NOTPONG server1 :server2"[..]);
     let msg = IrcMsg::new(raw_owned).unwrap();
     let ping: Result<Ping, _> = FromIrcMsg::from_irc_msg(msg);
     assert!(ping.is_err());
@@ -576,7 +576,7 @@ impl FromIrcMsg for Privmsg {
 #[test]
 fn test_privmsg_basics() {
     let mut raw_owned = Vec::new();
-    raw_owned.push_all(b":person!user@host NOTPRIVMSG server1 :server2");
+    raw_owned.extend(&b":person!user@host NOTPRIVMSG server1 :server2"[..]);
     let privmsg: Result<Privmsg, _> = FromIrcMsg::from_irc_msg(IrcMsg::new(raw_owned).unwrap());
     assert!(privmsg.is_err());
 
@@ -596,7 +596,7 @@ fn test_privmsg_basics() {
 
     for &(raw, nick, channel, body) in valid_messages.iter() {
         let mut raw_owned = Vec::with_capacity(raw.len());
-        raw_owned.push_all(raw);
+        raw_owned.extend(raw);
 
         let msg = IrcMsg::new(raw_owned).unwrap();
         let priv_msg: Privmsg = FromIrcMsg::from_irc_msg(msg).ok().unwrap();

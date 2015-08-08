@@ -1,6 +1,6 @@
 #![crate_name = "irc"]
 #![crate_type = "dylib"]
-#![feature(convert, hasher_write, slice_patterns, into_cow, vec_push_all)]
+#![feature(convert, hasher_write, slice_patterns, into_cow)]
 
 #![deny(unused_must_use, warnings, unused_variables, unused_mut)]
 
