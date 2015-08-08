@@ -1,5 +1,3 @@
-#![crate_name = "irc"]
-#![crate_type = "dylib"]
 #![feature(convert, hasher_write, slice_patterns)]
 
 #![allow(stable_features)]
