@@ -224,12 +224,14 @@ impl Default for AsciiCaseMapping {
     fn default() -> AsciiCaseMapping { AsciiCaseMapping }
 }
 
-impl CaseMapping for AsciiCaseMapping {
+impl OSCaseMapping for AsciiCaseMapping {
     #[inline]
     fn get_lower_map(&self) -> &[u8] {
         &ASCII_LOWER_MAP
     }
 }
+
+impl CaseMapping for AsciiCaseMapping {}
 
 
 #[derive(PartialEq, Eq, Debug)]
@@ -239,12 +241,14 @@ impl Default for Rfc1459CaseMapping {
     fn default() -> Rfc1459CaseMapping { Rfc1459CaseMapping }
 }
 
-impl CaseMapping for Rfc1459CaseMapping {
+impl OSCaseMapping for Rfc1459CaseMapping {
     #[inline]
     fn get_lower_map(&self) -> &[u8] {
         &RFC1459_LOWER_MAP
     }
 }
+
+impl CaseMapping for Rfc1459CaseMapping {}
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct StrictRfc1459CaseMapping;
@@ -253,16 +257,22 @@ impl Default for StrictRfc1459CaseMapping {
     fn default() -> StrictRfc1459CaseMapping { StrictRfc1459CaseMapping }
 }
 
-impl CaseMapping for StrictRfc1459CaseMapping {
+impl OSCaseMapping for StrictRfc1459CaseMapping {
     #[inline]
     fn get_lower_map(&self) -> &[u8] {
         &STRICT_RFC1459_LOWER_MAP
     }
 }
 
-pub trait CaseMapping: Default+PartialEq+Eq {
-    fn get_lower_map(&self) -> &[u8];
+impl CaseMapping for StrictRfc1459CaseMapping {}
 
+
+// Object-safe case mapping
+pub trait OSCaseMapping {
+    fn get_lower_map(&self) -> &[u8];
+}
+
+pub trait CaseMapping: OSCaseMapping+Default+PartialEq+Eq {
     fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: ToByteSlice {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();

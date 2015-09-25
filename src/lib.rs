@@ -28,6 +28,8 @@ pub use self::watchers::{
 };
 
 pub use self::irccase::{
+    OSCaseMapping,
+    CaseMapping,
     IrcAsciiExt,
     OwnedIrcAsciiExt,
 };
@@ -43,6 +45,8 @@ pub use self::state::{
     FrozenState,
     MessageEndpoint,
 };
+
+pub use self::parse::IrcMsg;
 
 #[cfg(test)] pub mod testinfra;
 mod numerics;
