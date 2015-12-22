@@ -1,8 +1,3 @@
-#![feature(convert, hasher_write)]
-
-#![allow(stable_features)]
-// hasher_write was stabilised in rust 1.4
-
 #![deny(unused_must_use, unused_variables, unused_mut)]
 
 #[macro_use] extern crate log;

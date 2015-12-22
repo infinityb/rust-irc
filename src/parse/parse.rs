@@ -240,7 +240,7 @@ impl IrcParser {
         if let Err(err) = parser.finish() {
             return Err(ParseError::new(err, message));
         }
-        
+
         assert_eq!(parser.byte_idx as usize, message.len());
 
         if parser.arg_len == 0 {
@@ -420,7 +420,7 @@ mod tests {
             Ok(parsed) => parsed.into_bytes(),
             Err(err) => panic!("Should have been able to parse. err: {:?}", err)
         };
-        assert_eq!(safe.as_slice(), b":prefix PING foo");
+        assert_eq!(&safe[..], b":prefix PING foo");
     }
 }
 

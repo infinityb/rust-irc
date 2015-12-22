@@ -17,8 +17,8 @@ trait ChannelTargeted {
 impl ChannelTargeted for WhoResult {
     fn get_channel(&self) -> &[u8] {
         match *self {
-            Ok(ref join_succ) => join_succ.channel.as_slice(),
-            Err(ref join_err) => join_err.channel.as_slice()
+            Ok(ref join_succ) => &join_succ.channel,
+            Err(ref join_err) => &join_err.channel
         }
     }
 }
@@ -156,13 +156,14 @@ impl Bundler for WhoBundler {
             return Vec::new();
         }
 
-        if !args[1].eq_ignore_irc_case(self.target_channel.as_slice()) {
+        if !args[1].eq_ignore_irc_case(&self.target_channel) {
             return Vec::new();
         }
 
         match server::IncomingMsg::from_msg(msg.clone()) {
             server::IncomingMsg::Numeric(352, ref message2) => {
-                self.add_record(message2.to_irc_msg().get_args().as_slice());
+                let args = message2.to_irc_msg().get_args();
+                self.add_record(&args);
                 Vec::new()
             },
             server::IncomingMsg::Numeric(315, ref _message) => {
@@ -209,7 +210,7 @@ impl WhoEventWatcher {
 
 impl fmt::Debug for WhoEventWatcher {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "WhoEventWatcher(channel={:?})", self.channel.as_slice())
+        write!(f, "WhoEventWatcher(channel={:?})", &self.channel)
     }
 }
 
@@ -217,7 +218,7 @@ impl EventWatcher for WhoEventWatcher {
     fn on_event(&mut self, event: &IrcEvent) {
         match event {
             &IrcEvent::WhoBundle(ref result) => {
-                if result.get_channel().eq_ignore_irc_case(self.channel.as_slice()) {
+                if result.get_channel().eq_ignore_irc_case(&self.channel) {
                     self.result = Some(result.clone());
                     self.dispatch_monitors();
                     self.finished = true;

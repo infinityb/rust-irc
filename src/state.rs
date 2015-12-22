@@ -51,6 +51,7 @@ pub struct UserId(u64);
 
 
 mod irc_identifier {
+    use std::ops;
     use irccase::IrcAsciiExt;
 
     fn channel_deprefix(target: &str) -> &str {
@@ -72,6 +73,14 @@ mod irc_identifier {
         pub fn as_slice(&self) -> &str {
             let IrcIdentifier(ref string) = *self;
             &string
+        }
+    }
+
+    impl ops::Deref for IrcIdentifier {
+        type Target = str;
+
+        fn deref(&self) -> &str {
+            &self.0
         }
     }
 }
@@ -487,10 +496,10 @@ impl State {
     fn on_who(&mut self, who: &WhoSuccess) {
         // If we WHO a channel that we aren't in, we aren't changing any
         // state.
-        let channel_name = ::std::str::from_utf8(who.channel.as_slice()).ok().unwrap();
+        let channel_name = ::std::str::from_utf8(&who.channel).ok().unwrap();
         let channel_name = IrcIdentifier::from_str(channel_name);
 
-        let chan_id = match self.get_channel_by_name(channel_name.as_slice()) {
+        let chan_id = match self.get_channel_by_name(&*channel_name) {
             Some((chan_id, channel)) => {
                 if !channel.users.is_empty() {
                     self.validate_state_with_who(who);

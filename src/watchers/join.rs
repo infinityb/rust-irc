@@ -14,9 +14,9 @@ trait ChannelTargeted {
 
 impl ChannelTargeted for JoinResult {
     fn get_channel(&self) -> &[u8] {
-        match self {
-            &Ok(ref join_succ) => join_succ.channel.as_slice(),
-            &Err(ref join_err) => join_err.channel.as_slice()
+        match *self {
+            Ok(ref join_succ) => &join_succ.channel,
+            Err(ref join_err) => &join_err.channel
         }
     }
 }
@@ -68,7 +68,7 @@ impl JoinBundlerTrigger {
 
     fn on_nick(&mut self, msg: &IrcMsg) {
         let is_self_nick = msg.get_prefix().nick()
-            .and_then(|nick| Some(nick.as_bytes() == self.current_nick.as_slice()))
+            .and_then(|nick| Some(nick.as_bytes() == &self.current_nick[..]))
             .unwrap_or(false);
 
         if is_self_nick {
@@ -80,7 +80,7 @@ impl JoinBundlerTrigger {
 
     fn is_self_join(&self, msg: &IrcMsg) -> bool {
         msg.get_prefix().nick()
-            .and_then(|nick| Some(nick.as_bytes() == self.current_nick.as_slice()))
+            .map(|nick| nick.as_bytes() == &self.current_nick[..])
             .unwrap_or(false)
     }
 }
@@ -110,7 +110,7 @@ impl BundlerTrigger for JoinBundlerTrigger {
 
 impl fmt::Debug for JoinBundlerTrigger {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "JoinBundlerTrigger(current_nick={:?})", self.current_nick.as_slice())
+        write!(f, "JoinBundlerTrigger(current_nick={:?})", self.current_nick)
     }
 }
 
@@ -175,13 +175,13 @@ impl JoinBundler {
     fn accept_state_prejoin(&mut self, msg: &IrcMsg) -> Option<JoinBundlerState> {
         let success = match msg.get_command() {
             "JOIN" => {
-                if !msg[0].eq_ignore_irc_case(self.channel.as_slice()) {
+                if !msg[0].eq_ignore_irc_case(&self.channel) {
                     return None;
                 }
                 true
             },
             "475" => {
-                if !msg[1].eq_ignore_irc_case(self.channel.as_slice()) {
+                if !msg[1].eq_ignore_irc_case(&self.channel) {
                     return None;
                 }
                 false
@@ -191,7 +191,7 @@ impl JoinBundler {
 
         if !success {
             self.result = Some(Err(JoinError {
-                channel: self.channel.as_slice().to_vec(),
+                channel: self.channel[..].to_vec(),
                 errcode: 0,
                 message: String::new(),
             }));
@@ -240,13 +240,13 @@ impl JoinBundler {
 
     fn accept_state_joining(&mut self, msg: &IrcMsg) -> Option<JoinBundlerState> {
         if msg.get_command() == "332" {
-            if msg[1].eq_ignore_irc_case(self.channel.as_slice()) {
+            if msg[1].eq_ignore_irc_case(&self.channel) {
                 return self.on_topic(msg);
             }
             return None;
         }
         if msg.get_command() == "333" {
-            if msg[1].eq_ignore_irc_case(self.channel.as_slice()) {
+            if msg[1].eq_ignore_irc_case(&self.channel) {
                 return self.on_topic_meta(msg);
             }
             return None;
@@ -256,13 +256,13 @@ impl JoinBundler {
                 b"=" | b"*" | b"@" => true,
                 _ => false
             });
-            if msg[2].eq_ignore_irc_case(self.channel.as_slice()) {
+            if msg[2].eq_ignore_irc_case(&self.channel) {
                 return self.on_names(msg);
             }
             return None;
         }
         if msg.get_command() == "366" {
-            if msg[1].eq_ignore_irc_case(self.channel.as_slice()) {
+            if msg[1].eq_ignore_irc_case(&self.channel) {
                 return self.on_names_end(msg);
             }
             return None;
@@ -308,6 +308,6 @@ impl Bundler for JoinBundler {
 
 impl fmt::Debug for JoinBundler {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "JoinBundler({:?})", self.channel.as_slice())
+        write!(f, "JoinBundler({:?})", &self.channel)
     }
 }

@@ -280,63 +280,6 @@ impl<R, W> IrcConnector<R, W> where R: IrcRead, W: IrcWrite {
     }
 }
 
-
-// pub struct IrcStream<S> {
-//     stream: S,
-//     user_sent: bool,
-// }
-
-// impl<S> IrcStream<S> where S: io::Read + io::Write {
-//     pub fn new(stream: S) -> IrcStream<S> {
-//         IrcStream {
-//             stream: stream,
-//             user_sent: false,
-//         }
-//     }
-
-//     pub fn register(&mut self, req: &RegisterRequest) -> Result<State, RegisterError> {
-//         if !self.user_sent {
-//             if let Err(err) = self.stream.write_irc_msg(&req.get_user().into_irc_msg()) {
-//                 return Err(RegisterError::Stream(Error::Io(err)))
-//             }
-//             self.user_sent = true;
-//         }
-//         if let Err(err) = self.stream.write_irc_msg(&req.get_nick().into_irc_msg()) {
-//             return Err(RegisterError::Stream(Error::Io(err)))
-//         }
-        
-//         let mut state = State::new();
-
-//         for msg in IrcReaderIter::new(&mut self.reader) {
-//             let msg = match msg {
-//                 Ok(msg) => msg,
-//                 Err(err) => return Err(RegisterError::Stream(err))
-//             };
-//             state.on_message(&msg);
-//             let tymsg = server::IncomingMsg::from_msg(msg);
-//             if let server::IncomingMsg::Numeric(432, _) = tymsg {
-//                 return Err(RegisterError::InvalidNick);
-//             }
-//             if let server::IncomingMsg::Numeric(433, _) = tymsg {
-//                 return Err(RegisterError::NickInUse);
-//             }
-//             if let server::IncomingMsg::Numeric(1, _) = tymsg {
-//                 return Ok(state);
-//             }
-//         }
-//         unreachable!();
-//     }
-// }
-
-// impl IrcStream<TcpStream> {
-//     pub fn split(self) -> io::Result<(IrcReader<TcpStream>, IrcWriter<TcpStream>)> {
-//         let IrcStream { stream: stream, .. } = self;
-//         let write_stream = try!(stream.try_clone());
-//         Ok((IrcReader::new(stream), IrcWriter::new(write_stream)))
-//     }
-// }
-
-
 impl<T> IrcRead for Box<T> where T: IrcRead {
     fn get_irc_msg(&mut self) -> Result<IrcMsg, Error> {
         (**self).get_irc_msg()

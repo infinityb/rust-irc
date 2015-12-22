@@ -39,7 +39,7 @@ impl MessageResponder for CtcpVersionResponder {
                 let mut vec = Vec::new();
                 vec.extend(b"VERSION ");
                 vec.extend(self.get_version().as_bytes());
-                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), vec.as_slice());
+                let privmsg = client::Privmsg::new_ctcp(msg.get_target(), &vec);
                 out.push(privmsg.into_irc_msg());
             }
         }

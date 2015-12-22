@@ -273,20 +273,20 @@ pub trait OSCaseMapping {
 }
 
 pub trait CaseMapping: OSCaseMapping+Default+PartialEq+Eq {
-    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: ToByteSlice {
+    fn to_irc_lower<T: ?Sized>(&self, left: &T) -> Vec<u8> where T: AsRef<[u8]> {
         // Vec<u8>::to_irc_lower() preserves the UTF-8 invariant.
         let lower_map = self.get_lower_map();
-        left.to_byte_slice().iter().map(|&byte| lower_map[byte as usize]).collect()
+        left.as_ref().iter().map(|&byte| lower_map[byte as usize]).collect()
     }
 
     #[inline]
     fn hash_ignore_case<T: ?Sized, H>(&self, left: &T, hasher: &mut H)
         where
-            T: ToByteSlice + Hash,
+            T: AsRef<[u8]> + Hash,
             H: Hasher {
 
         let lower_map = self.get_lower_map();
-        for byte in left.to_byte_slice().iter() {
+        for byte in left.as_ref().iter() {
             hasher.write_u8(lower_map[*byte as usize]);
         }
     }
@@ -294,10 +294,10 @@ pub trait CaseMapping: OSCaseMapping+Default+PartialEq+Eq {
     #[inline]
     fn eq_ignore_case<T: ?Sized>(&self, left: &T, right: &T) -> bool
         where
-            T: ToByteSlice {
+            T: AsRef<[u8]> {
         let lower_map = self.get_lower_map();
-        let left = left.to_byte_slice();
-        let right = right.to_byte_slice();
+        let left = left.as_ref();
+        let right = right.as_ref();
 
         left.len() == right.len() && left.iter().zip(right.iter()).all(
             |(byte_self, byte_other)| {
@@ -307,33 +307,6 @@ pub trait CaseMapping: OSCaseMapping+Default+PartialEq+Eq {
     }
 }
 
-trait ToByteSlice {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8];
-}
-
-impl ToByteSlice for str {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-}
-
-impl ToByteSlice for String {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_bytes()
-    }
-}
-
-impl ToByteSlice for [u8] {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self
-    }
-}
-
-impl ToByteSlice for Vec<u8> {
-    fn to_byte_slice<'a>(&'a self) -> &'a [u8] {
-        self.as_slice()
-    }
-}
 
 #[test]
 fn test_basics() {
