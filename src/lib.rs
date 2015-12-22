@@ -32,6 +32,9 @@ pub use self::irccase::{
     CaseMapping,
     IrcAsciiExt,
     OwnedIrcAsciiExt,
+    AsciiCaseMapping,
+    Rfc1459CaseMapping,
+    StrictRfc1459CaseMapping,
 };
 
 pub use self::state::{
