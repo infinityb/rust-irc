@@ -50,6 +50,7 @@ pub use self::parse::IrcMsg;
 mod numerics;
 mod watchers;
 mod core_plugins;
+mod slice;
 
 /// Experimental message types
 pub mod message_types;

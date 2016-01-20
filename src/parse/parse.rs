@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::Index;
 use std::borrow::Cow;
 
+use super::{ParseError, ParseErrorKind};
 use util::{StringSlicer, OptionalStringSlicer};
 
 use irccase::IrcAsciiExt;
@@ -91,29 +92,6 @@ struct IrcParser {
     arg_start: u32,
     args: [(u32, u32); IRCMSG_MAX_ARGS],
     state: IrcParserState
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ParseErrorKind {
-    EncodingError,
-    Truncated,
-    TooManyArguments,
-    // ...
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ParseError {
-    pub kind: ParseErrorKind,
-    pub message: Vec<u8>,
-}
-
-impl ParseError {
-    fn new(ekind: ParseErrorKind, msg: Vec<u8>) -> ParseError {
-        ParseError {
-            kind: ekind,
-            message: msg,
-        }
-    }
 }
 
 impl IrcParser {
@@ -369,7 +347,8 @@ impl Index<usize> for IrcMsg {
 
 #[cfg(test)]
 mod tests {
-    use super::{IrcParser, ParseErrorKind};
+    use super::IrcParser;
+    use super::super::ParseErrorKind;
 
     #[test]
     fn test_basics() {
