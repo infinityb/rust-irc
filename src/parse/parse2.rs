@@ -22,31 +22,31 @@ impl ops::Deref for IrcMsgBuf {
     type Target = IrcMsg;
 
     fn deref<'a>(&'a self) -> &'a IrcMsg {
-        IrcMsg::from_u8_slice_unchecked(&self.inner)
+        self.as_irc_msg()
     }
 }
 
 impl Borrow<IrcMsg> for IrcMsgBuf {
     fn borrow(&self) -> &IrcMsg {
-        IrcMsg::from_u8_slice_unchecked(&self.inner)
+        self.as_irc_msg()
     }
 }
 
 impl AsRef<IrcMsg> for IrcMsgBuf {
     fn as_ref(&self) -> &IrcMsg {
-        IrcMsg::from_u8_slice_unchecked(&self.inner)
+        self.as_irc_msg()
     }
 }
 
 impl BorrowMut<IrcMsg> for IrcMsgBuf {
     fn borrow_mut(&mut self) -> &mut IrcMsg {
-        IrcMsg::from_u8_slice_unchecked_mut(&mut self.inner)
+        self.as_irc_msg_mut()
     }
 }
 
 impl AsMut<IrcMsg> for IrcMsgBuf {
     fn as_mut(&mut self) -> &mut IrcMsg {
-        IrcMsg::from_u8_slice_unchecked_mut(&mut self.inner)
+        self.as_irc_msg_mut()
     }
 }
 
@@ -59,20 +59,34 @@ impl ToOwned for IrcMsg {
 }
 
 impl IrcMsgBuf {
-    pub fn new(buf: Vec<u8>) -> Result<IrcMsgBuf, ParseError> {
-        try!(IrcMsg::new(&buf));
+    pub fn new(mut buf: Vec<u8>) -> Result<IrcMsgBuf, ParseError> {
+        let msg_len = try!(IrcMsg::new(&buf)).as_bytes().len();
+        buf.truncate(msg_len);
         Ok(IrcMsgBuf { inner: buf })
     }
 
     pub fn into_inner(self) -> Vec<u8> {
         self.inner
     }
+
+    fn as_irc_msg(&self) -> &IrcMsg {
+        unsafe { IrcMsg::from_u8_slice_unchecked(&self.inner) }
+    }
+
+    fn as_irc_msg_mut(&mut self) -> &mut IrcMsg {
+        unsafe { IrcMsg::from_u8_slice_unchecked_mut(&mut self.inner) }
+    }
 }
 
 impl IrcMsg {
     pub fn new(buf: &[u8]) -> Result<&IrcMsg, ParseError>  {
+        let buf = first_line(buf);
         try!(IrcMsg::validate_buffer(&buf));
-        Ok(IrcMsg::from_u8_slice_unchecked(buf))
+
+        Ok(unsafe {
+            // Invariant is maintained by IrcMsg::validate_buffer
+            IrcMsg::from_u8_slice_unchecked(buf)
+        })
     }
 
     fn validate_buffer(buf: &[u8]) -> Result<(), ParseError> {
@@ -92,18 +106,18 @@ impl IrcMsg {
         Ok(())
     }
 
-    /// The following function allows unchecked construction of a ogg track
-    /// from a u8 slice.  This is private because it does not maintain
+    /// The following function allows unchecked construction of a irc message
+    /// from a u8 slice.  This is unsafe because it does not maintain
     /// the IrcMsg invariant.
-    fn from_u8_slice_unchecked(s: &[u8]) -> &IrcMsg {
-        unsafe { mem::transmute(s) }
+    pub unsafe fn from_u8_slice_unchecked(s: &[u8]) -> &IrcMsg {
+        mem::transmute(s)
     }
 
-    /// The following (private!) function allows unchecked construction of a
-    /// mutable ogg page from a mutable u8 slice.  This is private because it
+    /// The following function allows unchecked construction of a
+    /// mutable irc message from a mutable u8 slice.  This is unsafe because it
     /// does not maintain the IrcMsg invariant.
-    fn from_u8_slice_unchecked_mut(s: &mut [u8]) -> &mut IrcMsg {
-        unsafe { mem::transmute(s) }
+    pub unsafe fn from_u8_slice_unchecked_mut(s: &mut [u8]) -> &mut IrcMsg {
+        mem::transmute(s)
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -144,17 +158,52 @@ impl IrcMsg {
     }
 }
 
+fn first_line(input: &[u8]) -> &[u8] {
+    let mut end_idx = None;
+    for (idx, &chr) in input.iter().enumerate() {
+        if chr == b'\n' {
+            end_idx = Some(idx);
+            break;
+        }
+    }
+    if let Some(idx) = end_idx {
+        if idx > 0 && input[idx-1] == b'\r' {
+            end_idx = Some(idx - 1);
+        }
+    }
+    match end_idx {
+        Some(idx) => &input[..idx],
+        None => input,
+    }
+}
+
+fn find_character(input: &[u8], byte: u8) -> Option<usize> {
+    let mut end_idx = None;
+    for (idx, &chr) in input.iter().enumerate() {
+        if chr == byte {
+            end_idx = Some(idx);
+            break;
+        }
+    }
+    end_idx
+}
+
+fn consume_whitespace(input: &[u8]) -> &[u8] {
+    let mut output = input;
+    for (idx, &chr) in input.iter().enumerate() {
+        output = &input[idx..];
+        if chr != b' ' {
+            break;
+        }
+    }
+    output
+}
+
 fn split_prefix(input: &[u8]) -> (&[u8], &[u8]) {
     if input[0] == b':' {
-        let mut end_idx = None;
-        for (idx, &chr) in input.iter().enumerate() {
-            if chr == b' ' {
-                end_idx = Some(idx);
-                break;
-            }
-        }
+        let end_idx = find_character(input, b' ');
         match end_idx {
-            Some(idx) => (&input[..idx], &input[idx+1..]),
+            Some(idx) => (&input[..idx], consume_whitespace(&input[idx+1..])),
             None => (input, &[]),
         }
     } else {
@@ -163,15 +212,9 @@ fn split_prefix(input: &[u8]) -> (&[u8], &[u8]) {
 }
 
 fn split_command(input: &[u8]) -> (&[u8], &[u8]) {
-    let mut end_idx = None;
-    for (idx, &chr) in input.iter().enumerate() {
-        if chr == b' ' {
-            end_idx = Some(idx);
-            break;
-        }
-    }
+    let end_idx = find_character(input, b' ');
     match end_idx {
-        Some(idx) => (&input[..idx], &input[idx+1..]),
+        Some(idx) => (&input[..idx], consume_whitespace(&input[idx+1..])),
         None => (input, &[]),
     }
 }
@@ -180,15 +223,9 @@ fn split_arg(input: &[u8]) -> (&[u8], &[u8]) {
     if input[0] == b':' {
         (&input[1..], &[])
     } else {
-        let mut end_idx = None;
-        for (idx, &chr) in input.iter().enumerate() {
-            if chr == b' ' {
-                end_idx = Some(idx);
-                break;
-            }
-        }
+        let end_idx = find_character(input, b' ');
         match end_idx {
-            Some(idx) => (&input[..idx], &input[idx+1..]),
+            Some(idx) => (&input[..idx], consume_whitespace(&input[idx+1..])),
             None => (input, &[]),
         }
     }
@@ -240,16 +277,16 @@ enum IrcParserState {
     RestArg,
 }
 
-fn is_valid_prefix_byte(_byte: u8) -> bool {
-    true
+fn is_valid_prefix_byte(byte: u8) -> bool {
+    0x00 < byte && byte < 0x80
 }
 
-fn is_valid_command_byte(_byte: u8) -> bool {
-    true
+fn is_valid_command_byte(byte: u8) -> bool {
+    0x00 < byte && byte < 0x80
 }
 
-fn is_valid_arg_byte(_byte: u8) -> bool {
-    true
+fn is_valid_arg_byte(byte: u8) -> bool {
+    0x00 < byte && byte < 0x80
 }
 
 impl IrcParser {
