@@ -44,7 +44,12 @@ pub use self::state::{
     MessageEndpoint,
 };
 
+#[cfg(feature="legacy")]
 pub use self::parse::IrcMsg;
+
+#[cfg(not(feature="legacy"))]
+pub use self::parse::parse2::{IrcMsg, IrcMsgBuf};
+
 
 #[cfg(test)] pub mod testinfra;
 mod numerics;
@@ -76,3 +81,6 @@ mod state;
 
 /// Receive buffer
 pub mod recv;
+
+pub mod mtype2;
+mod parse_helpers;

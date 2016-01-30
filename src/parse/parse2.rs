@@ -4,6 +4,9 @@ use std::borrow::{Borrow, BorrowMut, ToOwned};
 
 use super::{ParseErrorKind, ParseError};
 use ::slice::Slice;
+use ::parse_helpers;
+use ::parse::IrcMsg as IrcMsgLegacy;
+
 
 #[derive(Clone)]
 pub struct IrcMsgBuf {
@@ -76,17 +79,29 @@ impl IrcMsgBuf {
     fn as_irc_msg_mut(&mut self) -> &mut IrcMsg {
         unsafe { IrcMsg::from_u8_slice_unchecked_mut(&mut self.inner) }
     }
+
+    pub fn from_legacy(legacy: IrcMsgLegacy) -> IrcMsgBuf {
+        IrcMsgBuf::new(legacy.into_bytes()).unwrap()
+    }
+
+    pub fn into_legacy(self) -> IrcMsgLegacy {
+        IrcMsgLegacy::new(self.inner).unwrap()
+    }
 }
 
 impl IrcMsg {
     pub fn new(buf: &[u8]) -> Result<&IrcMsg, ParseError>  {
-        let buf = first_line(buf);
+        let buf = parse_helpers::first_line(buf);
         try!(IrcMsg::validate_buffer(&buf));
 
         Ok(unsafe {
             // Invariant is maintained by IrcMsg::validate_buffer
             IrcMsg::from_u8_slice_unchecked(buf)
         })
+    }
+
+    pub fn from_legacy(legacy: &IrcMsgLegacy) -> &IrcMsg {
+        IrcMsg::new(legacy.as_bytes()).unwrap()
     }
 
     fn validate_buffer(buf: &[u8]) -> Result<(), ParseError> {
@@ -132,7 +147,7 @@ impl IrcMsg {
 
     pub fn get_prefix<'a>(&'a self) -> Option<&'a IrcMsgPrefix> {
         let buffer = &self.inner[..];
-        let (prefix, _) = split_prefix(buffer);
+        let (prefix, _) = parse_helpers::split_prefix(buffer);
 
         if prefix.len() > 0 {
             assert!(prefix.len() > 1);
@@ -144,90 +159,17 @@ impl IrcMsg {
 
     pub fn get_command(&self) -> &str {
         let buffer = &self.inner[..];
-        let (_, buffer) = split_prefix(buffer);
-        let (command, _) = split_command(buffer);
+        let (_, buffer) = parse_helpers::split_prefix(buffer);
+        let (command, _) = parse_helpers::split_command(buffer);
 
         unsafe { ::std::str::from_utf8_unchecked(command) }
     }
 
     pub fn args(&self) -> ArgumentIter {
         let buffer = &self.inner[..];
-        let (_, buffer) = split_prefix(buffer);
-        let (_, buffer) = split_command(buffer);
+        let (_, buffer) = parse_helpers::split_prefix(buffer);
+        let (_, buffer) = parse_helpers::split_command(buffer);
         ArgumentIter { arg_body: buffer }
-    }
-}
-
-fn first_line(input: &[u8]) -> &[u8] {
-    let mut end_idx = None;
-    for (idx, &chr) in input.iter().enumerate() {
-        if chr == b'\n' {
-            end_idx = Some(idx);
-            break;
-        }
-    }
-    if let Some(idx) = end_idx {
-        if idx > 0 && input[idx-1] == b'\r' {
-            end_idx = Some(idx - 1);
-        }
-    }
-    match end_idx {
-        Some(idx) => &input[..idx],
-        None => input,
-    }
-}
-
-fn find_character(input: &[u8], byte: u8) -> Option<usize> {
-    let mut end_idx = None;
-    for (idx, &chr) in input.iter().enumerate() {
-        if chr == byte {
-            end_idx = Some(idx);
-            break;
-        }
-    }
-    end_idx
-}
-
-fn consume_whitespace(input: &[u8]) -> &[u8] {
-    let mut output = input;
-    for (idx, &chr) in input.iter().enumerate() {
-        output = &input[idx..];
-        if chr != b' ' {
-            break;
-        }
-    }
-    output
-}
-
-fn split_prefix(input: &[u8]) -> (&[u8], &[u8]) {
-    if input[0] == b':' {
-        let end_idx = find_character(input, b' ');
-        match end_idx {
-            Some(idx) => (&input[..idx], consume_whitespace(&input[idx+1..])),
-            None => (input, &[]),
-        }
-    } else {
-        (&[], input)
-    }
-}
-
-fn split_command(input: &[u8]) -> (&[u8], &[u8]) {
-    let end_idx = find_character(input, b' ');
-    match end_idx {
-        Some(idx) => (&input[..idx], consume_whitespace(&input[idx+1..])),
-        None => (input, &[]),
-    }
-}
-
-fn split_arg(input: &[u8]) -> (&[u8], &[u8]) {
-    if input[0] == b':' {
-        (&input[1..], &[])
-    } else {
-        let end_idx = find_character(input, b' ');
-        match end_idx {
-            Some(idx) => (&input[..idx], consume_whitespace(&input[idx+1..])),
-            None => (input, &[]),
-        }
     }
 }
 
@@ -256,7 +198,7 @@ impl<'a> Iterator for ArgumentIter<'a> {
             return None;
         }
 
-        let (output, remainder) = split_arg(self.arg_body);
+        let (output, remainder) = parse_helpers::split_arg(self.arg_body);
         self.arg_body = remainder;
         Some(output)
     }
@@ -277,18 +219,6 @@ enum IrcParserState {
     RestArg,
 }
 
-fn is_valid_prefix_byte(byte: u8) -> bool {
-    0x00 < byte && byte < 0x80
-}
-
-fn is_valid_command_byte(byte: u8) -> bool {
-    0x00 < byte && byte < 0x80
-}
-
-fn is_valid_arg_byte(byte: u8) -> bool {
-    0x00 < byte && byte < 0x80
-}
-
 impl IrcParser {
     fn new() -> IrcParser {
         IrcParser(IrcParserState::Initial)
@@ -296,6 +226,7 @@ impl IrcParser {
 
     fn push_byte(&self, byte: u8) -> Result<IrcParser, ParseError> {
         use self::IrcParserState::*;
+        use parse_helpers::is_valid_prefix_byte;
 
         match (self.0, byte) {
             (Initial, b' ') => Ok(IrcParser(Initial)),
@@ -309,35 +240,20 @@ impl IrcParser {
             },
 
             (CommandStart, b' ') => Ok(IrcParser(CommandStart)),
-            (CommandStart, byte) if is_valid_command_byte(byte) => Ok(IrcParser(Command)),
-            (CommandStart, byte) => {
-                Err(ParseError::unexpected_byte(byte, "command-start"))
-            },
+            (CommandStart, _byte) => Ok(IrcParser(Command)),
 
             (Command, b' ') => Ok(IrcParser(ArgStart)),
-            (Command, byte) if is_valid_command_byte(byte) => Ok(IrcParser(Command)),
-            (Command, byte) => {
-                Err(ParseError::unexpected_byte(byte, "command"))
-            }
+            (Command, _byte) => Ok(IrcParser(Command)),
 
             (ArgStart, b' ') => Ok(IrcParser(ArgStart)),
-            (ArgStart, byte) if is_valid_arg_byte(byte) => Ok(IrcParser(Arg)),
-            (ArgStart, byte) => {
-                Err(ParseError::unexpected_byte(byte, "argument-start"))
-            }
+            (ArgStart, _byte) => Ok(IrcParser(Arg)),
 
             (Arg, b' ') => Ok(IrcParser(ArgEnd)),
-            (Arg, byte) if is_valid_arg_byte(byte) => Ok(IrcParser(Arg)),
-            (Arg, byte) => {
-                Err(ParseError::unexpected_byte(byte, "argument"))
-            },
+            (Arg, _byte) => Ok(IrcParser(Arg)),
 
             (ArgEnd, b' ') => Ok(IrcParser(ArgEnd)),
             (ArgEnd, b':') => Ok(IrcParser(RestArg)),
-            (ArgEnd, byte) if is_valid_arg_byte(byte) => Ok(IrcParser(Arg)),
-            (ArgEnd, byte) => {
-                Err(ParseError::unexpected_byte(byte, "argument-end"))
-            },
+            (ArgEnd, _byte) => Ok(IrcParser(Arg)),
 
             (RestArg, _byte) => Ok(IrcParser(RestArg)),
         }
@@ -366,16 +282,16 @@ mod tests {
 
     #[test]
     fn test_many_modes() {
-        let buf: &[u8] = b":InfinityB!q@d75-159-24-159.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
+        let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
         let _ = IrcMsg::new(buf).unwrap();
     }
 
     #[test]
     fn test_many_modes2() {
-        let buf: &[u8] = b":InfinityB!q@d75-159-24-159.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
+        let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
         let msg = IrcMsg::new(buf).unwrap();
 
-        assert_eq!(msg.get_prefix().unwrap().as_bytes(), b"InfinityB!q@d75-159-24-159.abhsia.telus.net" as &[u8]);
+        assert_eq!(msg.get_prefix().unwrap().as_bytes(), b"InfinityB!d0-0-0-0.abhsia.telus.net" as &[u8]);
         assert_eq!(msg.get_command(), "MODE");
 
         let mut arg_iter = msg.args();

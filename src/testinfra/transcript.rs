@@ -38,3 +38,4 @@ pub fn marker_match(rec: &SessionRecord, target: &str) -> bool {
         _ => false
     }
 }
+
