@@ -291,7 +291,7 @@ mod tests {
         let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
         let msg = IrcMsg::new(buf).unwrap();
 
-        assert_eq!(msg.get_prefix().unwrap().as_bytes(), b"InfinityB!d0-0-0-0.abhsia.telus.net" as &[u8]);
+        assert_eq!(msg.get_prefix().unwrap().as_bytes(), b"InfinityB!q@d0-0-0-0.abhsia.telus.net" as &[u8]);
         assert_eq!(msg.get_command(), "MODE");
 
         let mut arg_iter = msg.args();
