@@ -79,7 +79,7 @@ impl Join {
         let buf = self.inner.as_bytes();
         let (prefix, _rest) = parse_helpers::split_prefix(buf);
         let (nick, _, _) = parse_helpers::parse_prefix(prefix).unwrap();
-        unsafe { ::std::str::from_utf8_unchecked(nick) }
+        ::std::str::from_utf8(nick).unwrap()
     }
 }
 
