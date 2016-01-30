@@ -3,10 +3,10 @@ use std::sync::mpsc::SyncSender;
 use std::borrow::Cow;
 
 use irccase::IrcAsciiExt;
-use watchers::base::{Bundler, BundlerTrigger, EventWatcher};
-use event::IrcEvent;
-use parse::{IrcMsg, IrcMsgPrefix};
-use message_types::server;
+use super::super::{IrcMsg, IrcEvent, IrcMsgPrefix};
+use super::base::{Bundler, BundlerTrigger, EventWatcher};
+
+use super::super::message_types::server;
 
 pub type WhoResult = Result<WhoSuccess, WhoError>;
 

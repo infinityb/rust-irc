@@ -2,10 +2,35 @@ use std::fmt;
 use std::ops::Index;
 use std::borrow::Cow;
 
-use super::{ParseError, ParseErrorKind};
+use super::parse::{ParseError, ParseErrorKind};
 use util::{StringSlicer, OptionalStringSlicer};
 
 use irccase::IrcAsciiExt;
+
+mod event;
+mod watchers;
+pub mod numerics;
+pub mod message_types;
+pub mod state;
+
+pub use self::event::IrcEvent;
+pub use self::watchers::{
+    RegisterError,
+    RegisterErrorType,
+
+    JoinResult,
+    JoinSuccess,
+    JoinError,
+
+    WhoResult,
+    WhoRecord,
+    WhoSuccess,
+    WhoError,
+
+    BundlerManager,
+    JoinBundlerTrigger,
+    WhoBundlerTrigger,
+};
 
 static CHANNEL_PREFIX_CHARS: [char; 4] = ['&', '#', '+', '!'];
 

@@ -2,11 +2,10 @@ use std::str;
 use std::str::Utf8Error;
 use std::cmp::min;
 
-use parse::is_full_prefix;
-use parse::IrcMsg;
+use super::FromIrcMsg;
+use super::super::{is_full_prefix, IrcMsg};
 use irccase::IrcAsciiExt;
-use message_types::traits::FromIrcMsg;
-use message_types::client;
+use super::client;
 
 
 pub trait IntoIncomingMsg {
@@ -61,7 +60,7 @@ pub enum IncomingMsg {
     Quit(Quit),
     Topic(Topic),
     Invite(Invite),
-    
+
     // Others
     Numeric(u16, Numeric),
     Unknown(IrcMsg),
@@ -741,7 +740,7 @@ impl Numeric {
 impl IntoIncomingMsg for Numeric {
     fn into_incoming_msg(self) -> IncomingMsg {
         let numeric_num = self.get_code();
-        IncomingMsg::Numeric(numeric_num, self) 
+        IncomingMsg::Numeric(numeric_num, self)
     }
 }
 

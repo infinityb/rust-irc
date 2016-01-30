@@ -1,10 +1,8 @@
 use std::fmt;
 use irccase::IrcAsciiExt;
 
-use parse::IrcMsg;
-use watchers::base::{Bundler, BundlerTrigger};
-use event::IrcEvent;
-
+use super::super::{IrcMsg, IrcEvent};
+use super::base::{Bundler, BundlerTrigger};
 
 pub type JoinResult = Result<JoinSuccess, JoinError>;
 

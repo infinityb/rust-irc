@@ -1,4 +1,4 @@
-use parse::IrcMsg;
+use super::super::IrcMsg;
 
 
 fn byte_length_sum(items: &[&str]) -> usize {

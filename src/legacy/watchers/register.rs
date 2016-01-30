@@ -1,6 +1,5 @@
-use numerics;
-use parse::IrcMsg;
-use message_types::server;
+use super::super::{IrcMsg, numerics};
+use super::super::message_types::server;
 
 pub type RegisterResult = Result<(), RegisterError>;
 

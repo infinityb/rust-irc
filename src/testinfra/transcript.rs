@@ -1,10 +1,10 @@
 use std::io;
 
-use parse::IrcMsg;
+use ::IrcMsgBuf;
 
 #[derive(Debug)]
 pub enum SessionRecord {
-    Content(IrcMsg),
+    Content(IrcMsgBuf),
     Expectation(String),
     Comment(String),
     Unknown(String),
@@ -22,7 +22,7 @@ pub fn decode_line2(line: String) -> SessionRecord {
     let slice = line.trim_right_matches(trim_these);
 
     match (&slice[0..3], (&slice[3..]).to_string()) {
-        (">> ", rest) => match IrcMsg::new(rest.into_bytes()) {
+        (">> ", rest) => match IrcMsgBuf::new(rest.into_bytes()) {
             Ok(irc_msg) => SessionRecord::Content(irc_msg),
             Err(err) => panic!("Error decoding IrcMsg: {:?}", err)
         },

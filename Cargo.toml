@@ -8,6 +8,8 @@ name = "irc"
 
 [dependencies]
 log = "*"
+unicase = "1.1.1"
 
 [features]
-legacy = []
+default = []
+unstable = []

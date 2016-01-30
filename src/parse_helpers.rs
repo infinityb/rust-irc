@@ -87,6 +87,9 @@ pub fn split_command(input: &[u8]) -> (&[u8], &[u8]) {
 }
 
 pub fn split_arg(input: &[u8]) -> (&[u8], &[u8]) {
+    if input.len() == 0 {
+        return (input, input);
+    }
     if input[0] == b':' {
         (&input[1..], &[])
     } else {
@@ -121,8 +124,8 @@ pub fn is_valid_user(user: &[u8]) -> bool {
     return true;
 }
 
-pub fn is_valid_prefix_byte(_byte: u8) -> bool {
-    true
+pub fn is_valid_prefix_byte(byte: u8) -> bool {
+    is_non_white(byte)
 }
 
 pub fn is_valid_prefix(prefix: &[u8]) -> bool {

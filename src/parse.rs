@@ -1,18 +1,20 @@
+use std::error::Error;
+
 use std::mem;
 use std::ops;
 use std::borrow::{Borrow, BorrowMut, ToOwned};
 
-use super::{ParseErrorKind, ParseError};
 use ::slice::Slice;
 use ::parse_helpers;
-use ::parse::IrcMsg as IrcMsgLegacy;
+use ::legacy::IrcMsg as IrcMsgLegacy;
+use ::mtype2::FromIrcMsg;
 
-
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct IrcMsgBuf {
     inner: Vec<u8>,
 }
 
+#[derive(Debug)]
 pub struct IrcMsg {
     inner: Slice,
 }
@@ -165,6 +167,16 @@ impl IrcMsg {
         unsafe { ::std::str::from_utf8_unchecked(command) }
     }
 
+    pub fn as_tymsg<T: FromIrcMsg>(&self) -> Result<T, T::Err> {
+        FromIrcMsg::from_irc_msg(self)
+    }
+
+    pub fn tags(&self) -> TagIter {
+        let _buffer = &self.inner[..];
+        unimplemented!();
+        TagIter { arg_body: _buffer }
+    }
+
     pub fn args(&self) -> ArgumentIter {
         let buffer = &self.inner[..];
         let (_, buffer) = parse_helpers::split_prefix(buffer);
@@ -184,6 +196,10 @@ impl IrcMsgPrefix {
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner
     }
+}
+
+pub struct TagIter<'a> {
+    arg_body: &'a [u8],
 }
 
 pub struct ArgumentIter<'a> {
@@ -207,7 +223,7 @@ impl<'a> Iterator for ArgumentIter<'a> {
 #[derive(Clone)]
 struct IrcParser(IrcParserState);
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum IrcParserState {
     Initial,
     Prefix,
@@ -227,6 +243,10 @@ impl IrcParser {
     fn push_byte(&self, byte: u8) -> Result<IrcParser, ParseError> {
         use self::IrcParserState::*;
         use parse_helpers::is_valid_prefix_byte;
+
+        if byte == 0 {
+            return Err(ParseError::unexpected_byte(0, "null byte in message"));
+        }
 
         match (self.0, byte) {
             (Initial, b' ') => Ok(IrcParser(Initial)),
@@ -276,15 +296,105 @@ impl IrcParser {
     }
 }
 
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ParseErrorKind {
+    EncodingError,
+    Truncated,
+    // TODO: going away?
+    TooManyArguments,
+    UnexpectedByte,
+    // ...
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ParseError {
+    pub kind: ParseErrorKind,
+    pub message: Vec<u8>,
+    pub error_msg: String,
+}
+
+impl ParseError {
+    pub fn new(ekind: ParseErrorKind, msg: Vec<u8>) -> ParseError {
+        ParseError {
+            kind: ekind,
+            message: msg,
+            error_msg: "".to_string(),
+        }
+    }
+
+    pub fn unexpected_byte(byte: u8, phase: &str) -> ParseError {
+        ParseError {
+            kind: ParseErrorKind::UnexpectedByte,
+            message: Vec::new(),
+            error_msg: format!("Unexpected byte `{:?}' in {}", byte, phase)
+        }
+    }
+
+    fn replace_message(&self, buf: &[u8]) -> ParseError {
+        ParseError {
+            kind: self.kind.clone(),
+            message: buf.to_vec(),
+            error_msg: self.error_msg.clone(),
+        }
+    }
+}
+
+impl ::std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        if self.error_msg.len() > 0 {
+            write!(f, "ParseError({:?}): {} for {:?}", self.kind, self.error_msg, self.message)
+        } else {
+            write!(f, "ParseError({:?}) for {:?}", self.kind, self.message)
+        }
+    }
+}
+
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        if self.error_msg.len() > 0 {
+            return &self.error_msg;
+        }
+
+        match self.kind {
+            ParseErrorKind::EncodingError => "encoding error",
+            ParseErrorKind::Truncated => "truncated message",
+            ParseErrorKind::TooManyArguments => "too many arguments",
+            ParseErrorKind::UnexpectedByte => "unexpected byte",
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::IrcMsg;
+    use ::mtype2::server::{Ping, Pong, Privmsg};
 
     #[test]
     fn test_many_modes() {
         let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
         let _ = IrcMsg::new(buf).unwrap();
     }
+
+
+    #[test]
+    fn test_ping_tymsg() {
+        let msg = IrcMsg::new(b":foo PING :somewhere").unwrap();
+
+        assert!(msg.as_tymsg::<&Ping>().is_ok());
+        assert!(msg.as_tymsg::<&Pong>().is_err());
+    }
+
+    #[test]
+    fn test_privmsg_tymsg() {
+        let msg = IrcMsg::new(b":n!u@h PRIVMSG #somewhere :sometext").unwrap();
+
+        assert!(msg.as_tymsg::<&Ping>().is_err());
+        assert!(msg.as_tymsg::<&Pong>().is_err());
+        assert!(msg.as_tymsg::<&Privmsg>().is_ok());
+    }
+
 
     #[test]
     fn test_many_modes2() {

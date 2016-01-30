@@ -1,26 +1,7 @@
 #![deny(unused_must_use, unused_variables, unused_mut)]
 
 #[macro_use] extern crate log;
-
-pub use self::event::IrcEvent;
-
-pub use self::watchers::{
-    RegisterError,
-    RegisterErrorType,
-
-    JoinResult,
-    JoinSuccess,
-    JoinError,
-
-    WhoResult,
-    WhoRecord,
-    WhoSuccess,
-    WhoError,
-
-    BundlerManager,
-    JoinBundlerTrigger,
-    WhoBundlerTrigger,
-};
+extern crate unicase;
 
 pub use self::irccase::{
     OSCaseMapping,
@@ -32,55 +13,37 @@ pub use self::irccase::{
     StrictRfc1459CaseMapping,
 };
 
-pub use self::state::{
-    User,
-    UserId,
-
-    Channel,
-    ChannelId,
-
-    State,
-    FrozenState,
-    MessageEndpoint,
+pub use self::parse::{
+    IrcMsg,
+    IrcMsgBuf,
+    ParseError,
+    ParseErrorKind,
 };
 
-#[cfg(feature="legacy")]
-pub use self::parse::IrcMsg;
-
-#[cfg(not(feature="legacy"))]
-pub use self::parse::parse2::{IrcMsg, IrcMsgBuf};
-
+pub use self::mtype2::{server, client, FromIrcMsg};
 
 #[cfg(test)] pub mod testinfra;
-mod numerics;
-mod watchers;
-mod core_plugins;
+
 mod slice;
 
-/// Experimental message types
-pub mod message_types;
+/// Experimental message group
+pub mod message_group;
 
 /// Experimental utility code
-pub mod util;
+mod util;
 
 /// Experimental parsing code
-pub mod parse;
+mod parse;
 
 pub mod identifier;
-
-pub mod stream;
-
-/// Event types
-mod event;
 
 /// IRC case manipulation
 mod irccase;
 
-/// IRC state tracker
-mod state;
-
-/// Receive buffer
-pub mod recv;
-
-pub mod mtype2;
+mod mtype2;
 mod parse_helpers;
+
+#[cfg(feature = "unstable")]
+pub mod cap;
+
+pub mod legacy;
