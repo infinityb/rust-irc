@@ -1,3 +1,12 @@
+use std::borrow::{Borrow, BorrowMut, ToOwned};
+use std::borrow::Cow;
+use std::{mem, ops};
+
+use super::FromIrcMsg;
+use ::parse::IrcMsg as IrcMsgLegacy;
+use ::parse::parse2::{IrcMsg, IrcMsgBuf};
+use ::parse_helpers;
+
 #[derive(Copy, Clone)]
 pub enum IncomingMsg<'a> {
     Invite(&'a Invite),
@@ -17,9 +26,6 @@ pub enum IncomingMsg<'a> {
     Unknown(&'a IrcMsg),
 }
 
-use ::parse::IrcMsg as IrcMsgLegacy;
-use ::parse::parse2::IrcMsg;
-use ::parse_helpers;
 
 macro_rules! impl_irc_msg_subtype {
     ($id:ident) => {
@@ -28,17 +34,83 @@ macro_rules! impl_irc_msg_subtype {
         }
 
         impl $id {
-            pub fn from_irc_msg(msg: &IrcMsg) -> Result<&Self, ()> {
-                try!($id::validate(msg));
-                Ok(unsafe {::std::mem::transmute(msg) })
+            /// The following function allows unchecked construction of a irc message
+            /// from a u8 slice.  This is unsafe because it does not maintain
+            /// the invariant of the message type, nor the invariant of IrcMsg
+            pub unsafe fn from_u8_slice_unchecked(s: &[u8]) -> &$id {
+                mem::transmute(s)
             }
 
             pub fn to_irc_msg(&self) -> &IrcMsg {
                 &self.inner
             }
         }
+
+        impl ops::Deref for $id {
+            type Target = IrcMsg;
+
+            fn deref<'a>(&'a self) -> &'a IrcMsg {
+                &self.inner
+            }
+        }
+
+        impl FromIrcMsg for $id {
+            type Err = ();
+
+            fn from_irc_msg(msg: &IrcMsg) -> Result<&$id, ()> {
+                try!($id::validate(msg));
+                Ok(unsafe {::std::mem::transmute(msg) })
+            }
+        }
     }
 }
+
+macro_rules! impl_irc_msg_subtype_buf {
+    ($id:ident, $borrowed:ident) => {
+        pub struct $id {
+            inner: IrcMsgBuf,
+        }
+
+        impl $id {
+            fn _borrow(&self) -> &$borrowed {
+                unsafe { $borrowed::from_u8_slice_unchecked(self.inner.as_bytes()) }
+            }
+
+            pub fn into_inner(self) -> IrcMsgBuf {
+                self.inner
+            }
+        }
+
+        impl AsRef<$borrowed> for $id {
+            fn as_ref(&self) -> &$borrowed {
+                self._borrow()
+            }
+        }
+
+        impl ops::Deref for $id {
+            type Target = $borrowed;
+
+            fn deref<'a>(&'a self) -> &'a $borrowed {
+                self._borrow()
+            }
+        }
+
+        impl Borrow<$borrowed> for $id {
+            fn borrow(&self) -> &$borrowed {
+                self._borrow()
+            }
+        }
+
+        impl ToOwned for $borrowed {
+            type Owned = $id;
+
+            fn to_owned(&self) -> $id {
+                $id { inner: self.inner.to_owned() }
+            }
+        }
+    }
+}
+
 
 macro_rules! irc_msg_legacy_validator {
     ($on:ident, $from:ident) => {
@@ -60,9 +132,11 @@ macro_rules! irc_msg_legacy_validator {
 
 
 impl_irc_msg_subtype!(Invite);
+impl_irc_msg_subtype_buf!(InviteBuf, Invite);
 irc_msg_legacy_validator!(Invite, Invite);
 
 impl_irc_msg_subtype!(Join);
+impl_irc_msg_subtype_buf!(JoinBuf, Join);
 irc_msg_legacy_validator!(Join, Join);
 
 impl Join {
@@ -83,44 +157,88 @@ impl Join {
     }
 }
 
+impl JoinBuf {
+    pub fn new(channel: &[u8]) -> Result<JoinBuf, ()> {
+        let mut out: Vec<u8> = Vec::new();
+        out.extend(b"JOIN ");
+        out.extend(channel);
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(out).map_err(|_| ()));
+
+        try!(Join::validate(&message));
+        Ok(JoinBuf { inner: message })
+    }
+}
+
 
 impl_irc_msg_subtype!(Kick);
+impl_irc_msg_subtype_buf!(KickBuf, Kick);
 irc_msg_legacy_validator!(Kick, Kick);
+
+impl KickBuf {
+    pub fn new(channel: &[u8], who: &[u8], reason: Option<&[u8]>) -> Result<KickBuf, ()> {
+        let mut out: Vec<u8> = Vec::new();
+        out.extend(b"KICK ");
+        out.extend(channel);
+        out.extend(b" ");
+        out.extend(who);
+        if let Some(reason) = reason {
+            out.extend(b" :");
+            out.extend(reason);
+        }
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(out).map_err(|_| ()));
+
+        // try!(Kick::validate(&message));
+        Ok(KickBuf { inner: message })
+    }
+}
 
 
 impl_irc_msg_subtype!(Mode);
+impl_irc_msg_subtype_buf!(ModeBuf, Mode);
 irc_msg_legacy_validator!(Mode, Mode);
 
 
 impl_irc_msg_subtype!(Nick);
+impl_irc_msg_subtype_buf!(NickBuf, Nick);
 irc_msg_legacy_validator!(Nick, Nick);
 
 
 impl_irc_msg_subtype!(Notice);
+impl_irc_msg_subtype_buf!(NoticeBuf, Notice);
 irc_msg_legacy_validator!(Notice, Notice);
 
 
 impl_irc_msg_subtype!(Part);
+impl_irc_msg_subtype_buf!(PartBuf, Part);
 irc_msg_legacy_validator!(Part, Part);
 
 
 impl_irc_msg_subtype!(Ping);
+impl_irc_msg_subtype_buf!(PingBuf, Ping);
 irc_msg_legacy_validator!(Ping, Ping);
 
 
 impl_irc_msg_subtype!(Pong);
+impl_irc_msg_subtype_buf!(PongBuf, Pong);
 irc_msg_legacy_validator!(Pong, Pong);
 
 
 impl_irc_msg_subtype!(Privmsg);
+impl_irc_msg_subtype_buf!(PrivmsgBuf, Privmsg);
 irc_msg_legacy_validator!(Privmsg, Privmsg);
 
 
 impl_irc_msg_subtype!(Topic);
+impl_irc_msg_subtype_buf!(TopicBuf, Topic);
 irc_msg_legacy_validator!(Topic, Topic);
 
 
 impl_irc_msg_subtype!(Quit);
+impl_irc_msg_subtype_buf!(QuitBuf, Quit);
 irc_msg_legacy_validator!(Quit, Quit);
 
 
@@ -139,3 +257,27 @@ irc_msg_legacy_validator!(Quit, Quit);
 //     }
 // }
 
+#[test]
+fn kick_asrefs() {
+    fn kick_acceptor(_: &Kick) {}
+    fn ircmsg_acceptor(_: &IrcMsg) {}
+
+    let kick = KickBuf::new(b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
+    kick_acceptor(&kick);
+    ircmsg_acceptor(&kick);
+}
+
+#[test]
+fn kick_derefs() {
+    let kick = KickBuf::new(b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
+    assert_eq!("KICK", kick.get_command());
+}
+
+#[test]
+fn kickbufs_from_borrowed() {
+    let kick = KickBuf::new(b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
+    let kick_ref: &Kick = &kick;
+
+    let new_kick: KickBuf = kick_ref.to_owned();
+    assert_eq!("KICK", new_kick.get_command());
+}

@@ -13,6 +13,7 @@ pub struct IrcMsgBuf {
     inner: Vec<u8>,
 }
 
+#[derive(Debug)]
 pub struct IrcMsg {
     inner: Slice,
 }
@@ -165,6 +166,12 @@ impl IrcMsg {
         unsafe { ::std::str::from_utf8_unchecked(command) }
     }
 
+    pub fn tags(&self) -> TagIter {
+        let _buffer = &self.inner[..];
+        unimplemented!();
+        TagIter { arg_body: _buffer }
+    }
+
     pub fn args(&self) -> ArgumentIter {
         let buffer = &self.inner[..];
         let (_, buffer) = parse_helpers::split_prefix(buffer);
@@ -184,6 +191,10 @@ impl IrcMsgPrefix {
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner
     }
+}
+
+pub struct TagIter<'a> {
+    arg_body: &'a [u8],
 }
 
 pub struct ArgumentIter<'a> {

@@ -2,26 +2,6 @@
 
 #[macro_use] extern crate log;
 
-pub use self::event::IrcEvent;
-
-pub use self::watchers::{
-    RegisterError,
-    RegisterErrorType,
-
-    JoinResult,
-    JoinSuccess,
-    JoinError,
-
-    WhoResult,
-    WhoRecord,
-    WhoSuccess,
-    WhoError,
-
-    BundlerManager,
-    JoinBundlerTrigger,
-    WhoBundlerTrigger,
-};
-
 pub use self::irccase::{
     OSCaseMapping,
     CaseMapping,
@@ -32,29 +12,15 @@ pub use self::irccase::{
     StrictRfc1459CaseMapping,
 };
 
-pub use self::state::{
-    User,
-    UserId,
-
-    Channel,
-    ChannelId,
-
-    State,
-    FrozenState,
-    MessageEndpoint,
-};
-
 #[cfg(feature="legacy")]
 pub use self::parse::IrcMsg;
 
 #[cfg(not(feature="legacy"))]
 pub use self::parse::parse2::{IrcMsg, IrcMsgBuf};
 
-
 #[cfg(test)] pub mod testinfra;
 mod numerics;
-mod watchers;
-mod core_plugins;
+
 mod slice;
 
 /// Experimental message types
@@ -68,19 +34,8 @@ pub mod parse;
 
 pub mod identifier;
 
-pub mod stream;
-
-/// Event types
-mod event;
-
 /// IRC case manipulation
 mod irccase;
-
-/// IRC state tracker
-mod state;
-
-/// Receive buffer
-pub mod recv;
 
 pub mod mtype2;
 mod parse_helpers;
