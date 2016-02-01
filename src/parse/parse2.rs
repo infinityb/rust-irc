@@ -6,7 +6,7 @@ use super::{ParseErrorKind, ParseError};
 use ::slice::Slice;
 use ::parse_helpers;
 use ::parse::IrcMsg as IrcMsgLegacy;
-
+use ::mtype2::FromIrcMsg;
 
 #[derive(Clone)]
 pub struct IrcMsgBuf {
@@ -166,6 +166,10 @@ impl IrcMsg {
         unsafe { ::std::str::from_utf8_unchecked(command) }
     }
 
+    pub fn as_tymsg<T: FromIrcMsg>(&self) -> Result<T, T::Err> {
+        FromIrcMsg::from_irc_msg(self)
+    }
+
     pub fn tags(&self) -> TagIter {
         let _buffer = &self.inner[..];
         unimplemented!();
@@ -290,12 +294,32 @@ impl IrcParser {
 #[cfg(test)]
 mod tests {
     use super::IrcMsg;
+    use ::mtype2::server::{Ping, Pong, Privmsg};
 
     #[test]
     fn test_many_modes() {
         let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
         let _ = IrcMsg::new(buf).unwrap();
     }
+
+
+    #[test]
+    fn test_ping_tymsg() {
+        let msg = IrcMsg::new(b":foo PING :somewhere").unwrap();
+
+        assert!(msg.as_tymsg::<&Ping>().is_ok());
+        assert!(msg.as_tymsg::<&Pong>().is_err());
+    }
+
+    #[test]
+    fn test_privmsg_tymsg() {
+        let msg = IrcMsg::new(b":n!u@h PRIVMSG #somewhere :sometext").unwrap();
+
+        assert!(msg.as_tymsg::<&Ping>().is_err());
+        assert!(msg.as_tymsg::<&Pong>().is_err());
+        assert!(msg.as_tymsg::<&Privmsg>().is_ok());
+    }
+
 
     #[test]
     fn test_many_modes2() {

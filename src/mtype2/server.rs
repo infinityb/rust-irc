@@ -54,10 +54,10 @@ macro_rules! impl_irc_msg_subtype {
             }
         }
 
-        impl FromIrcMsg for $id {
+        impl<'a> FromIrcMsg for &'a $id {
             type Err = ();
 
-            fn from_irc_msg(msg: &IrcMsg) -> Result<&$id, ()> {
+            fn from_irc_msg(msg: &IrcMsg) -> Result<&'a $id, ()> {
                 try!($id::validate(msg));
                 Ok(unsafe {::std::mem::transmute(msg) })
             }
@@ -231,6 +231,51 @@ impl_irc_msg_subtype!(Privmsg);
 impl_irc_msg_subtype_buf!(PrivmsgBuf, Privmsg);
 irc_msg_legacy_validator!(Privmsg, Privmsg);
 
+impl Privmsg {
+    pub fn get_target(&self) -> &[u8] {
+        let buf = self.as_bytes();
+        let (_prefix, rest) = parse_helpers::split_prefix(buf);
+        let (_command, rest) = parse_helpers::split_command(rest);
+        let (target, _rest) = parse_helpers::split_arg(rest);
+        target
+    }
+
+    pub fn get_body_raw(&self) -> &[u8] {
+        let buf = self.as_bytes();
+        let (_prefix, rest) = parse_helpers::split_prefix(buf);
+        let (_command, rest) = parse_helpers::split_command(rest);
+        let (_target, rest) = parse_helpers::split_arg(rest);
+        let (body, must_be_empty) = parse_helpers::split_arg(rest);
+
+        // FIXME: not guaranteed yet???
+        assert_eq!(must_be_empty.len(), 0);
+
+        body
+    }
+}
+
+impl PrivmsgBuf {
+    pub fn new(target: &[u8], body: &[u8]) -> Result<PrivmsgBuf, ()> {
+        let mut out: Vec<u8> = Vec::new();
+        out.extend(b"PRIVMSG ");
+        out.extend(target);
+        out.extend(b" :");
+        out.extend(body);
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(out).map_err(|_| ()));
+
+        // try!(Kick::validate(&message));
+        Ok(PrivmsgBuf { inner: message })
+    }
+}
+
+#[test]
+fn privmsg_create_and_check() {
+    let privmsg_buf = PrivmsgBuf::new(b"#mychannel", b"Hello!").unwrap();
+    assert_eq!(privmsg_buf.get_target(), b"#mychannel");
+    assert_eq!(privmsg_buf.get_body_raw(), b"Hello!");
+}
 
 impl_irc_msg_subtype!(Topic);
 impl_irc_msg_subtype_buf!(TopicBuf, Topic);
