@@ -7,25 +7,6 @@ use ::parse::IrcMsg as IrcMsgLegacy;
 use ::parse::parse2::{IrcMsg, IrcMsgBuf};
 use ::parse_helpers;
 
-#[derive(Copy, Clone)]
-pub enum IncomingMsg<'a> {
-    Invite(&'a Invite),
-    Join(&'a Join),
-    Kick(&'a Kick),
-    Mode(&'a Mode),
-    Nick(&'a Nick),
-    Notice(&'a Notice),
-    Part(&'a Part),
-    Ping(&'a Ping),
-    Pong(&'a Pong),
-    Privmsg(&'a Privmsg),
-    Quit(&'a Quit),
-    Topic(&'a Topic),
-
-    // Others
-    Unknown(&'a IrcMsg),
-}
-
 
 macro_rules! impl_irc_msg_subtype {
     ($id:ident) => {
@@ -43,6 +24,14 @@ macro_rules! impl_irc_msg_subtype {
 
             pub fn to_irc_msg(&self) -> &IrcMsg {
                 &self.inner
+            }
+
+            pub fn parse(buffer: &[u8]) -> Result<&$id, ()> {
+                // maybe we could skip this check later and turn it into a debug-assert?
+                let message = try!(IrcMsg::new(buffer).map_err(|_| ()));
+                try!($id::validate(message));
+
+                Ok(unsafe { $id::from_u8_slice_unchecked(buffer) })
             }
         }
 
@@ -111,6 +100,31 @@ macro_rules! impl_irc_msg_subtype_buf {
     }
 }
 
+macro_rules! irc_msg_has_source {
+    ($id:ident) => {
+        impl $id {
+            pub fn get_source(&self) -> &[u8] {
+                let buf = self.as_bytes();
+                let (prefix, _rest) = parse_helpers::split_prefix(buf);
+                prefix
+            }
+        }
+    }
+}
+
+macro_rules! irc_msg_has_target {
+    ($id:ident) => {
+        impl $id {
+            pub fn get_target(&self) -> &[u8] {
+                let buf = self.as_bytes();
+                let (_prefix, rest) = parse_helpers::split_prefix(buf);
+                let (_command, rest) = parse_helpers::split_command(rest);
+                let (target, _rest) = parse_helpers::split_arg(rest);
+                target
+            }
+        }
+    }
+}
 
 macro_rules! irc_msg_legacy_validator {
     ($on:ident, $from:ident) => {
@@ -136,23 +150,10 @@ irc_msg_legacy_validator!(Invite, Invite);
 impl_irc_msg_subtype!(Join);
 impl_irc_msg_subtype_buf!(JoinBuf, Join);
 irc_msg_legacy_validator!(Join, Join);
+irc_msg_has_source!(Join);
+irc_msg_has_target!(Join);
 
 impl Join {
-    pub fn get_source(&self) -> &[u8] {
-        let buf = self.as_bytes();
-        let (prefix, _rest) = parse_helpers::split_prefix(buf);
-        prefix
-    }
-
-    pub fn get_target(&self) -> &[u8] {
-        let buf = self.inner.as_bytes();
-        let (_prefix, rest) = parse_helpers::split_prefix(buf);
-        let (_command, rest) = parse_helpers::split_command(rest);
-        let (channel, _rest) = parse_helpers::split_arg(rest);
-
-        channel
-    }
-
     pub fn get_nick(&self) -> &str {
         let (nick, _, _) = parse_helpers::parse_prefix(self.get_source()).unwrap();
         ::std::str::from_utf8(nick).unwrap()
@@ -177,11 +178,16 @@ impl JoinBuf {
 impl_irc_msg_subtype!(Kick);
 impl_irc_msg_subtype_buf!(KickBuf, Kick);
 irc_msg_legacy_validator!(Kick, Kick);
+irc_msg_has_source!(Kick);
+irc_msg_has_target!(Kick);
+
 
 impl KickBuf {
-    pub fn new(channel: &[u8], who: &[u8], reason: Option<&[u8]>) -> Result<KickBuf, ()> {
+    pub fn new(source: &[u8], channel: &[u8], who: &[u8], reason: Option<&[u8]>) -> Result<KickBuf, ()> {
         let mut out: Vec<u8> = Vec::new();
-        out.extend(b"KICK ");
+        out.extend(b":");
+        out.extend(source);
+        out.extend(b" KICK ");
         out.extend(channel);
         out.extend(b" ");
         out.extend(who);
@@ -193,7 +199,7 @@ impl KickBuf {
         // maybe we could skip this check later and turn it into a debug-assert?
         let message = try!(IrcMsgBuf::new(out).map_err(|_| ()));
 
-        // try!(Kick::validate(&message));
+        try!(Kick::validate(&message));
         Ok(KickBuf { inner: message })
     }
 }
@@ -202,6 +208,8 @@ impl KickBuf {
 impl_irc_msg_subtype!(Mode);
 impl_irc_msg_subtype_buf!(ModeBuf, Mode);
 irc_msg_legacy_validator!(Mode, Mode);
+irc_msg_has_source!(Mode);
+irc_msg_has_target!(Mode);
 
 
 impl_irc_msg_subtype!(Nick);
@@ -212,11 +220,15 @@ irc_msg_legacy_validator!(Nick, Nick);
 impl_irc_msg_subtype!(Notice);
 impl_irc_msg_subtype_buf!(NoticeBuf, Notice);
 irc_msg_legacy_validator!(Notice, Notice);
+irc_msg_has_source!(Notice);
+irc_msg_has_target!(Notice);
 
 
 impl_irc_msg_subtype!(Part);
 impl_irc_msg_subtype_buf!(PartBuf, Part);
 irc_msg_legacy_validator!(Part, Part);
+irc_msg_has_source!(Part);
+irc_msg_has_target!(Part);
 
 
 impl_irc_msg_subtype!(Ping);
@@ -232,22 +244,10 @@ irc_msg_legacy_validator!(Pong, Pong);
 impl_irc_msg_subtype!(Privmsg);
 impl_irc_msg_subtype_buf!(PrivmsgBuf, Privmsg);
 irc_msg_legacy_validator!(Privmsg, Privmsg);
+irc_msg_has_source!(Privmsg);
+irc_msg_has_target!(Privmsg);
 
 impl Privmsg {
-    pub fn get_source(&self) -> &[u8] {
-        let buf = self.as_bytes();
-        let (prefix, _rest) = parse_helpers::split_prefix(buf);
-        prefix
-    }
-
-    pub fn get_target(&self) -> &[u8] {
-        let buf = self.as_bytes();
-        let (_prefix, rest) = parse_helpers::split_prefix(buf);
-        let (_command, rest) = parse_helpers::split_command(rest);
-        let (target, _rest) = parse_helpers::split_arg(rest);
-        target
-    }
-
     pub fn get_body_raw(&self) -> &[u8] {
         let buf = self.as_bytes();
         let (_prefix, rest) = parse_helpers::split_prefix(buf);
@@ -289,7 +289,11 @@ fn privmsg_create_and_check() {
 impl_irc_msg_subtype!(Topic);
 impl_irc_msg_subtype_buf!(TopicBuf, Topic);
 irc_msg_legacy_validator!(Topic, Topic);
+irc_msg_has_source!(Topic);
+irc_msg_has_target!(Topic);
 
+impl Topic {
+}
 
 impl_irc_msg_subtype!(Quit);
 impl_irc_msg_subtype_buf!(QuitBuf, Quit);
@@ -301,20 +305,20 @@ fn kick_asrefs() {
     fn kick_acceptor(_: &Kick) {}
     fn ircmsg_acceptor(_: &IrcMsg) {}
 
-    let kick = KickBuf::new(b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
+    let kick = KickBuf::new(b"n!u@h", b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
     kick_acceptor(&kick);
     ircmsg_acceptor(&kick);
 }
 
 #[test]
 fn kick_derefs() {
-    let kick = KickBuf::new(b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
+    let kick = KickBuf::new(b"n!u@h", b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
     assert_eq!("KICK", kick.get_command());
 }
 
 #[test]
 fn kickbufs_from_borrowed() {
-    let kick = KickBuf::new(b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
+    let kick = KickBuf::new(b"n!u@h", b"#foo", b"you", Some(b"BREAKIN DA RULEZ")).unwrap();
     let kick_ref: &Kick = &kick;
 
     let new_kick: KickBuf = kick_ref.to_owned();
@@ -351,5 +355,12 @@ fn rustbot_excerpt_001() {
         let _: &IrcMsg = &response;
     } else {
         unreachable!();
+    }
+}
+
+#[test]
+fn privmsg_too_many_args() {
+    if let Ok(privmsg) = Privmsg::parse(b":n!u@h PRIVMSG #target wtfisthis :body") {
+        panic!("privmsg = {:?}", privmsg.as_bytes());
     }
 }

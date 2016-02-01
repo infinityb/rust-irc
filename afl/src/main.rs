@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, recover, core_intrinsics)]
 #![plugin(afl_plugin)]
 
 extern crate afl;
@@ -9,7 +9,7 @@ use std::io::{self, Read};
 use irc::parse::parse2::IrcMsg;
 use irc::mtype2::{client, server};
 
-fn main() {
+fn run() {
     let mut buf = Vec::new();
     if let Err(err) = io::stdin().read_to_end(&mut buf) {
         panic!("error: failed to read stdin: {:?}", err);
@@ -73,5 +73,12 @@ fn main() {
 
     if let Ok(privmsg) = msg.as_tymsg::<&server::Privmsg>() {
         println!("found PRIVMSG:");
+    }
+}
+
+
+fn main() {
+    if let Err(err) = std::panic::recover(|| run()) {
+        unsafe { std::intrinsics::abort(); }
     }
 }
