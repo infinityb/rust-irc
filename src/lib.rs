@@ -37,5 +37,6 @@ pub mod identifier;
 /// IRC case manipulation
 mod irccase;
 
+pub mod cap;
 pub mod mtype2;
 mod parse_helpers;

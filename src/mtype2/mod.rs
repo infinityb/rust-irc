@@ -1,3 +1,7 @@
+//! The submodules are named by who emits the message. e.g. clients
+//! emit messages constructed in `client` and servers will emit messages
+//! constructed in `server`.
+
 use ::parse::parse2::IrcMsg;
 
 pub mod server;
