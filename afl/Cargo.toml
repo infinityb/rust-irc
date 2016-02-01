@@ -1,0 +1,11 @@
+[package]
+name = "rust-irc"
+version = "0.1.0"
+authors = ["Stacey Ell <stacey.ell@gmail.com>"]
+
+[dependencies.irc]
+path = ".."
+
+[dependencies]
+afl = "0.1"
+afl-plugin = "0.1"

@@ -118,7 +118,7 @@ macro_rules! irc_msg_legacy_validator {
             fn validate(msg: &IrcMsg) -> Result<(), ()> {
                 use message_types::server;
 
-                let legacy = IrcMsgLegacy::new(msg.as_bytes().to_vec()).unwrap();
+                let legacy = try!(IrcMsgLegacy::new(msg.as_bytes().to_vec()).map_err(|_| ()));
                 match server::IncomingMsg::from_msg(legacy.clone()) {
                     server::IncomingMsg::$from(ref _msg) => (),
                     _ => return Err(()),
@@ -129,8 +129,6 @@ macro_rules! irc_msg_legacy_validator {
     }
 }
 
-
-
 impl_irc_msg_subtype!(Invite);
 impl_irc_msg_subtype_buf!(InviteBuf, Invite);
 irc_msg_legacy_validator!(Invite, Invite);
@@ -140,7 +138,13 @@ impl_irc_msg_subtype_buf!(JoinBuf, Join);
 irc_msg_legacy_validator!(Join, Join);
 
 impl Join {
-    pub fn get_channel(&self) -> &[u8] {
+    pub fn get_source(&self) -> &[u8] {
+        let buf = self.as_bytes();
+        let (prefix, _rest) = parse_helpers::split_prefix(buf);
+        prefix
+    }
+
+    pub fn get_target(&self) -> &[u8] {
         let buf = self.inner.as_bytes();
         let (_prefix, rest) = parse_helpers::split_prefix(buf);
         let (_command, rest) = parse_helpers::split_command(rest);
@@ -150,9 +154,7 @@ impl Join {
     }
 
     pub fn get_nick(&self) -> &str {
-        let buf = self.inner.as_bytes();
-        let (prefix, _rest) = parse_helpers::split_prefix(buf);
-        let (nick, _, _) = parse_helpers::parse_prefix(prefix).unwrap();
+        let (nick, _, _) = parse_helpers::parse_prefix(self.get_source()).unwrap();
         ::std::str::from_utf8(nick).unwrap()
     }
 }
@@ -232,6 +234,12 @@ impl_irc_msg_subtype_buf!(PrivmsgBuf, Privmsg);
 irc_msg_legacy_validator!(Privmsg, Privmsg);
 
 impl Privmsg {
+    pub fn get_source(&self) -> &[u8] {
+        let buf = self.as_bytes();
+        let (prefix, _rest) = parse_helpers::split_prefix(buf);
+        prefix
+    }
+
     pub fn get_target(&self) -> &[u8] {
         let buf = self.as_bytes();
         let (_prefix, rest) = parse_helpers::split_prefix(buf);
@@ -255,24 +263,25 @@ impl Privmsg {
 }
 
 impl PrivmsgBuf {
-    pub fn new(target: &[u8], body: &[u8]) -> Result<PrivmsgBuf, ()> {
+    pub fn new(source: &[u8], target: &[u8], body: &[u8]) -> Result<PrivmsgBuf, ()> {
         let mut out: Vec<u8> = Vec::new();
-        out.extend(b"PRIVMSG ");
+        out.extend(b":");
+        out.extend(source);
+        out.extend(b" PRIVMSG ");
         out.extend(target);
         out.extend(b" :");
         out.extend(body);
 
         // maybe we could skip this check later and turn it into a debug-assert?
         let message = try!(IrcMsgBuf::new(out).map_err(|_| ()));
-
-        // try!(Kick::validate(&message));
+        try!(Privmsg::validate(&message));
         Ok(PrivmsgBuf { inner: message })
     }
 }
 
 #[test]
 fn privmsg_create_and_check() {
-    let privmsg_buf = PrivmsgBuf::new(b"#mychannel", b"Hello!").unwrap();
+    let privmsg_buf = PrivmsgBuf::new(b"n!u@h", b"#mychannel", b"Hello!").unwrap();
     assert_eq!(privmsg_buf.get_target(), b"#mychannel");
     assert_eq!(privmsg_buf.get_body_raw(), b"Hello!");
 }
@@ -286,21 +295,6 @@ impl_irc_msg_subtype!(Quit);
 impl_irc_msg_subtype_buf!(QuitBuf, Quit);
 irc_msg_legacy_validator!(Quit, Quit);
 
-
-// impl_irc_msg_subtype!(Numeric);
-
-// impl Numeric {
-//     fn validate(msg: &IrcMsg) -> Result<(), ()> {
-//         use message_types::server;
-
-//         let legacy = IrcMsgLegacy::new(msg.as_bytes().to_vec()).unwrap();
-//         match server::IncomingMsg::from_msg(legacy.clone()) {
-//             server::IncomingMsg::Numeric(num, ref _msg) => (),
-//             _ => return Err(()),
-//         };
-//         Ok(())
-//     }
-// }
 
 #[test]
 fn kick_asrefs() {
@@ -325,4 +319,37 @@ fn kickbufs_from_borrowed() {
 
     let new_kick: KickBuf = kick_ref.to_owned();
     assert_eq!("KICK", new_kick.get_command());
+}
+
+#[test]
+fn privmsg_buf_validity() {
+    let _privmsg = PrivmsgBuf::new(b"n!u@h", b"#foo", b"swagever").unwrap();
+}
+
+#[test]
+fn privmsg_cons_with_bad_arguments() {
+    let msg = PrivmsgBuf::new(b"n!u\xFF@h", b"#foo", b"BREAKIN DA RULEZ");
+
+    assert_eq!(msg.is_err(), true);
+}
+
+#[test]
+fn rustbot_excerpt_001() {
+    let msg = PrivmsgBuf::new(b"n!u@h", b"#foo", b"BREAKIN DA RULEZ").unwrap();
+
+    let privmsg: &Privmsg;
+    if let Ok(p) = msg.as_tymsg::<&Privmsg>() {
+        privmsg = p;
+    } else {
+        unreachable!();
+    }
+
+    if privmsg.get_target().starts_with(b"#") {
+        let out = privmsg.get_body_raw().to_vec();
+
+        let response = PrivmsgBuf::new(b"n!u@h", privmsg.get_target(), &out[..]).unwrap();
+        let _: &IrcMsg = &response;
+    } else {
+        unreachable!();
+    }
 }
