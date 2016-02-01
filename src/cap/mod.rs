@@ -22,7 +22,7 @@ impl Capabilities {
         }
     }
 
-    pub fn set<C: Capability + CapabilityFormat>(&mut self, value: C) {
+    pub fn set<C: Capability + CapabilityFormat>(&mut self, _value: C) {
         unimplemented!();
     }
 
