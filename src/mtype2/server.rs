@@ -170,7 +170,7 @@ impl CapLs {
         try!(sink.write_all(b" CAP * LS :").or_else(cursor_chk_error));
 
         for cap_phrase in caps.iter_raw() {
-            try!(sink.write_all(source).or_else(cursor_chk_error));
+            try!(sink.write_all(cap_phrase).or_else(cursor_chk_error));
             try!(sink.write_all(b" ").or_else(cursor_chk_error));
         }
 
