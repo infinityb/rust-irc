@@ -1,21 +1,22 @@
+use std::error::Error;
 
-pub use self::parse::IrcMsg;
+pub use self::parse::{IrcMsg, IrcMsgBuf};
 
-pub use self::parse::{
-    can_target_channel,
-    is_channel,
-};
+// pub use self::parse::{
+//     can_target_channel,
+//     is_channel,
+// };
 
 pub use self::parse::IrcMsgPrefix;
-pub use self::parse::is_full_prefix;
 
-mod parse;
-pub mod parse2;
+pub mod old_parse;
+pub mod parse;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ParseErrorKind {
     EncodingError,
     Truncated,
+    // TODO: going away?
     TooManyArguments,
     UnexpectedByte,
     // ...
@@ -54,3 +55,27 @@ impl ParseError {
     }
 }
 
+impl ::std::fmt::Display for ParseError {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        if self.error_msg.len() > 0 {
+            write!(f, "ParseError({:?}): {} for {:?}", self.kind, self.error_msg, self.message)
+        } else {
+            write!(f, "ParseError({:?}) for {:?}", self.kind, self.message)
+        }
+    }
+}
+
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        if self.error_msg.len() > 0 {
+            return &self.error_msg;
+        }
+
+        match self.kind {
+            ParseErrorKind::EncodingError => "encoding error",
+            ParseErrorKind::Truncated => "truncated message",
+            ParseErrorKind::TooManyArguments => "too many arguments",
+            ParseErrorKind::UnexpectedByte => "unexpected byte",
+        }
+    }
+}

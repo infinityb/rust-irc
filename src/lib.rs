@@ -1,6 +1,7 @@
 #![deny(unused_must_use, unused_variables, unused_mut)]
 
 #[macro_use] extern crate log;
+extern crate unicase;
 
 pub use self::irccase::{
     OSCaseMapping,
@@ -12,31 +13,34 @@ pub use self::irccase::{
     StrictRfc1459CaseMapping,
 };
 
-#[cfg(feature="legacy")]
-pub use self::parse::IrcMsg;
+pub use self::parse::{
+    IrcMsg,
+    IrcMsgBuf,
+    ParseError,
+};
 
-#[cfg(not(feature="legacy"))]
-pub use self::parse::parse2::{IrcMsg, IrcMsgBuf};
+pub use self::mtype2::{server, client};
 
 #[cfg(test)] pub mod testinfra;
-mod numerics;
 
 mod slice;
 
 /// Experimental message types
-pub mod message_types;
+mod message_types;
 
 /// Experimental utility code
-pub mod util;
+mod util;
 
 /// Experimental parsing code
-pub mod parse;
+mod parse;
 
 pub mod identifier;
 
 /// IRC case manipulation
 mod irccase;
 
-pub mod cap;
-pub mod mtype2;
+mod mtype2;
 mod parse_helpers;
+
+#[cfg(feature = "unstable")]
+pub mod cap;

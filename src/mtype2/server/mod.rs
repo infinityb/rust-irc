@@ -4,317 +4,20 @@ use std::{mem, ops};
 use std::io::{self, Write};
 
 use super::FromIrcMsg;
-use ::parse::IrcMsg as IrcMsgLegacy;
-use ::parse::parse2::{IrcMsg, IrcMsgBuf};
+use super::cursor_chk_error;
+
+use ::parse::old_parse::IrcMsg as IrcMsgLegacy;
+use ::{IrcMsg, IrcMsgBuf};
 use ::parse_helpers;
-use ::cap::Capabilities;
 
-
-macro_rules! impl_irc_msg_subtype {
-    ($id:ident) => {
-        pub struct $id {
-            inner: IrcMsg,
-        }
-
-        impl $id {
-            /// The following function allows unchecked construction of a irc message
-            /// from a u8 slice.  This is unsafe because it does not maintain
-            /// the invariant of the message type, nor the invariant of IrcMsg
-            pub unsafe fn from_u8_slice_unchecked(s: &[u8]) -> &$id {
-                mem::transmute(s)
-            }
-
-            pub fn to_irc_msg(&self) -> &IrcMsg {
-                &self.inner
-            }
-
-            pub fn parse(buffer: &[u8]) -> Result<&$id, ()> {
-                // maybe we could skip this check later and turn it into a debug-assert?
-                let message = try!(IrcMsg::new(buffer).map_err(|_| ()));
-                try!($id::validate(message));
-
-                Ok(unsafe { $id::from_u8_slice_unchecked(buffer) })
-            }
-        }
-
-        impl ops::Deref for $id {
-            type Target = IrcMsg;
-
-            fn deref<'a>(&'a self) -> &'a IrcMsg {
-                &self.inner
-            }
-        }
-
-        impl<'a> FromIrcMsg for &'a $id {
-            type Err = ();
-
-            fn from_irc_msg(msg: &IrcMsg) -> Result<&'a $id, ()> {
-                try!($id::validate(msg));
-                Ok(unsafe {::std::mem::transmute(msg) })
-            }
-        }
-    }
-}
-
-macro_rules! impl_irc_msg_subtype_buf {
-    ($id:ident, $borrowed:ident) => {
-        pub struct $id {
-            inner: IrcMsgBuf,
-        }
-
-        impl $id {
-            fn _borrow(&self) -> &$borrowed {
-                unsafe { $borrowed::from_u8_slice_unchecked(self.inner.as_bytes()) }
-            }
-
-            pub fn into_inner(self) -> IrcMsgBuf {
-                self.inner
-            }
-        }
-
-        impl AsRef<$borrowed> for $id {
-            fn as_ref(&self) -> &$borrowed {
-                self._borrow()
-            }
-        }
-
-        impl ops::Deref for $id {
-            type Target = $borrowed;
-
-            fn deref<'a>(&'a self) -> &'a $borrowed {
-                self._borrow()
-            }
-        }
-
-        impl Borrow<$borrowed> for $id {
-            fn borrow(&self) -> &$borrowed {
-                self._borrow()
-            }
-        }
-
-        impl ToOwned for $borrowed {
-            type Owned = $id;
-
-            fn to_owned(&self) -> $id {
-                $id { inner: self.inner.to_owned() }
-            }
-        }
-    }
-}
-
-macro_rules! irc_msg_has_source {
-    ($id:ident) => {
-        impl $id {
-            pub fn get_source(&self) -> &[u8] {
-                let buf = self.as_bytes();
-                let (prefix, _rest) = parse_helpers::split_prefix(buf);
-                prefix
-            }
-        }
-    }
-}
-
-macro_rules! irc_msg_has_target {
-    ($id:ident) => {
-        impl $id {
-            pub fn get_target(&self) -> &[u8] {
-                let buf = self.as_bytes();
-                let (_prefix, rest) = parse_helpers::split_prefix(buf);
-                let (_command, rest) = parse_helpers::split_command(rest);
-                let (target, _rest) = parse_helpers::split_arg(rest);
-                target
-            }
-        }
-    }
-}
-
-macro_rules! irc_msg_legacy_validator {
-    ($on:ident, $from:ident) => {
-        impl $on {
-            fn validate(msg: &IrcMsg) -> Result<(), ()> {
-                use message_types::server;
-
-                let legacy = try!(IrcMsgLegacy::new(msg.as_bytes().to_vec()).map_err(|_| ()));
-                match server::IncomingMsg::from_msg(legacy.clone()) {
-                    server::IncomingMsg::$from(ref _msg) => (),
-                    _ => return Err(()),
-                };
-                Ok(())
-            }
-        }
-    }
-}
-
-
-// The subcommands for CAP are: LS, LIST, REQ, ACK, NAK, and END.
-
-impl_irc_msg_subtype!(CapLs);
-impl_irc_msg_subtype_buf!(CapLsBuf, CapLs);
-
-
-// Client: CAP LS 302
-// Server: CAP * LS * :multi-prefix extended-join account-notify batch invite-notify tls
-// Server: CAP * LS * :cap-notify server-time example.org/dummy-cap=dummyvalue example.org/second-dummy-cap
-// Server: CAP * LS :userhost-in-names sasl=EXTERNAL,DH-AES,DH-BLOWFISH,ECDSA-NIST256P-CHALLENGE,PLAIN
-
-impl CapLs {
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-
-    fn construct<W>(sink: &mut W, source: &[u8], caps: &Capabilities) -> Result<(), ()>
-        where W: Write
-    {
-        try!(sink.write_all(b":").or_else(cursor_chk_error));
-        try!(sink.write_all(source).or_else(cursor_chk_error));
-        try!(sink.write_all(b" CAP * LS :").or_else(cursor_chk_error));
-
-        for cap_phrase in caps.iter_raw() {
-            try!(sink.write_all(cap_phrase).or_else(cursor_chk_error));
-            try!(sink.write_all(b" ").or_else(cursor_chk_error));
-        }
-
-        Ok(())
-    }
-
-    /// True if this is the final line in a multi-line response.
-    /// see: [IRCv3.2](http://ircv3.net/specs/core/capability-negotiation-3.2.html)
-    pub fn is_final(&self) -> bool {
-        unimplemented!();
-    }
-
-    pub fn capability_iter(&self) -> CapLsCapabilityIter {
-        unimplemented!();
-    }
-}
-
-impl CapLsBuf {
-    pub fn new_unstable(source: &[u8], caps: &Capabilities) -> Result<CapLsBuf, ()> {
-        let mut wr = io::Cursor::new(Vec::new());
-        try!(CapLs::construct(&mut wr, source, caps));
-
-        let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
-        try!(CapLs::validate(&message));
-        Ok(CapLsBuf { inner: message })
-    }
-}
-
-pub struct CapLsCapabilityIter;
-pub struct CapLsGroupBuf;
-
-impl_irc_msg_subtype!(CapList);
-impl_irc_msg_subtype_buf!(CapListBuf, CapList);
-
-// Client: CAP LIST
-// Server: CAP modernclient LIST * :example.org/example-cap example.org/second-example-cap account-notify
-// Server: CAP modernclient LIST :invite-notify batch example.org/third-example-cap
-
-impl CapList {
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-
-    /// True if this is the final line in a multi-line response.
-    /// see: [IRCv3.2](http://ircv3.net/specs/core/capability-negotiation-3.2.html)
-    pub fn is_final(&self) -> bool {
-        unimplemented!();
-    }
-
-    pub fn capabilities(&self) -> CapListCapabilityIter {
-        unimplemented!();
-    }
-}
-
-impl CapListBuf {
-    //
-}
-
-pub struct CapListCapabilityIter;
-
-
-impl_irc_msg_subtype!(CapReq);
-impl_irc_msg_subtype_buf!(CapReqBuf, CapReq);
-
-impl CapReq {
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-}
-
-impl CapReqBuf {
-    //
-}
-
-impl_irc_msg_subtype!(CapAck);
-impl_irc_msg_subtype_buf!(CapAckBuf, CapAck);
-
-// Client: CAP REQ :account-notify away-notify extended-join multi-prefix sasl
-// Client: CAP END
-// Server: CAP * ACK :account-notify away-notify extended-join multi-prefix sasl
-
-impl CapAck {
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-}
-
-impl CapAckBuf {
-    //
-}
-
-impl_irc_msg_subtype!(CapNak);
-impl_irc_msg_subtype_buf!(CapNakBuf, CapNak);
-
-impl CapNak {
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-}
-
-impl CapNakBuf {
-    //
-}
-
-impl_irc_msg_subtype!(CapEnd);
-impl_irc_msg_subtype_buf!(CapEndBuf, CapEnd);
-
-impl CapEnd {
-    fn construct<W>(sink: &mut W, source: &[u8]) -> Result<(), ()>
-        where W: Write
-    {
-        try!(sink.write_all(b":").or_else(cursor_chk_error));
-        try!(sink.write_all(source).or_else(cursor_chk_error));
-        try!(sink.write_all(b" CAP END").or_else(cursor_chk_error));
-        Ok(())
-    }
-
-    /// Create a new `CapEnd` in `storage`.  This does not allocate any storage.
-    pub fn new<'a>(storage: &'a mut [u8], source: &[u8]) -> Result<&'a CapEnd, ()> {
-        let mut wr = io::Cursor::new(storage);
-        try!(CapEnd::construct(&mut wr, source));
-        let end = wr.position() as usize;
-
-        let storage = wr.into_inner();
-        CapEnd::parse(&storage[..end])
-    }
-
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-}
-
-impl CapEndBuf {
-    pub fn new(source: &[u8]) -> Result<CapEndBuf, ()> {
-        let mut wr = io::Cursor::new(Vec::new());
-        try!(CapEnd::construct(&mut wr, source));
-
-        // maybe we could skip this check later and turn it into a debug-assert?
-        let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
-
-        try!(CapEnd::validate(&message));
-        Ok(CapEndBuf { inner: message })
-    }
-}
+#[cfg(feature = "unstable")] mod cap;
+#[cfg(feature = "unstable")] pub use self::cap::{
+    CapLs, CapLsBuf,
+    CapList, CapListBuf,
+    CapReq, CapReqBuf,
+    CapAck, CapAckBuf,
+    CapNak, CapNakBuf,
+};
 
 
 impl_irc_msg_subtype!(Invite);
@@ -441,6 +144,7 @@ impl_irc_msg_subtype_buf!(PrivmsgBuf, Privmsg);
 irc_msg_has_source!(Privmsg);
 irc_msg_has_target!(Privmsg);
 
+
 impl Privmsg {
     pub fn validate(msg: &IrcMsg) -> Result<(), ()> {
         use std::ascii::AsciiExt;
@@ -517,15 +221,6 @@ impl Topic {
 impl_irc_msg_subtype!(Quit);
 impl_irc_msg_subtype_buf!(QuitBuf, Quit);
 irc_msg_legacy_validator!(Quit, Quit);
-
-
-fn cursor_chk_error(err: io::Error) -> Result<(), ()> {
-    match err {
-        ref err if err.kind() == io::ErrorKind::WriteZero => Err(()),
-        _ => panic!(),
-    }
-}
-
 
 
 #[test]

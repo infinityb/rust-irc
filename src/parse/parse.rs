@@ -1,73 +1,226 @@
-use std::fmt;
-use std::ops::Index;
-use std::borrow::Cow;
+use std::mem;
+use std::ops;
+use std::borrow::{Borrow, BorrowMut, ToOwned};
 
-use super::{ParseError, ParseErrorKind};
-use util::{StringSlicer, OptionalStringSlicer};
+use super::{ParseErrorKind, ParseError};
+use ::slice::Slice;
+use ::parse_helpers;
+use ::parse::old_parse::IrcMsg as IrcMsgLegacy;
+use ::mtype2::FromIrcMsg;
 
-use irccase::IrcAsciiExt;
+#[derive(Clone)]
+pub struct IrcMsgBuf {
+    inner: Vec<u8>,
+}
 
-static CHANNEL_PREFIX_CHARS: [char; 4] = ['&', '#', '+', '!'];
+#[derive(Debug)]
+pub struct IrcMsg {
+    inner: Slice,
+}
 
-// Commands which target a msgtarget or channel
-static CHANNEL_TARGETED_COMMANDS: [&'static str; 6] = [
-    "KICK",
-    "PART",
-    "MODE",
-    "PRIVMSG",
-    "NOTICE",
-    "TOPIC"
-];
+pub struct IrcMsgPrefix {
+    inner: Slice,
+}
 
+impl ops::Deref for IrcMsgBuf {
+    type Target = IrcMsg;
 
-/// Whether or not a command name is allowed to target a channel
-pub fn can_target_channel(identifier: &str) -> bool {
-    for &command in CHANNEL_TARGETED_COMMANDS.iter() {
-        if command.eq_ignore_irc_case(identifier) {
-            return true;
+    fn deref<'a>(&'a self) -> &'a IrcMsg {
+        self.as_irc_msg()
+    }
+}
+
+impl Borrow<IrcMsg> for IrcMsgBuf {
+    fn borrow(&self) -> &IrcMsg {
+        self.as_irc_msg()
+    }
+}
+
+impl AsRef<IrcMsg> for IrcMsgBuf {
+    fn as_ref(&self) -> &IrcMsg {
+        self.as_irc_msg()
+    }
+}
+
+impl BorrowMut<IrcMsg> for IrcMsgBuf {
+    fn borrow_mut(&mut self) -> &mut IrcMsg {
+        self.as_irc_msg_mut()
+    }
+}
+
+impl AsMut<IrcMsg> for IrcMsgBuf {
+    fn as_mut(&mut self) -> &mut IrcMsg {
+        self.as_irc_msg_mut()
+    }
+}
+
+impl ToOwned for IrcMsg {
+    type Owned = IrcMsgBuf;
+
+    fn to_owned(&self) -> IrcMsgBuf {
+        IrcMsgBuf { inner: self.inner.to_owned() }
+    }
+}
+
+impl IrcMsgBuf {
+    pub fn new(mut buf: Vec<u8>) -> Result<IrcMsgBuf, ParseError> {
+        let msg_len = try!(IrcMsg::new(&buf)).as_bytes().len();
+        buf.truncate(msg_len);
+        Ok(IrcMsgBuf { inner: buf })
+    }
+
+    pub fn into_inner(self) -> Vec<u8> {
+        self.inner
+    }
+
+    fn as_irc_msg(&self) -> &IrcMsg {
+        unsafe { IrcMsg::from_u8_slice_unchecked(&self.inner) }
+    }
+
+    fn as_irc_msg_mut(&mut self) -> &mut IrcMsg {
+        unsafe { IrcMsg::from_u8_slice_unchecked_mut(&mut self.inner) }
+    }
+
+    pub fn from_legacy(legacy: IrcMsgLegacy) -> IrcMsgBuf {
+        IrcMsgBuf::new(legacy.into_bytes()).unwrap()
+    }
+
+    pub fn into_legacy(self) -> IrcMsgLegacy {
+        IrcMsgLegacy::new(self.inner).unwrap()
+    }
+}
+
+impl IrcMsg {
+    pub fn new(buf: &[u8]) -> Result<&IrcMsg, ParseError>  {
+        let buf = parse_helpers::first_line(buf);
+        try!(IrcMsg::validate_buffer(&buf));
+
+        Ok(unsafe {
+            // Invariant is maintained by IrcMsg::validate_buffer
+            IrcMsg::from_u8_slice_unchecked(buf)
+        })
+    }
+
+    pub fn from_legacy(legacy: &IrcMsgLegacy) -> &IrcMsg {
+        IrcMsg::new(legacy.as_bytes()).unwrap()
+    }
+
+    fn validate_buffer(buf: &[u8]) -> Result<(), ParseError> {
+        let mut parser = IrcParser::new();
+
+        for &byte in buf.iter()  {
+            parser = match parser.push_byte(byte) {
+                Ok(new_parser) => new_parser,
+                Err(err) => return Err(err.replace_message(buf))
+            };
+        }
+
+        if let Err(err) = parser.finish() {
+            return Err(err.replace_message(buf));
+        }
+
+        Ok(())
+    }
+
+    /// The following function allows unchecked construction of a irc message
+    /// from a u8 slice.  This is unsafe because it does not maintain
+    /// the IrcMsg invariant.
+    pub unsafe fn from_u8_slice_unchecked(s: &[u8]) -> &IrcMsg {
+        mem::transmute(s)
+    }
+
+    /// The following function allows unchecked construction of a
+    /// mutable irc message from a mutable u8 slice.  This is unsafe because it
+    /// does not maintain the IrcMsg invariant.
+    pub unsafe fn from_u8_slice_unchecked_mut(s: &mut [u8]) -> &mut IrcMsg {
+        mem::transmute(s)
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.inner
+    }
+
+    /// Mutably borrow the underlying storage.  This is private because it
+    /// does not maintain the IrcMsg invariant.
+    fn as_u8_slice_mut(&mut self) -> &mut [u8] {
+        unsafe { mem::transmute(self) }
+    }
+
+    pub fn get_prefix<'a>(&'a self) -> Option<&'a IrcMsgPrefix> {
+        let buffer = &self.inner[..];
+        let (prefix, _) = parse_helpers::split_prefix(buffer);
+
+        if prefix.len() > 0 {
+            assert!(prefix.len() > 1);
+            Some(IrcMsgPrefix::from_u8_slice_unchecked(&prefix[1..]))
+        } else {
+            None
         }
     }
-    false
+
+    pub fn get_command(&self) -> &str {
+        let buffer = &self.inner[..];
+        let (_, buffer) = parse_helpers::split_prefix(buffer);
+        let (command, _) = parse_helpers::split_command(buffer);
+
+        unsafe { ::std::str::from_utf8_unchecked(command) }
+    }
+
+    pub fn as_tymsg<T: FromIrcMsg>(&self) -> Result<T, T::Err> {
+        FromIrcMsg::from_irc_msg(self)
+    }
+
+    pub fn tags(&self) -> TagIter {
+        let _buffer = &self.inner[..];
+        unimplemented!();
+        TagIter { arg_body: _buffer }
+    }
+
+    pub fn args(&self) -> ArgumentIter {
+        let buffer = &self.inner[..];
+        let (_, buffer) = parse_helpers::split_prefix(buffer);
+        let (_, buffer) = parse_helpers::split_command(buffer);
+        ArgumentIter { arg_body: buffer }
+    }
 }
 
-/// Determines whether or not an identifier is a channel, by checking
-/// the first character.
-pub fn is_channel(identifier: &str) -> bool {
-    if identifier.chars().count() == 0 {
-        return false;
+impl IrcMsgPrefix {
+    /// The following function allows unchecked construction of a ogg track
+    /// from a u8 slice.  This is private because it does not maintain
+    /// the IrcMsgPrefix invariant.
+    fn from_u8_slice_unchecked(s: &[u8]) -> &IrcMsgPrefix {
+        unsafe { mem::transmute(s) }
     }
-    for &character in CHANNEL_PREFIX_CHARS.iter() {
-        if identifier.chars().next() == Some(character) {
-            return true;
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.inner
+    }
+}
+
+pub struct TagIter<'a> {
+    arg_body: &'a [u8],
+}
+
+pub struct ArgumentIter<'a> {
+    arg_body: &'a [u8],
+}
+
+impl<'a> Iterator for ArgumentIter<'a> {
+    type Item = &'a [u8];
+
+    fn next(&mut self) -> Option<&'a [u8]> {
+        if self.arg_body.len() == 0 {
+            return None;
         }
-    }
-    false
-}
 
-
-enum PrefixCheckerState {
-    Nick,
-    User,
-    Host,
-}
-
-/// Checks whether a prefix contains nick, username and host or not.
-pub fn is_full_prefix(prefix: &str) -> bool {
-    let mut state = PrefixCheckerState::Nick;
-    for &byte in prefix.as_bytes().iter() {
-        state = match (state, byte) {
-            (PrefixCheckerState::Nick, b'!') => PrefixCheckerState::User,
-            (PrefixCheckerState::Nick, _) => PrefixCheckerState::Nick,
-            (PrefixCheckerState::User, b'@') => PrefixCheckerState::Host,
-            (PrefixCheckerState::User, _) => PrefixCheckerState::User,
-            (PrefixCheckerState::Host, _) => PrefixCheckerState::Host,
-        };
-    }
-    match state {
-        PrefixCheckerState::Host => true,
-        _ => false
+        let (output, remainder) = parse_helpers::split_arg(self.arg_body);
+        self.arg_body = remainder;
+        Some(output)
     }
 }
+
+#[derive(Clone)]
+struct IrcParser(IrcParserState);
 
 #[derive(Copy, Clone)]
 enum IrcParserState {
@@ -77,440 +230,128 @@ enum IrcParserState {
     Command,
     ArgStart,
     Arg,
+    ArgEnd,
     RestArg,
-    ArgOverflow,
-    EndOfLine,
-}
-
-struct IrcParser {
-    byte_idx: u32,
-    prefix_start: u32,
-    prefix_end: u32,
-    command_start: u32,
-    command_end: u32,
-    arg_len: u32,
-    arg_start: u32,
-    args: [(u32, u32); IRCMSG_MAX_ARGS],
-    state: IrcParserState
 }
 
 impl IrcParser {
     fn new() -> IrcParser {
-        IrcParser {
-            byte_idx: 0,
-            prefix_start: 0,
-            prefix_end: 0,
-            command_start: 0,
-            command_end: 0,
-            arg_len: 0,
-            arg_start: 0,
-            args: [(0, 0); IRCMSG_MAX_ARGS],
-            state: IrcParserState::Initial,
-        }
+        IrcParser(IrcParserState::Initial)
     }
 
-    fn finalize_arg(&mut self) -> Option<IrcParserState> {
-        if self.arg_len as usize == IRCMSG_MAX_ARGS{
-            return Some(IrcParserState::ArgOverflow);
-        }
-        self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
-        self.arg_len += 1;
-        self.arg_start = 0;
-        None
-    }
+    fn push_byte(&self, byte: u8) -> Result<IrcParser, ParseError> {
+        use self::IrcParserState::*;
+        use parse_helpers::is_valid_prefix_byte;
 
-    #[inline]
-    fn push_byte(&mut self, byte: u8) {
-        self.state = match (self.state, byte) {
-            (IrcParserState::Initial, b' ') => IrcParserState::Initial,
-            (IrcParserState::Initial, b':') => {
-                self.prefix_start = self.byte_idx + 1;
-                IrcParserState::Prefix
-            }
-            (IrcParserState::Initial, _) => {
-                self.command_start = self.byte_idx;
-                IrcParserState::Command
+        match (self.0, byte) {
+            (Initial, b' ') => Ok(IrcParser(Initial)),
+            (Initial, b':') => Ok(IrcParser(Prefix)),
+            (Initial, _byte) => Ok(IrcParser(Command)),
+
+            (Prefix, b' ') => Ok(IrcParser(CommandStart)),
+            (Prefix, byte) if is_valid_prefix_byte(byte) => Ok(IrcParser(Prefix)),
+            (Prefix, _byte) => {
+                Err(ParseError::unexpected_byte(byte, "prefix"))
             },
 
-            (IrcParserState::Prefix, b' ') => {
-                self.prefix_end = self.byte_idx;
-                IrcParserState::CommandStart
-            },
-            (IrcParserState::Prefix, _) => IrcParserState::Prefix,
+            (CommandStart, b' ') => Ok(IrcParser(CommandStart)),
+            (CommandStart, _byte) => Ok(IrcParser(Command)),
 
-            (IrcParserState::CommandStart, b' ') => IrcParserState::CommandStart,
-            (IrcParserState::CommandStart, _) => {
-                self.command_start = self.byte_idx;
-                IrcParserState::Command
-            }
+            (Command, b' ') => Ok(IrcParser(ArgStart)),
+            (Command, _byte) => Ok(IrcParser(Command)),
 
-            (IrcParserState::Command, b' ') => {
-                self.command_end = self.byte_idx;
-                IrcParserState::ArgStart
-            }
-            (IrcParserState::Command, _) => IrcParserState::Command,
+            (ArgStart, b' ') => Ok(IrcParser(ArgStart)),
+            (ArgStart, _byte) => Ok(IrcParser(Arg)),
 
-            (IrcParserState::ArgStart, b' ') => IrcParserState::ArgStart,
-            (IrcParserState::ArgStart, b':') => {
-                self.arg_start = self.byte_idx + 1;
-                IrcParserState::RestArg
-            }
-            (IrcParserState::ArgStart, _) => {
-                self.arg_start = self.byte_idx;
-                IrcParserState::Arg
-            }
+            (Arg, b' ') => Ok(IrcParser(ArgEnd)),
+            (Arg, _byte) => Ok(IrcParser(Arg)),
 
-            (IrcParserState::Arg, b' ') => {
-                match self.finalize_arg() {
-                    Some(state) => state,
-                    None => IrcParserState::ArgStart,
-                }
-            }
-            (IrcParserState::Arg, b'\n') => {
-                match self.finalize_arg() {
-                    Some(state) => state,
-                    None => IrcParserState::EndOfLine,
-                }
-            }
-            (IrcParserState::Arg, _) => IrcParserState::Arg,
+            (ArgEnd, b' ') => Ok(IrcParser(ArgEnd)),
+            (ArgEnd, b':') => Ok(IrcParser(RestArg)),
+            (ArgEnd, _byte) => Ok(IrcParser(Arg)),
 
-            (IrcParserState::RestArg, b'\n') => {
-                match self.finalize_arg() {
-                    Some(state) => state,
-                    None => IrcParserState::EndOfLine,
-                }
-            }
-            (IrcParserState::RestArg, _) => IrcParserState::RestArg,
-
-            (IrcParserState::ArgOverflow, _) => IrcParserState::ArgOverflow,
-            (IrcParserState::EndOfLine, _) => IrcParserState::EndOfLine,
-        };
-        self.byte_idx += 1;
-    }
-
-    #[inline]
-    fn finish(&mut self) -> Result<(), ParseErrorKind> {
-        match self.state {
-            IrcParserState::Initial => Err(ParseErrorKind::Truncated),
-            IrcParserState::Prefix => Err(ParseErrorKind::Truncated),
-            IrcParserState::CommandStart => Err(ParseErrorKind::Truncated),
-            IrcParserState::Command => Err(ParseErrorKind::Truncated),
-            IrcParserState::ArgOverflow => Err(ParseErrorKind::TooManyArguments),
-            IrcParserState::ArgStart => Ok(()),
-            IrcParserState::EndOfLine => Ok(()),
-            IrcParserState::Arg | IrcParserState::RestArg => {
-                if self.arg_len < IRCMSG_MAX_ARGS as u32 {
-                    self.args[self.arg_len as usize] = (self.arg_start, self.byte_idx);
-                    self.arg_len += 1;
-                    Ok(())
-                } else {
-                    Err(ParseErrorKind::TooManyArguments)
-                }
-            }
+            (RestArg, _byte) => Ok(IrcParser(RestArg)),
         }
     }
 
-    fn parse(message: Vec<u8>) -> Result<IrcMsg, ParseError> {
-        let mut parser = IrcParser::new();
-        for &value in message.iter() {
-            parser.push_byte(value);
+    fn finish(&self) -> Result<(), ParseError> {
+        use self::IrcParserState::*;
+
+        let truncated = Err(ParseError::new(ParseErrorKind::Truncated, Vec::new()));
+        match self.0 {
+            Initial => truncated,
+            Prefix => truncated,
+            CommandStart => truncated,
+            Command => truncated,
+            ArgStart => truncated,
+            Arg => Ok(()),
+            ArgEnd => Ok(()),
+            RestArg => Ok(())
         }
-        if let Err(err) = parser.finish() {
-            return Err(ParseError::new(err, message));
-        }
-
-        assert_eq!(parser.byte_idx as usize, message.len());
-
-        if parser.arg_len == 0 {
-            return Err(ParseError::new(ParseErrorKind::Truncated, message));
-        }
-
-        let mut parsed = IrcMsg {
-            data: message,
-            prefix: (parser.prefix_start, parser.prefix_end),
-            command: (parser.command_start, parser.command_end),
-            arg_len: 0,
-            args: [(0, 0); IRCMSG_MAX_ARGS]
-        };
-
-        parsed.arg_len = parser.arg_len;
-        for i in 0..parsed.arg_len {
-            parsed.args[i as usize] = parser.args[i as usize];
-        }
-
-        // Newline and Carriage return removal
-        let last_idx = (parsed.arg_len - 1) as usize;
-        let (arg_start, mut arg_end) = parsed.args[last_idx];
-
-        if parsed.data[arg_end as usize - 1] == b'\r' {
-            arg_end -= 1;
-            parsed.args[last_idx] = (arg_start, arg_end);
-        }
-
-        parsed.data.truncate(arg_end as usize);
-        Ok(parsed)
     }
 }
-
-const IRCMSG_MAX_ARGS: usize = 20;
-
-// RFC 2812 2.3 Messages
-//
-// Each IRC message may consist of up to three main parts:
-// the prefix (optional), the command, and the command
-// parameters (of which there may be up to 15). The prefix,
-// command, and all parameters are separated by one (or
-// more) ASCII space character(s) (0x20).
-
-#[derive(Clone, Debug)]
-pub struct IrcMsg {
-    data: Vec<u8>,
-    prefix: (u32, u32),
-    command: (u32, u32),
-    arg_len: u32,
-    args: [(u32, u32); IRCMSG_MAX_ARGS],
-}
-
-impl IrcMsg {
-    pub fn new(data: Vec<u8>) -> Result<IrcMsg, ParseError> {
-        let parsed = match IrcParser::parse(data) {
-            Ok(parsed) => parsed,
-            Err(err) => return Err(err)
-        };
-        if !::std::str::from_utf8(parsed.get_prefix_raw()).is_ok() {
-            return Err(ParseError::new(ParseErrorKind::EncodingError, parsed.into_bytes()))
-        }
-        if !::std::str::from_utf8(parsed.get_command_raw()).is_ok() {
-            return Err(ParseError::new(ParseErrorKind::EncodingError, parsed.into_bytes()))
-        }
-        Ok(parsed)
-    }
-
-    pub fn has_prefix(&self) -> bool {
-        let (prefix_start, prefix_end) = self.prefix;
-        prefix_end > prefix_start
-    }
-
-    pub fn get_prefix_raw(&self) -> &[u8] {
-        let (prefix_start, prefix_end) = self.prefix;
-        &self.data[prefix_start as usize..prefix_end as usize]
-    }
-
-    pub fn get_prefix_str(&self) -> &str {
-        unsafe { ::std::str::from_utf8_unchecked(self.get_prefix_raw()) }
-    }
-
-    pub fn get_prefix<'a>(&'a self) -> IrcMsgPrefix<'a> {
-        IrcMsgPrefix::new(Cow::Borrowed(self.get_prefix_str()))
-    }
-
-    fn get_command_raw<'a>(&'a self) -> &[u8] {
-        let (command_start, command_end) = self.command;
-        &self.data[command_start as usize..command_end as usize]
-    }
-
-    pub fn get_command(&self) -> &str {
-        unsafe { ::std::str::from_utf8_unchecked(self.get_command_raw()) }
-    }
-
-    pub fn get_args(&self) -> Vec<&[u8]> {
-        let mut out = Vec::with_capacity(self.arg_len as usize);
-        for i in 0..(self.arg_len as usize) {
-            let (arg_start, arg_end) = self.args[i];
-            out.push(&self.data[arg_start as usize..arg_end as usize]);
-        }
-        out
-    }
-
-    pub fn len(&self) -> usize {
-        self.arg_len as usize
-    }
-
-    pub fn into_bytes(self) -> Vec<u8> {
-        self.data
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.data.as_ref()
-    }
-}
-
-impl Index<usize> for IrcMsg {
-    type Output = [u8];
-
-    fn index<'a>(&'a self, index: usize) -> &'a [u8] {
-        let (arg_start, arg_end) = self.args[index];
-        &self.data[arg_start as usize..arg_end as usize]
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
-    use super::IrcParser;
-    use super::super::ParseErrorKind;
+    use super::IrcMsg;
+    use ::mtype2::server::{Ping, Pong, Privmsg};
 
     #[test]
-    fn test_basics() {
-        {
-            let example: Vec<_> = b":prefix PING  foo bar baz".iter().map(|&x| x).collect();
+    fn test_many_modes() {
+        let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
+        let _ = IrcMsg::new(buf).unwrap();
+    }
 
-            let parsed = match IrcParser::parse(example) {
-                Ok(parsed) => parsed,
-                Err(err) => panic!("err: {:?}", err)
-            };
-            assert!(parsed.has_prefix());
-            assert_eq!(parsed.get_prefix_raw(), b"prefix");
-            assert_eq!(parsed.get_prefix_str(), "prefix");
-            assert_eq!(parsed.get_command(), "PING");
 
-            let args_expect: &[&[u8]] = &[b"foo", b"bar", b"baz"];
-            assert_eq!(parsed.get_args(), args_expect);
-        }
+    #[test]
+    fn test_ping_tymsg() {
+        let msg = IrcMsg::new(b":foo PING :somewhere").unwrap();
 
-        {
-            let example: Vec<_> = b"PING a b c d e f g h i j k l m n o p q r s t u v w x y z\n".iter().map(|&x| x).collect();
-            assert_eq!(
-                IrcParser::parse(example).err().unwrap().kind,
-                ParseErrorKind::TooManyArguments);
-        }
-
-        {
-            let example: Vec<_> = b":prefix PING  foo :bar baz\r\n".iter().map(|&x| x).collect();
-
-            let parsed = match IrcParser::parse(example) {
-                Ok(parsed) => parsed,
-                Err(err) => panic!("err: {:?}", err)
-            };
-            assert!(parsed.has_prefix());
-            assert_eq!(parsed.get_prefix_raw(), b"prefix");
-            assert_eq!(parsed.get_prefix_str(), "prefix");
-            assert_eq!(parsed.get_command(), "PING");
-
-            let args_expect: &[&[u8]] = &[b"foo", b"bar baz"];
-            assert_eq!(parsed.get_args(), args_expect);
-        }
+        assert!(msg.as_tymsg::<&Ping>().is_ok());
+        assert!(msg.as_tymsg::<&Pong>().is_err());
     }
 
     #[test]
-    fn test_security() {
-        let example: Vec<_> = b":prefix PING foo\r\n:prefix2 PING bar\r\n".iter().map(|&x| x).collect();
-        let safe = match IrcParser::parse(example) {
-            Ok(parsed) => parsed.into_bytes(),
-            Err(err) => panic!("Should have been able to parse. err: {:?}", err)
-        };
-        assert_eq!(&safe[..], b":prefix PING foo");
-    }
-}
+    fn test_privmsg_tymsg() {
+        let msg = IrcMsg::new(b":n!u@h PRIVMSG #somewhere :sometext").unwrap();
 
-
-#[derive(Clone)]
-pub struct PrefixSlicer {
-    pub nick_idx_pair: OptionalStringSlicer,
-    username_idx_pair: OptionalStringSlicer,
-    hostname_idx_pair: StringSlicer
-}
-
-impl PrefixSlicer {
-    pub fn new(prefix: &str) -> PrefixSlicer {
-        let idx_pair = match prefix.find('!') {
-            Some(exc_idx) => match prefix[exc_idx+1..].find('@') {
-                Some(at_idx) => Some((exc_idx, exc_idx + at_idx + 1)),
-                None => None
-            },
-            None => None
-        };
-
-        match idx_pair {
-            Some((exc_idx, at_idx)) => PrefixSlicer {
-                nick_idx_pair: OptionalStringSlicer::new_some(0, exc_idx),
-                username_idx_pair: OptionalStringSlicer::new_some(exc_idx + 1, at_idx),
-                hostname_idx_pair: StringSlicer::new(at_idx + 1, prefix.len())
-            },
-            None => PrefixSlicer {
-                nick_idx_pair: OptionalStringSlicer::new_none(),
-                username_idx_pair: OptionalStringSlicer::new_none(),
-                hostname_idx_pair: StringSlicer::new(0, prefix.len())
-            }
-        }
+        assert!(msg.as_tymsg::<&Ping>().is_err());
+        assert!(msg.as_tymsg::<&Pong>().is_err());
+        assert!(msg.as_tymsg::<&Privmsg>().is_ok());
     }
 
-    #[allow(dead_code)]
-    pub fn apply<'a>(&self, prefix: Cow<'a, str>) -> IrcMsgPrefix<'a> {
-        IrcMsgPrefix {
-            data: prefix,
-            slicer: self.clone()
-        }
-    }
-}
 
-/// An IRC prefix, which identifies the source of a message.
-#[derive(Clone)]
-pub struct IrcMsgPrefix<'a> {
-    data: Cow<'a, str>,
-    slicer: PrefixSlicer
-}
+    #[test]
+    fn test_many_modes2() {
+        let buf: &[u8] = b":InfinityB!q@d0-0-0-0.abhsia.telus.net MODE # +vvvvvvvvvvvvvvvvvvvv a b c d e f g h i j k l m n o p q r s t";
+        let msg = IrcMsg::new(buf).unwrap();
 
-impl<'a> IrcMsgPrefix<'a> {
-    /// Parse a Cow<'_, str> into a IrcMsgPrefix
-    pub fn new(s: Cow<'a, str>) -> IrcMsgPrefix {
-        let slicer = PrefixSlicer::new(&s);
-        IrcMsgPrefix {
-            data: s,
-            slicer: slicer
-        }
-    }
+        assert_eq!(msg.get_prefix().unwrap().as_bytes(), b"InfinityB!q@d0-0-0-0.abhsia.telus.net" as &[u8]);
+        assert_eq!(msg.get_command(), "MODE");
 
-    /// The nick component of a prefix
-    pub fn nick(&'a self) -> Option<&'a str> {
-        self.slicer.nick_idx_pair.slice_on(&self.data)
-    }
-
-    /// The username component of a prefix
-    pub fn username(&'a self) -> Option<&'a str> {
-        self.slicer.username_idx_pair.slice_on(&self.data)
-    }
-
-    /// The hostname component of a prefix
-    pub fn hostname(&'a self) -> &'a str {
-        self.slicer.hostname_idx_pair.slice_on(&self.data)
-    }
-
-    /// Get the protocol representation as a slice
-    pub fn as_slice(&self) -> &str {
-        &self.data
-    }
-
-    /// Get an owned copy
-    pub fn to_owned(&self) -> IrcMsgPrefix<'static> {
-        IrcMsgPrefix {
-            data: Cow::Owned(self.data.to_string()),
-            slicer: self.slicer.clone()
-        }
-    }
-
-    /// Get an owned copy with a replaced nick
-    pub fn with_nick(&self, nick: &str) -> Option<IrcMsgPrefix<'static>> {
-        match (self.nick(), self.username(), self.hostname()) {
-            (Some(_), Some(username), hostname) => {
-                let prefix_data = format!("{}!{}@{}", nick, username, hostname);
-                Some(IrcMsgPrefix::new(Cow::Owned(prefix_data)))
-            },
-            _ => None
-        }
-    }
-}
-
-
-impl<'a> PartialEq for IrcMsgPrefix<'a> {
-    fn eq(&self, other: &IrcMsgPrefix<'a>) -> bool {
-        self.as_slice() == other.as_slice()
-    }
-}
-impl<'a> Eq for IrcMsgPrefix<'a> {}
-
-impl<'a> fmt::Debug for IrcMsgPrefix<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "IrcMsgPrefix::new({:?})", self.as_slice())
+        let mut arg_iter = msg.args();
+        assert_eq!(arg_iter.next().unwrap(), b"#");
+        assert_eq!(arg_iter.next().unwrap(), b"+vvvvvvvvvvvvvvvvvvvv");
+        assert_eq!(arg_iter.next().unwrap(), b"a");
+        assert_eq!(arg_iter.next().unwrap(), b"b");
+        assert_eq!(arg_iter.next().unwrap(), b"c");
+        assert_eq!(arg_iter.next().unwrap(), b"d");
+        assert_eq!(arg_iter.next().unwrap(), b"e");
+        assert_eq!(arg_iter.next().unwrap(), b"f");
+        assert_eq!(arg_iter.next().unwrap(), b"g");
+        assert_eq!(arg_iter.next().unwrap(), b"h");
+        assert_eq!(arg_iter.next().unwrap(), b"i");
+        assert_eq!(arg_iter.next().unwrap(), b"j");
+        assert_eq!(arg_iter.next().unwrap(), b"k");
+        assert_eq!(arg_iter.next().unwrap(), b"l");
+        assert_eq!(arg_iter.next().unwrap(), b"m");
+        assert_eq!(arg_iter.next().unwrap(), b"n");
+        assert_eq!(arg_iter.next().unwrap(), b"o");
+        assert_eq!(arg_iter.next().unwrap(), b"p");
+        assert_eq!(arg_iter.next().unwrap(), b"q");
+        assert_eq!(arg_iter.next().unwrap(), b"r");
+        assert_eq!(arg_iter.next().unwrap(), b"s");
+        assert_eq!(arg_iter.next().unwrap(), b"t");
+        assert!(arg_iter.next().is_none());
     }
 }

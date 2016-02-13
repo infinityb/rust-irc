@@ -1,5 +1,4 @@
-use parse::IrcMsg;
-
+use ::parse::old_parse::IrcMsg;
 
 fn byte_length_sum(items: &[&str]) -> usize {
     let mut acc = 0;

@@ -1,6 +1,9 @@
-use std::slice;
-use std::any::Any;
-use std::collections::HashMap;
+use std::{slice, fmt, str};
+use std::any::{Any, TypeId};
+use std::collections::{HashMap, hash_map};
+use std::borrow::{Cow, ToOwned};
+
+use unicase::UniCase;
 
 /// The available IRCv3 capability negotiation versions.
 pub enum NegotiationVersion {
@@ -10,9 +13,10 @@ pub enum NegotiationVersion {
     V302,
 }
 
+type CapabilityName = UniCase<Cow<'static, str>>;
 
 pub struct Capabilities {
-    items: HashMap<String, Vec<u8>>
+    items: HashMap<CapabilityName, String>,
 }
 
 impl Capabilities {
@@ -22,38 +26,50 @@ impl Capabilities {
         }
     }
 
-    pub fn set<C: Capability + CapabilityFormat>(&mut self, _value: C) {
-        unimplemented!();
+    pub fn set<C: Capability + CapabilityFormat>(&mut self, value: C) {
+        let key = UniCase(Cow::Borrowed(C::capability_name()));
+        let item = value.serialize_capability();
+        self.items.insert(key, item);
     }
 
-    pub fn get<C: Capability + CapabilityFormat>(&self) -> Option<&C> {
-        unimplemented!();
+    pub fn get<C: Capability + CapabilityFormat>(&self) -> Option<C> {
+        let key = UniCase(Cow::Borrowed(C::capability_name()));
+
+        self.items.get(&key).and_then(|buf| {
+            Capability::parse_capability(buf.as_bytes()).ok()
+        })
     }
 
     pub fn iter_raw(&self) -> CapabilitiesRawIter {
-        unimplemented!();
+        CapabilitiesRawIter { piter: self.items.values() }
     }
 }
 
 pub struct CapabilitiesRawIter<'a> {
-    _marker: ::std::marker::PhantomData<&'a ()>,
+    piter: hash_map::Values<'a, CapabilityName, String>,
 }
 
 impl<'a> Iterator for CapabilitiesRawIter<'a> {
-    type Item = &'a [u8];
+    type Item = &'a str;
 
-    fn next(&mut self) -> Option<&'a [u8]> {
-        unimplemented!();
+    fn next(&mut self) -> Option<&'a str> {
+        self.piter.next().map(|ser| &ser[..])
     }
 }
 
 
 pub trait Capability: Clone + Any { // Send + Sync?
     fn capability_name() -> &'static str;
+
+    fn serialize_capability(&self) -> String {
+        Self::capability_name().to_string()
+    }
+
     fn parse_capability(cap: &[u8]) -> Result<Self, ()>;
 }
 
 pub trait CapabilityFormat: Clone + Any { // Send + Sync?
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result;
 }
 
 #[derive(Clone)]
@@ -64,11 +80,23 @@ impl Capability for MultiPrefix {
         "multi-prefix"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<MultiPrefix, ()> {
-        if cap == MultiPrefix::capability_name().as_bytes() {
-            return Ok(MultiPrefix)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(MultiPrefix);
         }
-        return Err(())
+        Err(())
+    }
+}
+
+impl CapabilityFormat for MultiPrefix {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", ExtendedJoin::capability_name())
+    }
+}
+
+impl fmt::Display for MultiPrefix {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
     }
 }
 
@@ -81,13 +109,26 @@ impl Capability for ExtendedJoin {
         "extended-join"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<ExtendedJoin, ()> {
-        if cap == ExtendedJoin::capability_name().as_bytes() {
-            return Ok(ExtendedJoin)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(ExtendedJoin);
         }
-        return Err(())
+        Err(())
     }
 }
+
+impl CapabilityFormat for ExtendedJoin {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", ExtendedJoin::capability_name())
+    }
+}
+
+impl fmt::Display for ExtendedJoin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
+    }
+}
+
 
 
 #[derive(Clone)]
@@ -98,11 +139,23 @@ impl Capability for AccountNotify {
         "account-notify"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<AccountNotify, ()> {
-        if cap == AccountNotify::capability_name().as_bytes() {
-            return Ok(AccountNotify)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(AccountNotify);
         }
-        return Err(())
+        Err(())
+    }
+}
+
+impl CapabilityFormat for AccountNotify {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", AccountNotify::capability_name())
+    }
+}
+
+impl fmt::Display for AccountNotify {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
     }
 }
 
@@ -115,13 +168,26 @@ impl Capability for Batch {
         "batch"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<Batch, ()> {
-        if cap == Batch::capability_name().as_bytes() {
-            return Ok(Batch)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(Batch);
         }
-        return Err(())
+        Err(())
     }
 }
+
+impl CapabilityFormat for Batch {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", Batch::capability_name())
+    }
+}
+
+impl fmt::Display for Batch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
+    }
+}
+
 
 #[derive(Clone)]
 pub struct InviteNotify;
@@ -131,13 +197,26 @@ impl Capability for InviteNotify {
         "invite-notify"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<InviteNotify, ()> {
-        if cap == InviteNotify::capability_name().as_bytes() {
-            return Ok(InviteNotify)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(InviteNotify);
         }
-        return Err(())
+        Err(())
     }
 }
+
+impl CapabilityFormat for InviteNotify {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", InviteNotify::capability_name())
+    }
+}
+
+impl fmt::Display for InviteNotify {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
+    }
+}
+
 
 
 #[derive(Clone)]
@@ -148,11 +227,23 @@ impl Capability for Tls {
         "tls"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<Tls, ()> {
-        if cap == Tls::capability_name().as_bytes() {
-            return Ok(Tls)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(Tls);
         }
-        return Err(())
+        Err(())
+    }
+}
+
+impl CapabilityFormat for Tls {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", Tls::capability_name())
+    }
+}
+
+impl fmt::Display for Tls {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
     }
 }
 
@@ -165,13 +256,26 @@ impl Capability for CapNotify {
         "cap-notify"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<CapNotify, ()> {
-        if cap == CapNotify::capability_name().as_bytes() {
-            return Ok(CapNotify)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(CapNotify);
         }
-        return Err(())
+        Err(())
     }
 }
+
+impl CapabilityFormat for CapNotify {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", CapNotify::capability_name())
+    }
+}
+
+impl fmt::Display for CapNotify {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
+    }
+}
+
 
 #[derive(Clone)]
 pub struct ServerTime;
@@ -181,11 +285,23 @@ impl Capability for ServerTime {
         "server-time"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<ServerTime, ()> {
-        if cap == ServerTime::capability_name().as_bytes() {
-            return Ok(ServerTime)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(ServerTime);
         }
-        return Err(())
+        Err(())
+    }
+}
+
+impl CapabilityFormat for ServerTime {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", ServerTime::capability_name())
+    }
+}
+
+impl fmt::Display for ServerTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
     }
 }
 
@@ -198,17 +314,30 @@ impl Capability for UserhostInNames {
         "userhost-in-names"
     }
 
-    fn parse_capability(cap: &[u8]) -> Result<UserhostInNames, ()> {
-        if cap == UserhostInNames::capability_name().as_bytes() {
-            return Ok(UserhostInNames)
+    fn parse_capability(cap: &[u8]) -> Result<Self, ()> {
+        if cap == Self::capability_name().as_bytes() {
+            return Ok(UserhostInNames);
         }
-        return Err(())
+        Err(())
     }
 }
 
+impl CapabilityFormat for UserhostInNames {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", UserhostInNames::capability_name())
+    }
+}
+
+impl fmt::Display for UserhostInNames {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
+    }
+}
+
+
 #[derive(Clone)]
 pub struct Sasl {
-    args: Vec<u8>
+    args: String,
 }
 
 impl Capability for Sasl {
@@ -216,20 +345,49 @@ impl Capability for Sasl {
         "sasl"
     }
 
+    fn serialize_capability(&self) -> String {
+        if self.args.len() == 0 {
+            format!("{}", Sasl::capability_name())
+        } else {
+            format!("{}={}", Sasl::capability_name(), self.args)
+        }
+    }
+
     fn parse_capability(cap: &[u8]) -> Result<Sasl, ()> {
         if cap == Sasl::capability_name().as_bytes() {
-            return Ok(Sasl { args: Vec::new() });
+            return Ok(Sasl { args: String::new() });
         }
 
         if cap.starts_with(b"sasl=") {
-            return Ok(Sasl { args: cap[5..].to_vec() });
+            let args = try!(str::from_utf8(&cap[5..]).map_err(|_| ()));
+            return Ok(Sasl { args: args.to_string() });
         }
 
         return Err(())
     }
 }
 
+impl CapabilityFormat for Sasl {
+    fn fmt_capability(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.args.len() == 0 {
+            write!(f, "{}", Sasl::capability_name())
+        } else {
+            write!(f, "{}={}", Sasl::capability_name(), self.args)
+        }
+    }
+}
+
+impl fmt::Display for Sasl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.fmt_capability(f)
+    }
+}
+
 impl Sasl {
+    pub fn new(args: &str) -> Sasl {
+        Sasl { args: args.to_string() }
+    }
+
     /// returns an iterator that yields the supported protocols, if any
     pub fn protocols(&self) -> SaslProtocolIter {
         SaslProtocolIter {
@@ -238,18 +396,33 @@ impl Sasl {
     }
 }
 
-fn is_comma(by: &u8) -> bool {
-    *by == b','
+fn is_comma(ch: char) -> bool {
+    ch == ','
 }
 
 pub struct SaslProtocolIter<'a> {
-    inner: slice::Split<'a, u8, fn(&u8) -> bool>
+    inner: str::Split<'a, fn(char) -> bool>
 }
 
 impl<'a> Iterator for SaslProtocolIter<'a> {
-    type Item = &'a [u8];
+    type Item = &'a str;
 
-    fn next(&mut self) -> Option<&'a [u8]> {
+    fn next(&mut self) -> Option<&'a str> {
         self.inner.next()
+    }
+}
+
+#[test]
+fn swag() {
+    let mut caps = Capabilities::new();
+    caps.set(UserhostInNames);
+    caps.set(Sasl::new("EXTERNAL,DH-AES,DH-BLOWFISH,ECDSA-NIST256P-CHALLENGE,PLAIN"));
+
+    let _uhost: UserhostInNames = caps.get().unwrap();
+
+    let mut out = String::new();
+    for cap_phrase in caps.iter_raw() {
+        out.push_str(cap_phrase);
+        out.push_str(" ");
     }
 }

@@ -4,10 +4,9 @@ use std::{mem, ops};
 use std::io::{self, Write};
 
 use super::FromIrcMsg;
-use ::parse::IrcMsg as IrcMsgLegacy;
-use ::parse::parse2::{IrcMsg, IrcMsgBuf};
+use ::parse::old_parse::IrcMsg as IrcMsgLegacy;
+use ::{IrcMsg, IrcMsgBuf};
 use ::parse_helpers;
-use ::cap::NegotiationVersion;
 
 
 macro_rules! impl_irc_msg_subtype {
@@ -102,51 +101,45 @@ macro_rules! impl_irc_msg_subtype_buf {
     }
 }
 
-
-impl_irc_msg_subtype!(CapLs);
-impl_irc_msg_subtype_buf!(CapLsBuf, CapLs);
-
-impl CapLs {
-    fn construct<W>(sink: &mut W, version: NegotiationVersion) -> Result<(), ()>
-        where W: Write
-    {
-        try!(sink.write_all(b"CAP LS ").or_else(cursor_chk_error));
-        match version {
-            NegotiationVersion::V301 => {
-                try!(sink.write_all(b"301").or_else(cursor_chk_error));
-            }
-            NegotiationVersion::V302 => {
-                try!(sink.write_all(b"302").or_else(cursor_chk_error));
+macro_rules! irc_msg_has_source {
+    ($id:ident) => {
+        impl $id {
+            pub fn get_source(&self) -> &[u8] {
+                let buf = self.as_bytes();
+                let (prefix, _rest) = parse_helpers::split_prefix(buf);
+                prefix
             }
         }
-        Ok(())
-    }
-
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
-    }
-
-    pub fn get_version(&self) -> Option<NegotiationVersion> {
-        unimplemented!();
     }
 }
 
-impl CapLsBuf {
-    pub fn new(version: NegotiationVersion) -> CapLsBuf {
-        let mut wr = io::Cursor::new(Vec::new());
-        CapLs::construct(&mut wr, version).unwrap();
-
-        // maybe we could skip this check later and turn it into a debug-assert?
-        let message = IrcMsgBuf::new(wr.into_inner()).unwrap();
-        CapLs::validate(&message).unwrap();
-        CapLsBuf { inner: message }
+macro_rules! irc_msg_has_target {
+    ($id:ident) => {
+        impl $id {
+            pub fn get_target(&self) -> &[u8] {
+                let buf = self.as_bytes();
+                let (_prefix, rest) = parse_helpers::split_prefix(buf);
+                let (_command, rest) = parse_helpers::split_command(rest);
+                let (target, _rest) = parse_helpers::split_arg(rest);
+                target
+            }
+        }
     }
 }
 
+macro_rules! irc_msg_legacy_validator {
+    ($on:ident, $from:ident) => {
+        impl $on {
+            fn validate(msg: &IrcMsg) -> Result<(), ()> {
+                use message_types::server;
 
-fn cursor_chk_error(err: io::Error) -> Result<(), ()> {
-    match err {
-        ref err if err.kind() == io::ErrorKind::WriteZero => Err(()),
-        _ => panic!(),
+                let legacy = try!(IrcMsgLegacy::new(msg.as_bytes().to_vec()).map_err(|_| ()));
+                match server::IncomingMsg::from_msg(legacy.clone()) {
+                    server::IncomingMsg::$from(ref _msg) => (),
+                    _ => return Err(()),
+                };
+                Ok(())
+            }
+        }
     }
 }

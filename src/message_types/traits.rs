@@ -1,4 +1,4 @@
-use parse::IrcMsg;
+use ::parse::old_parse::IrcMsg;
 
 
 pub trait FromIrcMsg: Sized {

@@ -2,10 +2,14 @@
 //! emit messages constructed in `client` and servers will emit messages
 //! constructed in `server`.
 
-use ::parse::parse2::IrcMsg;
+use std::io::{self, Write};
+
+use ::IrcMsg;
+
+#[macro_use]
+mod macros;
 
 pub mod server;
-
 pub mod client;
 
 pub trait FromIrcMsg: Sized {
@@ -14,4 +18,11 @@ pub trait FromIrcMsg: Sized {
     /// This never allocates, but may check the underlying storage
     /// for well-formedness.
     fn from_irc_msg(msg: &IrcMsg) -> Result<Self, Self::Err>;
+}
+
+fn cursor_chk_error(err: io::Error) -> Result<(), ()> {
+    match err {
+        ref err if err.kind() == io::ErrorKind::WriteZero => Err(()),
+        _ => panic!(),
+    }
 }
