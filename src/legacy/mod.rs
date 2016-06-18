@@ -11,9 +11,19 @@ mod event;
 mod watchers;
 pub mod numerics;
 pub mod message_types;
-pub mod state;
+mod state;
 
 pub use self::event::IrcEvent;
+pub use self::state::{
+    Channel,
+    ChannelId,
+    ChannelInfo,
+    State,
+    User,
+    UserId,
+    UserInfo,
+    MessageEndpoint,
+};
 pub use self::watchers::{
     RegisterError,
     RegisterErrorType,

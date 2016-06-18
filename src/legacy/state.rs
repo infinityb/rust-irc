@@ -19,7 +19,7 @@ use super::watchers::{
 };
 
 use self::irc_identifier::IrcIdentifier;
-pub use self::MessageEndpoint::{
+use self::MessageEndpoint::{
     KnownUser,
     KnownChannel,
     AnonymousUser,
