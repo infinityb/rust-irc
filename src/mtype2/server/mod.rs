@@ -2,7 +2,7 @@ use std::borrow::{Borrow, ToOwned};
 use std::{mem, ops};
 use std::io::{self, Write};
 
-use super::FromIrcMsg;
+use super::{FromIrcMsg, client};
 use super::cursor_chk_error;
 
 use ::legacy::IrcMsg as IrcMsgLegacy;
@@ -22,6 +22,9 @@ use ::parse_helpers;
 impl_irc_msg_subtype!(Invite);
 impl_irc_msg_subtype_buf!(InviteBuf, Invite);
 irc_msg_legacy_validator!(Invite, Invite);
+irc_msg_has_source!(Invite);
+irc_msg_has_target!(Invite);
+
 
 impl_irc_msg_subtype!(Join);
 impl_irc_msg_subtype_buf!(JoinBuf, Join);
@@ -133,6 +136,17 @@ impl_irc_msg_subtype_buf!(PingBuf, Ping);
 irc_msg_legacy_validator!(Ping, Ping);
 
 
+impl Ping {
+    pub fn source(&self) -> &[u8] {
+        // FIXME: invariant not upheld: can panic
+        self.args().nth(0).unwrap()
+    }
+
+    pub fn response(&self) -> client::PongBuf {
+        client::PongBuf::new(self.source()).unwrap()
+    }
+}
+
 impl_irc_msg_subtype!(Pong);
 impl_irc_msg_subtype_buf!(PongBuf, Pong);
 irc_msg_legacy_validator!(Pong, Pong);
@@ -150,13 +164,9 @@ impl Privmsg {
 
         let buf = msg.as_bytes();
 
-        let (prefix, rest) = parse_helpers::split_prefix(buf);
-        if prefix.len() == 0 {
-            return Err(());
-        }
-        if !parse_helpers::is_valid_prefix(prefix) {
-            return Err(());
-        }
+        let (prefix, rest) = parse_helpers::split_prefix(buf); if prefix.len()
+        == 0 {     return Err(()); } if
+        !parse_helpers::is_valid_prefix(prefix) {     return Err(()); }
 
         let (command, rest) = parse_helpers::split_command(rest);
         if !AsciiExt::eq_ignore_ascii_case(command, b"PRIVMSG") {
@@ -174,6 +184,17 @@ impl Privmsg {
         }
 
         Ok(())
+    }
+
+    // XXX: is this str? invariant upheld?
+    pub fn source_nick(&self) -> &str {
+        let mut source = self.get_source();
+        if source.starts_with(b":") {
+            source = &source[1..];
+        }
+
+        let nick = source.splitn(2, |x| *x == b'!').nth(0).unwrap();
+        ::std::str::from_utf8(nick).unwrap()
     }
 
     pub fn get_body_raw(&self) -> &[u8] {
@@ -227,10 +248,25 @@ irc_msg_has_target!(Topic);
 impl Topic {
 }
 
+
 impl_irc_msg_subtype!(Quit);
 impl_irc_msg_subtype_buf!(QuitBuf, Quit);
 irc_msg_legacy_validator!(Quit, Quit);
+irc_msg_has_source!(Quit);
 
+
+impl Quit {
+    // XXX: is this str? invariant upheld?
+    pub fn source_nick(&self) -> &str {
+        let mut source = self.get_source();
+        if source.starts_with(b":") {
+            source = &source[1..];
+        }
+        
+        let nick = source.splitn(2, |x| *x == b'!').nth(0).unwrap();
+        ::std::str::from_utf8(nick).unwrap()
+    }
+}
 
 #[test]
 fn kick_asrefs() {

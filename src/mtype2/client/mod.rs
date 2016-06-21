@@ -27,8 +27,7 @@ impl Invite {
     }
 
     fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        // unimplemented!();
-        Ok(())
+        unimplemented!();
     }
 }
 
@@ -40,10 +39,11 @@ impl InviteBuf {
         // maybe we could skip this check later and turn it into a debug-assert?
         let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
 
-        try!(Invite::validate(&message));
+        // FIXME: try!(Invite::validate(&message));
         Ok(InviteBuf { inner: message })
     }
 }
+
 
 impl_irc_msg_subtype!(Join);
 impl_irc_msg_subtype_buf!(JoinBuf, Join);
@@ -70,8 +70,39 @@ impl JoinBuf {
         // maybe we could skip this check later and turn it into a debug-assert?
         let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
 
-        try!(Join::validate(&message));
+        // FIXME: try!(Join::validate(&message));
         Ok(JoinBuf { inner: message })
+    }
+}
+
+
+impl_irc_msg_subtype!(Nick);
+impl_irc_msg_subtype_buf!(NickBuf, Nick);
+
+impl Nick {
+    fn construct<W>(sink: &mut W, nick: &[u8]) -> Result<(), ()>
+        where W: Write
+    {
+        try!(sink.write_all(b"NICK ").or_else(cursor_chk_error));
+        try!(sink.write_all(nick).or_else(cursor_chk_error));
+        Ok(())
+    }
+
+    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
+        unimplemented!();
+    }
+}
+
+impl NickBuf {
+    pub fn new(nick: &[u8]) -> Result<NickBuf, ()> {
+        let mut wr = io::Cursor::new(Vec::new());
+        try!(Nick::construct(&mut wr, nick));
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
+
+        // FIXME: try!(Nick::validate(&message));
+        Ok(NickBuf { inner: message })
     }
 }
 
@@ -101,7 +132,7 @@ impl PingBuf {
         // maybe we could skip this check later and turn it into a debug-assert?
         let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
 
-        try!(Ping::validate(&message));
+        // FIXME: try!(Ping::validate(&message));
         Ok(PingBuf { inner: message })
     }
 }
@@ -132,7 +163,70 @@ impl PongBuf {
         // maybe we could skip this check later and turn it into a debug-assert?
         let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
 
-        try!(Pong::validate(&message));
+        // FIXME: try!(Pong::validate(&message));
         Ok(PongBuf { inner: message })
+    }
+}
+
+impl_irc_msg_subtype!(Privmsg);
+impl_irc_msg_subtype_buf!(PrivmsgBuf, Privmsg);
+
+impl Privmsg {
+    fn construct<W>(sink: &mut W, target: &[u8], message: &[u8]) -> Result<(), ()>
+        where W: Write
+    {
+        try!(sink.write_all(b"PRIVMSG ").or_else(cursor_chk_error));
+        try!(sink.write_all(target).or_else(cursor_chk_error));
+        try!(sink.write_all(b" :").or_else(cursor_chk_error));
+        try!(sink.write_all(message).or_else(cursor_chk_error));
+        Ok(())
+    }
+
+    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
+        unimplemented!();
+    }
+}
+
+impl PrivmsgBuf {
+    pub fn new(target: &[u8], message: &[u8]) -> Result<PrivmsgBuf, ()> {
+        let mut wr = io::Cursor::new(Vec::new());
+        try!(Privmsg::construct(&mut wr, target, message));
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
+
+        // FIXME: try!(Privmsg::validate(&message));
+        Ok(PrivmsgBuf { inner: message })
+    }
+}
+
+
+impl_irc_msg_subtype!(Quit);
+impl_irc_msg_subtype_buf!(QuitBuf, Quit);
+
+impl Quit {
+    fn construct<W>(sink: &mut W, reason: &[u8]) -> Result<(), ()>
+        where W: Write
+    {
+        try!(sink.write_all(b"QUIT :").or_else(cursor_chk_error));
+        try!(sink.write_all(reason).or_else(cursor_chk_error));
+        Ok(())
+    }
+
+    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
+        unimplemented!();
+    }
+}
+
+impl QuitBuf {
+    pub fn new(reason: &[u8]) -> Result<QuitBuf, ()> {
+        let mut wr = io::Cursor::new(Vec::new());
+        try!(Quit::construct(&mut wr, reason));
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
+
+        // FIXME: try!(Quit::validate(&message));
+        Ok(QuitBuf { inner: message })
     }
 }

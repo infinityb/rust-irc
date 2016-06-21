@@ -19,6 +19,7 @@ pub use self::state::{
     ChannelId,
     ChannelInfo,
     State,
+    FrozenState,
     User,
     UserId,
     UserInfo,
