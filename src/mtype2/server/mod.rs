@@ -35,7 +35,7 @@ irc_msg_has_target!(Join);
 impl Join {
     fn construct<W>(sink: &mut W, source: &[u8], channel: &[u8]) -> Result<(), ()>
         where W: Write
-{
+    {
         try!(sink.write_all(b":").or_else(cursor_chk_error));
         try!(sink.write_all(source).or_else(cursor_chk_error));
         try!(sink.write_all(b" JOIN ").or_else(cursor_chk_error));
