@@ -19,20 +19,24 @@ impl Invite {
     fn construct<W>(sink: &mut W, nickname: &[u8], channel: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"INVITE ").or_else(cursor_chk_error));
-        try!(sink.write_all(nickname).or_else(cursor_chk_error));
-        try!(sink.write_all(b" ").or_else(cursor_chk_error));
-        try!(sink.write_all(channel).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[
+            b"INVITE ",
+            nickname,
+            b" ",
+            channel,
+        ]).or_else(cursor_chk_error)
     }
 
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+    fn validate(_msg: &IrcMsg) -> Result<(), ()>
+    {
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl InviteBuf {
-    pub fn new(nickname: &[u8], channel: &[u8]) -> Result<InviteBuf, ()> {
+    pub fn new(nickname: &[u8], channel: &[u8]) -> Result<InviteBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Invite::construct(&mut wr, nickname, channel));
 
@@ -52,18 +56,30 @@ impl Join {
     fn construct<W>(sink: &mut W, channel: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"JOIN ").or_else(cursor_chk_error));
-        try!(sink.write_all(channel).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[b"JOIN ", channel]).or_else(cursor_chk_error)
     }
 
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+    /// Create a new `Join` in `storage`.  This does not allocate any storage.
+    pub fn new<'a>(storage: &'a mut [u8], channel: &[u8]) -> Result<&'a Join, ()>
+    {
+        let mut wr = io::Cursor::new(storage);
+        try!(Join::construct(&mut wr, channel));
+        let end = wr.position() as usize;
+
+        let storage = wr.into_inner();
+        Join::parse(&storage[..end])
+    }
+
+    fn validate(_msg: &IrcMsg) -> Result<(), ()>
+    {
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl JoinBuf {
-    pub fn new(channel: &[u8]) -> Result<JoinBuf, ()> {
+    pub fn new(channel: &[u8]) -> Result<JoinBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Join::construct(&mut wr, channel));
 
@@ -83,18 +99,30 @@ impl Nick {
     fn construct<W>(sink: &mut W, nick: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"NICK ").or_else(cursor_chk_error));
-        try!(sink.write_all(nick).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[b"NICK ", nick]).or_else(cursor_chk_error)
     }
 
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+    /// Create a new `Nick` in `storage`.  This does not allocate any storage.
+    pub fn new<'a>(storage: &'a mut [u8], nick: &[u8]) -> Result<&'a Nick, ()>
+    {
+        let mut wr = io::Cursor::new(storage);
+        try!(Nick::construct(&mut wr, nick));
+        let end = wr.position() as usize;
+
+        let storage = wr.into_inner();
+        Nick::parse(&storage[..end])
+    }
+
+    fn validate(_msg: &IrcMsg) -> Result<(), ()>
+    {
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl NickBuf {
-    pub fn new(nick: &[u8]) -> Result<NickBuf, ()> {
+    pub fn new(nick: &[u8]) -> Result<NickBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Nick::construct(&mut wr, nick));
 
@@ -114,18 +142,18 @@ impl Ping {
     fn construct<W>(sink: &mut W, server: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"PING :").or_else(cursor_chk_error));
-        try!(sink.write_all(server).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[b"PING :", server]).or_else(cursor_chk_error)
     }
 
     fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl PingBuf {
-    pub fn new(server: &[u8]) -> Result<PingBuf, ()> {
+    pub fn new(server: &[u8]) -> Result<PingBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Ping::construct(&mut wr, server));
 
@@ -145,18 +173,19 @@ impl Pong {
     fn construct<W>(sink: &mut W, server: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"PONG ").or_else(cursor_chk_error));
-        try!(sink.write_all(server).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[b"PONG ", server]).or_else(cursor_chk_error)
     }
 
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+    fn validate(_msg: &IrcMsg) -> Result<(), ()>
+    {
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl PongBuf {
-    pub fn new(source: &[u8]) -> Result<PongBuf, ()> {
+    pub fn new(source: &[u8]) -> Result<PongBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Pong::construct(&mut wr, source));
 
@@ -175,20 +204,24 @@ impl Privmsg {
     fn construct<W>(sink: &mut W, target: &[u8], message: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"PRIVMSG ").or_else(cursor_chk_error));
-        try!(sink.write_all(target).or_else(cursor_chk_error));
-        try!(sink.write_all(b" :").or_else(cursor_chk_error));
-        try!(sink.write_all(message).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[
+            b"PRIVMSG ",
+            target,
+            b" :",
+            message,
+        ]).or_else(cursor_chk_error)
     }
 
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+    fn validate(_msg: &IrcMsg) -> Result<(), ()>
+    {
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl PrivmsgBuf {
-    pub fn new(target: &[u8], message: &[u8]) -> Result<PrivmsgBuf, ()> {
+    pub fn new(target: &[u8], message: &[u8]) -> Result<PrivmsgBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Privmsg::construct(&mut wr, target, message));
 
@@ -208,18 +241,19 @@ impl Quit {
     fn construct<W>(sink: &mut W, reason: &[u8]) -> Result<(), ()>
         where W: Write
     {
-        try!(sink.write_all(b"QUIT :").or_else(cursor_chk_error));
-        try!(sink.write_all(reason).or_else(cursor_chk_error));
-        Ok(())
+        writevec(sink, &[b"QUIT :", reason]).or_else(cursor_chk_error)
     }
 
-    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
-        unimplemented!();
+    fn validate(_msg: &IrcMsg) -> Result<(), ()>
+    {
+        // XXX: unimplemented!();
+        Ok(())
     }
 }
 
 impl QuitBuf {
-    pub fn new(reason: &[u8]) -> Result<QuitBuf, ()> {
+    pub fn new(reason: &[u8]) -> Result<QuitBuf, ()>
+    {
         let mut wr = io::Cursor::new(Vec::new());
         try!(Quit::construct(&mut wr, reason));
 
@@ -229,4 +263,80 @@ impl QuitBuf {
         // FIXME: try!(Quit::validate(&message));
         Ok(QuitBuf { inner: message })
     }
+}
+
+
+impl_irc_msg_subtype!(User);
+impl_irc_msg_subtype_buf!(UserBuf, User);
+
+
+impl User {
+    fn construct<W>(sink: &mut W,
+        user: &[u8],
+        mode: &[u8],
+        unused: &[u8],
+        realname: &[u8],
+    ) -> Result<(), ()>
+        where W: Write
+    {
+        writevec(sink, &[
+            b"USER ",
+            user, b" ",
+            mode, b" ",
+            unused,
+            b" :",
+            realname
+        ]).or_else(cursor_chk_error)
+    }
+
+    /// Create a new `User` in `storage`.  This does not allocate any storage.
+    /// USER <user> <mode> <unused> <realname>
+    pub fn new<'a>(
+        storage: &'a mut [u8],
+        user: &[u8],
+        mode: &[u8],
+        unused: &[u8],
+        realname: &[u8],
+    ) -> Result<&'a User, ()>
+    {
+        let mut wr = io::Cursor::new(storage);
+        try!(User::construct(&mut wr, user, mode, unused, realname));
+        let end = wr.position() as usize;
+
+        let storage = wr.into_inner();
+        User::parse(&storage[..end])
+    }
+
+    fn validate(_msg: &IrcMsg) -> Result<(), ()> {
+        // XXX: unimplemented!();
+        Ok(())
+    }
+}
+
+impl UserBuf {
+    pub fn new(
+        user: &[u8],
+        mode: &[u8],
+        unused: &[u8],
+        realname: &[u8],
+    ) -> Result<UserBuf, ()>
+    {
+        let mut wr = io::Cursor::new(Vec::new());
+        try!(User::construct(&mut wr, user, mode, unused, realname));
+
+        // maybe we could skip this check later and turn it into a debug-assert?
+        let message = try!(IrcMsgBuf::new(wr.into_inner()).map_err(|_| ()));
+
+        // FIXME: try!(User::validate(&message));
+        Ok(UserBuf { inner: message })
+    }
+}
+
+
+fn writevec<W: Write>(sink: &mut W, bufs: &[&[u8]]) -> io::Result<()>
+{
+    for &piece in bufs.iter() {
+        try!(sink.write_all(piece));
+    }
+    Ok(())
 }
